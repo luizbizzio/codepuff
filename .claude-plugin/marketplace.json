@@ -1,0 +1,12 @@
+{
+  "name": "codepuff",
+  "description": "CodePuff: an interactive coding pet for Claude Code and OpenAI Codex.",
+  "owner": { "name": "Luiz Bizzio" },
+  "plugins": [
+    {
+      "name": "codepuff",
+      "source": "./",
+      "description": "An interactive coding pet that reacts to what your agent is really doing and keeps statistics across Claude Code and Codex."
+    }
+  ]
+}

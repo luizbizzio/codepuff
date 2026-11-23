@@ -1,0 +1,12 @@
+{
+  "name": "codepuff",
+  "interface": { "displayName": "CodePuff" },
+  "plugins": [
+    {
+      "name": "codepuff",
+      "source": { "source": "local", "path": "./" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Productivity"
+    }
+  ]
+}

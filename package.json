@@ -1,0 +1,46 @@
+{
+  "name": "codepuff",
+  "version": "0.1.0",
+  "description": "An interactive coding pet for Claude Code and OpenAI Codex.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": "Luiz Bizzio",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luizbizzio/codepuff.git"
+  },
+  "bin": {
+    "codepuff": "bin/codepuff.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "bin",
+    "src",
+    "web",
+    "hooks",
+    "types",
+    "codex",
+    ".claude-plugin",
+    ".codex-plugin",
+    ".agents",
+    "docs",
+    "NOTICE",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "bench": "node scripts/bench.mjs",
+    "preview": "node scripts/preview.mjs"
+  },
+  "keywords": [
+    "claude-code",
+    "codex",
+    "pet",
+    "mascot",
+    "hooks",
+    "statistics"
+  ]
+}

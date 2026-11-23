@@ -1,0 +1,28 @@
+CodePuff
+Copyright 2026 Luiz Bizzio
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Reused work
+-----------
+Ideas and a small amount of code in CodePuff were adapted from the author's own project Metacognition
+(https://github.com/luizbizzio/metacognition, Apache License 2.0, same copyright holder):
+
+  - the approach of observing a coding agent through its hook events and recognizing what a tool call is;
+  - the idea of a small pixel critter drawn from lit blocks (a bright top, a front, a shaded side).
+    The "Claude" character in CodePuff is a new drawing in that spirit, rebuilt on CodePuff's own pixel canvas;
+    no artwork file was copied.
+
+Nothing from Metacognition's reflection, strategy-learning, advice-injection or verification-policy code is included.
+
+Third-party code and assets
+---------------------------
+CodePuff has no runtime dependencies. All pixel art, animations and color logic are original to this project.
+
+Trademarks and affiliation
+--------------------------
+CodePuff is an independent project. It is not affiliated with, endorsed by or sponsored by Anthropic or OpenAI.
+"Claude" and "Claude Code" are trademarks of Anthropic, PBC. "Codex" and "OpenAI" are trademarks of OpenAI. The names
+are used only to say which tools CodePuff works with. The character named "Claude" in CodePuff is an unofficial fan
+design: it uses no official logo, mascot artwork or branding, and it can be renamed or replaced (see
+docs/ARCHITECTURE.md, "Adding a character").

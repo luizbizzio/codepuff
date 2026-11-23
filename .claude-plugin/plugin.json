@@ -1,0 +1,11 @@
+{
+  "name": "codepuff",
+  "version": "0.1.0",
+  "description": "An interactive coding pet for Claude Code: it reacts to what the agent is really doing and keeps statistics shared with Codex.",
+  "author": { "name": "Luiz Bizzio" },
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/luizbizzio/codepuff",
+  "repository": "https://github.com/luizbizzio/codepuff",
+  "keywords": ["pet", "mascot", "statistics", "codex"],
+  "types": "./types/index.d.ts"
+}

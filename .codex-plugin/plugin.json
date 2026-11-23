@@ -1,0 +1,20 @@
+{
+  "name": "codepuff",
+  "version": "0.1.0",
+  "description": "An interactive coding pet for OpenAI Codex. It watches Codex's lifecycle hooks and shares one local history with Claude Code.",
+  "author": { "name": "Luiz Bizzio" },
+  "homepage": "https://github.com/luizbizzio/codepuff",
+  "repository": "https://github.com/luizbizzio/codepuff",
+  "license": "Apache-2.0",
+  "keywords": ["pet", "mascot", "statistics", "claude-code"],
+  "hooks": "./codex/hooks.json",
+  "interface": {
+    "displayName": "CodePuff",
+    "shortDescription": "A coding pet that reacts to Codex",
+    "longDescription": "CodePuff is a small animated companion that reacts to what Codex is really doing and keeps useful statistics across sessions, projects and both agents. Everything stays on your computer.",
+    "developerName": "Luiz Bizzio",
+    "category": "Productivity",
+    "capabilities": [],
+    "websiteURL": "https://github.com/luizbizzio/codepuff"
+  }
+}

@@ -4,11 +4,13 @@ import { REACTIONS, animation } from '../src/core/art/anim.js'
 import { buildPalette } from '../src/core/art/palette.js'
 import { Canvas, H, K, LEVEL, R, W } from '../src/core/art/canvas.js'
 import { MASCOTS, MASCOT_IDS } from '../src/core/art/registry.js'
+import { partsOf } from '../src/core/art/parts.js'
+import { artHashes } from './art-hashes.js'
 import { STAND, drawScene } from '../src/core/art/scene.js'
 import { bandBox, petSvg, stageBounds, terminalFrame } from '../src/core/render/raster.js'
 import { STATES } from '../src/core/petstate.js'
 import { openStore } from '../src/node/store.js'
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { T0, tempDir } from './helpers.js'
 
@@ -225,4 +227,40 @@ test('motion is smooth: the pet moves by an eased CSS transform, the shadow stay
     assert.equal(last.eyes, 'open', state + ' ends with open eyes, so it settles back')
     assert.equal(last.dy, 0)
   }
+})
+
+test('a new state arrives with a pop, reactions do not, and a title becomes a tooltip', () => {
+  assert.ok(petSvg({ character: 'fox', state: 'coding' }).includes('class="en"') && petSvg({ character: 'fox', state: 'coding' }).includes('@keyframes en'))
+  assert.ok(!petSvg({ character: 'fox', state: 'petted' }).includes('class="en"'), 'a reaction has its own motion')
+  assert.ok(!petSvg({ character: 'fox', state: 'coding', reduced: true }).includes('class="en"'), 'reduced motion: no pop')
+  const tip = petSvg({ character: 'fox', state: 'idle', title: 'Foxy: <Resting> & "ready"' })
+  assert.ok(tip.includes('<title>Foxy: &lt;Resting&gt; &amp; &quot;ready&quot;</title>'), 'escaped')
+  assert.ok(!petSvg({ character: 'fox', state: 'idle' }).includes('<title>'))
+})
+
+test('some characters have a part that moves on its own: a tail, an antenna, a star, a fin, a curl', () => {
+  const withParts = ['fox', 'classic', 'bot', 'mage', 'aquatic']
+  for (const id of MASCOT_IDS) {
+    const svg = petSvg({ character: id, state: 'idle' })
+    if (withParts.includes(id)) {
+      assert.ok(svg.includes('class="pt pt0"') && svg.includes('@keyframes pt0'), id + ' has a part that swings')
+      const [x0, y0, x1, y1] = partsOf(id)[0].rect
+      assert.ok(x0 >= 0 && y0 >= 0 && x1 < W && y1 < H, id + ': the part is inside the scene')
+    } else assert.ok(!svg.includes('class="pt'), id + ' has none')
+  }
+  assert.ok(!petSvg({ character: 'fox', state: 'idle', reduced: true }).includes('@keyframes pt0'), 'reduced motion: still')
+  assert.ok(!petSvg({ character: 'fox', state: 'disconnected' }).includes('@keyframes pt0'), 'asleep: still')
+  // It swings farther and faster when the pet is happy.
+  assert.ok(petSvg({ character: 'fox', state: 'success' }).includes('animation-duration:0.45s'))
+  assert.ok(petSvg({ character: 'fox', state: 'idle' }).includes('animation-duration:3.2s'))
+  // Cutting the part out loses nothing: the same pixels are drawn, only in two groups.
+  const whole = petSvg({ character: 'fox', state: 'idle', reduced: true })
+  assert.ok(whole.includes('class="pt pt0"'), 'the part is its own group even when still')
+})
+
+test('the art is what it was: every character in every state matches its fingerprint (run scripts/art-hashes.mjs after a meant change)', () => {
+  const expected = JSON.parse(readFileSync(join(import.meta.dirname, 'fixtures', 'art-hashes.json'), 'utf8'))
+  const now = artHashes()
+  const changed = Object.keys({ ...expected, ...now }).filter(key => expected[key] !== now[key])
+  assert.deepEqual(changed, [], 'these changed: ' + changed.slice(0, 12).join(', '))
 })

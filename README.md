@@ -17,7 +17,8 @@ commands, your file paths or tool outputs.
 
 Every character is hi-res pixel art, about 40-55 pixels tall (twice the detail of a classic 16-bit sprite), with the
 shading, highlights and expressions of the reference artwork. Each one also has its own way of idling: Foxy sniffs around,
-Bot scans, Slime wobbles, Mage sparks, Penny floats, Classic bounces, Alpha waves and Claude shuffles.
+Bot scans, Slime wobbles, Mage sparks, Penny floats, Classic bounces, Alpha waves and Claude shuffles. Foxy's tail, Bot's
+antenna, Classic's curl, Mage's star and Penny's fin also sway on their own (faster when the pet is happy).
 
 ![The eight characters, idle, coding, success and error](docs/images/characters.png)
 
@@ -42,7 +43,7 @@ an unofficial fan design). Each has its own colors, and any character wears any 
 | Error / Investigating | A tool (or a model request) really failed: a red `!` badge; then *Looking into the failure*. |
 | Permission | The agent is waiting for your approval or answer: a yellow `!` badge. It always wins. |
 | Subagents | Up to three small helpers appear while subagents are really running. |
-| Finished / Waiting | A turn ended: confetti; then it waits for your next prompt (a `...` bubble), then rests. |
+| Finished / Waiting | A turn ended: confetti; then it waits for your next prompt with a happy face, then rests. |
 | Tired | The plan is nearly used up: 80% or more of the 5-hour, weekly or spending limit, as Claude Code reports it. Half-closed eyes, a yawn, a sweat drop; shown while the pet has nothing else to do. |
 | Disconnected | No agent has been heard from: grey, eyes closed. |
 
@@ -55,7 +56,7 @@ says which agent and project it is. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE
 | Surface | Claude Code | Codex |
 | --- | --- | --- |
 | **Compact band above the prompt**: the whole pet at the left edge, what it is doing right now, and at the right edge a pie chart of how this session's tasks went (successes and failures as the agent reported them) with the counts under it; the pet and the pie are the same height, and the band comes in three sizes (small, medium, large) | yes (`/codepuff band on|off|small|medium|large`, or the *Compact band* settings in Customize) | not possible: Codex has no plugin UI |
-| **Pane / widget**: the animated pet beside the chat, statistics, customization (Statistics and Customize tabs); click the activity in the compact band to pet it (pat again and again: a pat, a giggle, then overjoyed); the pet hops when the pointer is over it | yes (desktop widget, docked pane) | not possible |
+| **Pane / widget**: the animated pet beside the chat, statistics, customization (Statistics and Customize tabs); click the activity in the compact band to pet it (pat again and again: a pat, a giggle, then overjoyed); the pet hops when the pointer is over it, and pausing on the pet or the pie chart shows a tooltip; a new state arrives with a small pop | yes (desktop widget, docked pane) | not possible |
 | **Terminal app** `codepuff pet`: pet, statistics, customization, data | yes | yes (the way to see your pet next to Codex) |
 | One-line status under the prompt | yes (`/codepuff line on`) | - |
 
@@ -113,11 +114,37 @@ Uninstalling **never deletes your statistics**. `codepuff data delete --yes` doe
 ## The terminal app
 
 `codepuff pet` is a keyboard-driven app with four views: **1 Pet**, **2 Statistics**, **3 Customize**, **4 Data**
-(Tab or the number keys switch; `q` quits; `space` pets it). Statistics has scopes (`s`: this session, all time, 7 or
-30 days) and agents (`a`: combined, Claude Code, Codex), a 30-day chart, tool categories and Claude-vs-Codex bars.
+(Tab or the number keys switch; `q` quits; `space` pets it). Statistics has a Platform (`a`) and a Period (`s`), the host
+first (`codepuff pet --host codex|claude`, otherwise the agent heard from most recently), tiles, a 30-day chart, tool bars and
+Claude-vs-Codex bars; `d` shows every number.
 Customize uses ↑/↓ to choose and ←/→ to change the character and palette; Enter edits the name. Data exports,
 imports and resets. The pet is drawn with half-block characters and **shrinks to fit** your pane (full detail when
 there is room). Reduced motion (`codepuff set motion reduced`) stops all animation.
+
+## Hearts
+
+The pet has one to five hearts for you, shown in the compact band and the pane. They are kept with the pet, so they last
+between sessions. If you are abusive to the assistant (insults aimed at it, in English or Portuguese; swearing at a bug does
+not count) they drop, the pet flinches (*That hurt…*), and with two hearts or fewer it is sad whenever it has nothing else to
+do. Thanks bring a heart back, and each day without unkindness heals a little. The text of a prompt is only looked at in
+memory to decide this: it is never stored, logged or sent anywhere, only the number is kept. It applies to your Codex
+prompts too (the pet is one), and you can turn it off with the *Hearts react to my messages* switch in Customize,
+`/codepuff mood off` or `codepuff set mood off`; then nothing is read and the hearts are hidden. The word lists are in
+`src/core/mood.js`; they are simple, so an unusual insult can slip by and an odd phrase can be misread.
+
+When it is **waiting for your next prompt** the pet always has a happy face.
+
+## Sounds and milestones
+
+On the desktop the pet can play a short sound at four moments: when Claude **asks you something** (a permission or a
+question), when a turn **finishes**, and when your plan's **5-hour** or **weekly** limit **resets** (as Claude Code reports
+the limits; a toast says so too). All are on by default. For each, pick one of five sounds (chime, bell, pop, ding, tada) or
+off in Customize (the sound plays as you pick it; the first time, a toast says they exist), or with
+`/codepuff sound <question|finish|reset5h|resetWeek> <off|chime|bell|pop|ding|tada>` or `codepuff set sound ...`. The volume
+is low, medium (the default) or high: `/codepuff volume low`. The clips are synthesized by `scripts/make-sounds.mjs`, so they
+are original. Round numbers
+(the 100th task, a 7-day streak, 100 passing test runs...) get a toast and a celebration, once each; what was reached
+before the feature existed is not announced.
 
 ## Your pet
 
@@ -133,8 +160,14 @@ statistics survive new chats, restarts, switching agents and resuming old conver
 
 ## Statistics
 
-Every number has scopes: **this session**, **all time**, **Claude Code**, **Codex**, **combined**, and the last
-**7 / 30 days**. A new chat starts a fresh session count; lifetime keeps growing; one resumed session is one session.
+Pick a **Platform** (Claude Code, Codex or Combined; the one you are in comes first) and then a **Period** (this session,
+7 days, 30 days, all time). *This session* is offered only for the platform you are in: for the other one, or for both, there
+is no single session to speak of. A new chat starts a fresh session count; lifetime keeps growing; one resumed session is one
+session.
+
+The page is built to be glanced at: six tiles (prompts, tool calls with how many succeeded, files changed, commits, tests
+passed, agent time), a success bar, a bar chart of the last 14 days (hover a bar for its day), and what the work was made of.
+The long list of every number is one button away (*Show all numbers*; `d` in the terminal app). What the list holds:
 
 * Conversation: prompts (not internal requests, retries or subagent turns), agent turns completed, tool calls by
   category, succeeded/failed, sessions, active sessions, distinct projects.

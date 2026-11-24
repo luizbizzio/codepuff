@@ -173,10 +173,29 @@ const loops = {
     still: 4,
   }),
 
+  // Waiting for the user: a happy face, always (it is glad you are there), with a little breathing, a blink and a beam.
   waiting: () => ({
     frames: [
-      frame(900, { eyes: 'open', mouth: 'cat', fx: [{ id: 'dots', n: 1 }] }), frame(700, { eyes: 'open', mouth: 'cat', fx: [{ id: 'dots', n: 2 }] }), frame(110, { eyes: 'blink', fx: [{ id: 'dots', n: 3 }] }), frame(140, { eyes: 'open', dy: -0.5, fx: [{ id: 'dots', n: 3 }] }),
-      frame(1300, { eyes: 'open', mouth: 'cat', sy: 1.04, fx: [{ id: 'dots', n: 3 }] }), frame(110, { eyes: 'blink', sy: 1.04, fx: [{ id: 'dots', n: 3 }] }), frame(900, { eyes: 'open', mouth: 'smile', fx: [{ id: 'dots', n: 3 }] }),
+      frame(1400, { eyes: 'open', mouth: 'smile', cheeks: 'bright' }),
+      frame(1000, { eyes: 'open', mouth: 'smile', cheeks: 'bright', sy: 1.04 }),
+      frame(110, { eyes: 'blink', mouth: 'smile', sy: 1.04 }),
+      frame(900, { eyes: 'happy', mouth: 'grin', cheeks: 'bright', dy: -0.6 }),
+      frame(1200, { eyes: 'open', mouth: 'smile', cheeks: 'bright' }),
+      frame(110, { eyes: 'blink', mouth: 'smile' }),
+      frame(900, { eyes: 'happy', mouth: 'smile', cheeks: 'bright', sy: 1.03 }),
+    ],
+    still: 0,
+  }),
+
+  // Feeling down (the user has been unkind): eyes down, worried brows, a frown, a sigh and a tear.
+  sad: () => ({
+    frames: [
+      frame(1500, { eyes: 'open', brows: 'worry', mouth: 'frown', lookY: 1, sy: 0.96 }),
+      frame(900, { eyes: 'open', brows: 'worry', mouth: 'frown', lookY: 1, sy: 0.95, fx: [{ id: 'sweat', f: 0 }] }),
+      frame(700, { eyes: 'sleep', brows: 'worry', mouth: 'o', lookY: 1, sy: 0.93, fx: [{ id: 'sweat', f: 1 }] }),
+      frame(900, { eyes: 'open', brows: 'worry', mouth: 'frown', lookY: 1, sy: 0.96, fx: [{ id: 'sweat', f: 2 }] }),
+      frame(110, { eyes: 'blink', brows: 'worry', mouth: 'frown', sy: 0.96 }),
+      frame(1300, { eyes: 'open', brows: 'worry', mouth: 'frown', lookX: -1, lookY: 1, sy: 0.97 }),
     ],
     still: 0,
   }),
@@ -214,6 +233,21 @@ const loops = {
     still: 2,
   }),
 
+  // The user was cruel: a flinch, then a droop with a tear, then a sad settle. (2000 ms)
+  hurt: () => ({
+    frames: [
+      frame(100, { eyes: 'open', mouth: 'flat', sy: 0.97 }),
+      frame(120, { eyes: 'ouch', brows: 'worry', mouth: 'o', shake: -1, sy: 0.97 }),
+      frame(120, { eyes: 'ouch', brows: 'worry', mouth: 'o', shake: 1, sy: 0.97 }),
+      frame(120, { eyes: 'ouch', brows: 'worry', mouth: 'o', shake: -0.6, sy: 0.96 }),
+      frame(300, { eyes: 'wide', brows: 'worry', mouth: 'frown', sy: 0.95, fx: [{ id: 'sweat', f: 0 }] }),
+      frame(500, { eyes: 'sleep', brows: 'worry', mouth: 'frown', sy: 0.93, fx: [{ id: 'sweat', f: 1 }] }),
+      frame(400, { eyes: 'open', brows: 'worry', mouth: 'frown', lookY: 1, sy: 0.95, fx: [{ id: 'sweat', f: 2 }] }),
+      frame(340, { eyes: 'open', brows: 'worry', mouth: 'frown', lookY: 1, sy: 0.97 }),
+    ],
+    still: 4,
+  }),
+
   // Patted a few times in a row: a ticklish giggle, shaking side to side with sparkles. (1300 ms)
   giggle: () => ({
     frames: [
@@ -239,7 +273,7 @@ const loops = {
 }
 
 /** One-shot reactions to the user (a pat; patting again and again escalates). */
-export const REACTIONS = ['petted', 'giggle', 'delighted']
+export const REACTIONS = ['petted', 'giggle', 'delighted', 'hurt']
 
 const cache = new Map()
 

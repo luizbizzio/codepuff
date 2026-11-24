@@ -36,8 +36,9 @@ no Node APIs at all.
 | `src/core/aggregate.js`, `days.js`, `format.js` | Statistics over records, local-calendar helpers, display rows. | yes |
 | `src/core/petstate.js` | `stateOf(record, now)` and `focus(records, now)`. | yes |
 | `src/core/art/*`, `render/raster.js` | The hi-res pixel canvas (72x72), the six sprite characters and Alpha's shaded shapes, Claude's drawing, faces, props, animation loops; SVG / terminal cells / ANSI output. | yes |
-| `src/claude/controller.js` | Everything the Claude mod does behind an `io` interface (so it is testable without Claude Code). | yes |
-| `hooks/register.tsx` | The mod: binds the host's `$` to the controller and draws the pane. | (host) |
+| `src/claude/controller.js` | Everything the Claude mod does behind an `io` interface (so it is testable without Claude Code): events, the model the screens draw, saving. | yes |
+| `src/claude/affection.js`, `moments.js`, `usage.js`, `commands.js`, `constants.js` | The controller's parts: the pet's feelings about the user (shared with the Codex hook through `core/mood.js`), sounds, milestones and notices, the plan's usage (tired), the `/codepuff` command, shared values. | yes |
+| `hooks/register.tsx`, `hooks/views.tsx` | The mod: `register.tsx` binds the host's `$` (hooks, timers, sound, toast); `views.tsx` is the drawing, as functions of the model. | (host) |
 | `src/node/*` | Store with locks and atomic writes, git, the hook process, CLI, the terminal app, installer, doctor. There is no web server. | no |
 
 ## Events to animation
@@ -132,6 +133,10 @@ eyes and mouth (the engine draws those for every expression) and writes `src/cor
 edit it). The scripts need Python with Pillow and numpy; nothing at runtime does. `spritechar.js` places a sprite on the
 scene, squashes and hops it around its feet, and draws its face at the coordinates `build.py` recorded.
 
+**Keep the sheets.** `sprites.js` can only be rebuilt from the reference sheets and the intermediate files the scripts write
+(`out/sprites/`, which git ignores). Neither is in the repository (the owner holds the rights to the artwork), so keep a copy of
+both somewhere safe: without them a sprite can be edited by hand in `sprites.js` but not regenerated.
+
 **From shapes.** Alpha is described in `src/core/art/chars.js` with `define({ id, pivot, ground, hand, shapes,
 details, face, anchors })`: a list of shaded shapes (`ell`, `rrect`, `poly`, each with a five-tone ramp such as `BODY` or
 `ACC`), a few hand-placed details, a face (eye set, eye and mouth positions, cheeks) and the anchors that props are
@@ -149,7 +154,9 @@ every animation state, props and helpers work immediately.
 Every character is pixel art on one 72x72 canvas. The SVG output merges equal pixels into rectangles, draws the body once
 and each frame adds only what differs: the pet is drawn at rest in every frame, and its hop, squash and shake are one CSS
 transform that eases from pose to pose (the shadow and the helpers stay on the ground, in their own layer). So motion is
-smooth, and a picture is far under the host's 131072-character limit for `Svg` (the largest is about 50 KB, with three subagent helpers). The terminal
+smooth, and a picture is far under the host's 131072-character limit for `Svg` (the largest is about 50 KB, with three subagent helpers). A few characters have a part cut out of the sprite (`parts.js`: a tail, an
+antenna, a star, a fin, a curl) that is drawn as its own group and swung by a CSS rotation about where it joins the body. A new
+state loads with a small "pop" (CSS, once), and a `title` option becomes a tooltip. The terminal
 output shrinks the same canvas to half-block cells. A frame takes a few milliseconds, and rendered frames and finished
 pictures are cached.
 

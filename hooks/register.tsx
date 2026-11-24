@@ -16,20 +16,11 @@ import type { Register } from 'claude-code'
 // @ts-ignore
 import { createController } from '../src/claude/controller.js'
 // @ts-ignore
-import { PRESETS } from '../src/core/color.js'
-// @ts-ignore
-import { AGENT_LABELS } from '../src/core/format.js'
-// @ts-ignore
-import { pieSvg } from '../src/core/render/pie.js'
-// @ts-ignore
 import { base64, petSvg, terminalFrame } from '../src/core/render/raster.js'
-// @ts-ignore
-import { MASCOTS, MASCOT_IDS } from '../src/core/art/registry.js'
+import { renderBand, renderCustomize, renderHead, renderStats, renderTabs, sizeOf } from './views.js'
 
 const PANE = 'codepuff'
 const rev = atom({ plugin: 'codepuff', key: 'rev' } as const, 0)
-
-const COLORS: Record<string, string> = { success: '#3fb950', error: '#f85149', permission: '#d29922', investigating: '#d29922', finished: '#3fb950', disconnected: '#8b949e' }
 
 /** The few host calls the long-lived parts need, as closures made inside a hook (the host's `$` is never stored). */
 type Bridge = {
@@ -38,6 +29,8 @@ type Bridge = {
   status: (text: string | undefined) => void
   blit: (args: { requestId: string; key: string; cells: string; columns: number; rows: number }) => Promise<any>
   usage: () => Promise<any>
+  play: (sound: string, volume: string) => void
+  toast: (text: string) => void
 }
 
 export const register: Register = on => {
@@ -117,6 +110,21 @@ export const register: Register = on => {
         status: text => $.ui.status(text),
         blit: args => $.ui.blit(args as any),
         usage: () => $.session.usage(),
+        toast: (text: string) => { try { $.ui.toast(text) } catch { /* a toast is only a nicety */ } },
+        // The host's own player only exists on macOS; on Windows the clip goes through the system's sound player.
+        play: (sound: string, volume: string) => {
+          const root = String($.plugin.root)
+          const file = `${root.replace(/[\\/]+$/, '')}/assets/sounds/${sound}-${volume}.wav`
+          const log = (text: string) => { try { $.ui.log('CodePuff sound: ' + text, { to: 'debug' }) } catch { /* only a note */ } }
+          const hostPlayer = () => Promise.resolve($.audio.play({ asset: `assets/sounds/${sound}-${volume}.wav` })).catch((error: unknown) => log('the host could not play ' + sound + ': ' + String((error as Error)?.message ?? error)))
+          if (/^[A-Za-z]:|^\\\\/.test(root)) {
+            // Windows: the system's own sound player, through PowerShell; the host's player is the fallback.
+            const script = `(New-Object System.Media.SoundPlayer '${file.replace(/\//g, '\\').replace(/'/g, "''")}').PlaySync()`
+            Promise.resolve($.process.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', script], { timeoutMs: 8000 }))
+              .then((result: any) => { if (result && result.exitCode) { log('PowerShell exited with ' + result.exitCode + ' ' + String(result.stderr ?? '').slice(0, 200)); return hostPlayer() } })
+              .catch((error: unknown) => { log('could not run PowerShell: ' + String((error as Error)?.message ?? error)); return hostPlayer() })
+          } else void hostPlayer()
+        },
       }
       const io = {
         dataDir: async () => {
@@ -132,7 +140,7 @@ export const register: Register = on => {
         run: (argv: string[], cwd?: string) => $.process.run(argv, { cwd, timeoutMs: 4000 }) as any,
       }
       ctl = createController(io)
-      ctl.onChange(() => { bridge?.redraw(); flushSoon(); tick(); applyStatusLine() })
+      ctl.onChange(() => { bridge?.redraw(); flushSoon(); tick(); applyStatusLine(); for (const cue of ctl!.takeCues()) bridge?.play(cue.sound, cue.volume); for (const text of ctl!.takeToasts()) bridge?.toast('🎉 ' + text) })
       await ctl.init({ sid: await $.session.id(), cwd: e.cwd })
       watchUsage()
       await $.command.register({ name: 'codepuff', description: 'Open your CodePuff pet; /codepuff help lists the options' })
@@ -181,6 +189,7 @@ export const register: Register = on => {
       // `Stop` covers a normal end; this adds the two endings it does not report.
       if (ev.reason === 'aborted') ctl?.observe('Interrupt', {})
       else if (ev.reason === 'error' || ev.reason === 'refusal') ctl?.observe('StopFailure', {})
+      else ctl?.cue('finish') // a turn that ended well (the same moment as `Stop`, which is counted once)
       void ctl?.flush()
     }
     return next(e)
@@ -188,47 +197,12 @@ export const register: Register = on => {
 
   // ---- the compact band above the prompt: the pet, standing still, and what it is doing right now -------------------
 
-  const GLYPH: Record<string, string> = { success: '^_^', finished: '^_^', error: '>_<', permission: 'O_O', investigating: 'o_O', disconnected: '-_-', waiting: 'o_o', idle: 'o_o', thinking: 'o.o' }
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     await read($, rev)
     if (!ctl || (e as any).props?.hasSurvey) return next(e)
     const m = ctl.model()
     if (!m.pet.band) return next(e)
-    const { Box, Text, Button, Svg } = $.ui.resolve(e as any) as any
-    const surface = (e as any).surface as string
-    const color = COLORS[m.me.state]
-    const reduced = m.pet.motion === 'reduced'
-    // The pet and the pie chart are the same height, whatever size the user picked (the picture is cropped tight, so the pet fills it).
-    const size: number = m.pet.bandHeight
-    const face = surface !== 'terminal' && Svg
-      ? <Svg source={petSvg({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers: m.me.helpers, height: size, reduced, crop: 'band', hover: true })} alt={`${m.pet.name}: ${m.me.label}`} isInteractive />
-      : <Text color={color ?? undefined}>{GLYPH[m.me.state] ?? 'o_o'}</Text>
-    const { ok, failed } = m.outcome
-    const total = ok + failed
-    const pie = surface !== 'terminal' && Svg
-      ? <Svg source={pieSvg({ ok, failed, size })} alt={total ? `${ok} of ${total} tasks succeeded, ${failed} failed` : 'No tasks yet'} />
-      : null
-    // The pet sits at the left edge and the pie chart at the right edge; what the pet is doing fills the space between.
-    // Under the pie: what it is, and the counts.
-    const counts = (
-      <Box flexDirection="row" gap={1} justifyContent="center">
-        <Text dimColor>Tasks</Text>
-        <Text color="#3fb950">{'✔ ' + ok}</Text>
-        <Text color="#f85149">{'✖ ' + failed}</Text>
-      </Box>
-    )
-    return (
-      <Box flexDirection="row" gap={1} alignItems="center">
-        {face}
-        <Box flexGrow={1} flexDirection="column" justifyContent="center" alignItems="flex-start">
-          <Button plain key="pet-it" onPress={() => ctl!.pat()}>{m.me.label}</Button>
-        </Box>
-        <Box flexDirection="column" alignItems="center" justifyContent="center">
-          {pie}
-          {counts}
-        </Box>
-      </Box>
-    )
+    return renderBand($.ui.resolve(e as any) as any, m, (e as any).surface as string, () => ctl!.pat())
   })
 
   // ---- the pane ----------------------------------------------------------------------------------------------
@@ -245,7 +219,6 @@ export const register: Register = on => {
     const isWidget = props.placement === 'widget'
     const reduced = m.pet.motion === 'reduced'
     const helpers = m.me.helpers
-    const colorOf = COLORS[m.me.state]
 
     // The picture.
     let picture: any = null
@@ -258,104 +231,15 @@ export const register: Register = on => {
       }
     } else if (Svg) {
       const svg = petSvg({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers, scale: isWidget ? 2.2 : 2.8, reduced, hover: true })
-      picture = <Svg source={svg} alt={`${m.pet.name}: ${m.me.label}`} isInteractive />
+      picture = <Svg source={svg} alt={`${m.pet.name}: ${m.me.label}`} isInteractive {...sizeOf(svg)} />
     }
 
-    const who = `${AGENT_LABELS.claude}${m.sessionLabel ? ' · ' + m.sessionLabel : ''}`
-    const head = (
-      <Box flexDirection="column">
-        <Text weight="bold">{m.pet.name}</Text>
-        <Text color={colorOf}>{m.me.label}</Text>
-        {!isWidget && <Text dimColor>{who}</Text>}
-        {!isWidget && m.otherCount > 0 && (
-          <Text dimColor wrap="truncate-end">
-            Also: {m.others.map((o: any) => `${AGENT_LABELS[o.agent as 'claude' | 'codex']}${o.project ? ' · ' + o.project : ''} (${o.label.toLowerCase()})`).slice(0, 2).join('; ')}{m.otherCount > 2 ? ` +${m.otherCount - 2}` : ''}
-          </Text>
-        )}
-      </Box>
-    )
+    const els = { Box, Text, Button, Input, Svg }
+    const head = renderHead(els, m, isWidget)
     if (isWidget) return <Box flexDirection="column" alignItems="center">{picture}{head}</Box>
 
-    const tabs = (
-      <Box gap={1} flexWrap="wrap">
-        {(['stats', 'look'] as const).map(tab => (
-          <Button key={'tab-' + tab} variant={m.ui.tab === tab ? 'primary' : 'secondary'} onPress={() => ctl!.setUi({ tab })}>
-            {tab === 'stats' ? 'Statistics' : 'Customize'}
-          </Button>
-        ))}
-      </Box>
-    )
-
-    if (m.ui.tab !== 'look') {
-      return (
-        <Box flexDirection="column" gap={1}>
-          {tabs}
-          <Box gap={1} flexWrap="wrap">
-            {(['session', 'all', '7d', '30d'] as const).map(scope => (
-              <Button key={'scope-' + scope} variant={m.ui.scope === scope ? 'primary' : 'secondary'} onPress={() => ctl!.setUi({ scope })}>
-                {scope === 'session' ? 'This session' : scope === 'all' ? 'All time' : scope === '7d' ? '7 days' : '30 days'}
-              </Button>
-            ))}
-          </Box>
-          {m.ui.scope !== 'session' && (
-            <Box gap={1} flexWrap="wrap">
-              {(['all', 'claude', 'codex'] as const).map(agent => (
-                <Button key={'agent-' + agent} variant={m.ui.agent === agent ? 'primary' : 'secondary'} onPress={() => ctl!.setUi({ agent })}>
-                  {agent === 'all' ? 'Combined' : AGENT_LABELS[agent]}
-                </Button>
-              ))}
-            </Box>
-          )}
-          <Text weight="bold">{m.scopeLabel}</Text>
-          <Box flexDirection="column">
-            {m.stats.rows.map((row: any) => (
-              <Box key={row.id} flexDirection="column">
-                {row.group && <Text dimColor>{row.group}</Text>}
-                <Box justifyContent="space-between" gap={2}>
-                  <Text>{row.label}</Text>
-                  <Text weight="bold">{row.value}</Text>
-                </Box>
-              </Box>
-            ))}
-          </Box>
-          {m.stats.categories.length > 0 && <Text dimColor wrap="wrap">Tools: {m.stats.categories.join(' · ')}</Text>}
-          <Text>Last 14 days  <Text color="#58a6ff">{m.spark}</Text></Text>
-          <Text dimColor>
-            {m.pet.name} is {m.age.days} day{m.age.days === 1 ? '' : 's'} old · streak {m.life.current} (best {m.life.longest}) · {m.life.days} active day{m.life.days === 1 ? '' : 's'} · last {m.life.last ?? 'never'}
-          </Text>
-        </Box>
-      )
-    }
-
-    return (
-      <Box flexDirection="column" gap={1}>
-        {tabs}
-        {picture}
-        <Input key="name" label="Name" placeholder={`up to 16 characters (${m.pet.name})`} value={m.pet.isCustom ? m.pet.name : ''} submitLabel="save" onSubmit={(value: string) => { void ctl!.setPet({ name: value }) }} />
-        <Text dimColor>Character</Text>
-        <Box gap={1} flexWrap="wrap">
-          {MASCOT_IDS.map((c: string) => (
-            <Button key={'char-' + c} variant={m.pet.character === c ? 'primary' : 'secondary'} onPress={() => { void ctl!.setPet({ character: c }) }}>{MASCOTS[c].name}</Button>
-          ))}
-        </Box>
-        <Text dimColor>Colors</Text>
-        <Box gap={1} flexWrap="wrap">
-          {PRESETS.map((p: any) => (
-            <Button key={'pal-' + p.id} variant={(p.body ?? null) === (m.pet.colors.body ?? null) && (p.accent ?? null) === (m.pet.colors.accent ?? null) ? 'primary' : 'secondary'} onPress={() => { void ctl!.setPet({ colors: { body: p.body, accent: p.accent } }) }}>{p.name}</Button>
-          ))}
-        </Box>
-        <Text dimColor>Settings</Text>
-        <Box gap={1} flexWrap="wrap">
-          <Button key="band" onPress={() => { void ctl!.setPet({ prefs: { band: !m.pet.band } }) }}>{m.pet.band ? 'Compact band: on' : 'Compact band: off'}</Button>
-          <Button key="line" onPress={() => { void ctl!.setPet({ prefs: { line: !m.pet.line } }) }}>{m.pet.line ? 'Status line: on' : 'Status line: off'}</Button>
-        </Box>
-        <Text dimColor>Compact band size</Text>
-        <Box gap={1}>
-          {(['small', 'medium', 'large'] as const).map(size => (
-            <Button key={'band-' + size} variant={m.pet.bandSize === size ? 'primary' : 'secondary'} onPress={() => { void ctl!.setPet({ prefs: { bandSize: size } }) }}>{size.charAt(0).toUpperCase() + size.slice(1)}</Button>
-          ))}
-        </Box>
-      </Box>
-    )
+    const tabs = renderTabs(els, m, ctl)
+    if (m.ui.tab !== 'look') return renderStats(els, m, ctl, tabs, surface)
+    return renderCustomize(els, m, ctl, tabs, picture, (sound, volume) => bridge?.play(sound, volume))
   })
 }

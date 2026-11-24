@@ -44,12 +44,6 @@ export function daysBetween(a, b) {
   return y - x
 }
 
-/** 0 = Sunday. */
-export const weekdayOf = key => new Date((toUtcDay(key) ?? 0) * DAY_MS).getUTCDay()
-
-/** The last `count` days ending at `today`, oldest first. */
-export const lastDays = (today, count) => Array.from({ length: count }, (_, i) => addDays(today, i - count + 1))
-
 /**
  * Current and longest run of consecutive active days.
  * The current streak is alive when the last active day is today or yesterday (today may simply not have

@@ -9,7 +9,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const target = resolve(process.argv[2] ?? '')
 if (!process.argv[2]) { console.error('Usage: node scripts/dev-sync.mjs <target folder>'); process.exit(2) }
 
-for (const part of ['.claude-plugin/plugin.json', 'hooks', 'types', 'src/core', 'src/claude']) {
+for (const part of ['.claude-plugin/plugin.json', 'hooks', 'types', 'src/core', 'src/claude', 'assets']) {
   const to = join(target, part)
   rmSync(to, { recursive: true, force: true })
   mkdirSync(dirname(to), { recursive: true })

@@ -7,7 +7,7 @@ import { PI, arc, disc, line } from './draw.js'
 import { BROWN, ell, paint, poly, rrect } from './shapes.js'
 
 export const HI_PROPS = new Set(['book', 'laptop', 'shell', 'flask', 'magnifier', 'branch', 'plug'])
-export const HI_FX = new Set(['dots', 'excl', 'alert', 'rays', 'thought', 'spinner', 'glyphs'])
+export const HI_FX = new Set(['excl', 'alert', 'rays', 'thought', 'spinner', 'glyphs'])
 
 const flatRamp = (edge, fill) => [edge, fill, fill, fill, fill]
 const PAGE = flatRamp(R.PAPER2, R.PAPER)
@@ -92,11 +92,6 @@ function bubble(c, a, ramp) {
   const y = Math.max(0.6, a.top - 3)
   stamp(c, [rrect(x, y, 9.4, 5.8, 2.2, ramp, { flat: true }), poly([[x + 1.6, y + 5.2], [x + 3.8, y + 5.2], [x + 0.6, y + 7.4]], ramp, { flat: true })])
   return { x, y }
-}
-
-function dots(c, a, n) {
-  const { x, y } = bubble(c, a, flatRamp(R.BLU, R.WHITE))
-  for (let i = 0; i < 3; i++) disc(c, P(x + 2.4 + i * 2.3), P(y + 2.9), K * 0.62, K * 0.62, i < n ? R.BLU : R.METAL)
 }
 
 function badge(c, a, fill, glyph, f) {
@@ -219,7 +214,6 @@ export function drawHiProp(c, a, prop, character) {
 export function drawHiFx(c, a, item) {
   const f = item.f ?? 0
   switch (item.id) {
-    case 'dots': return dots(c, a, item.n ?? 1)
     case 'excl': return badge(c, a, R.YEL, R.NAVY2, f)
     case 'alert': return badge(c, a, R.RED, R.WHITE, f)
     case 'rays': return rays(c, a, f)

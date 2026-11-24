@@ -9,10 +9,8 @@ import { drawScene } from '../art/scene.js'
 import { REACTIONS, animation, frameAt } from '../art/anim.js'
 import { Canvas, K, R, W } from '../art/canvas.js'
 import { STAND } from '../art/scene.js'
+import { partsOf } from '../art/parts.js'
 import { STATES } from '../petstate.js'
-
-/** Renders one pose to a canvas. */
-export const renderPose = (character, pose) => drawScene(character, pose)
 
 // ---- bounds ----------------------------------------------------------------------------------------------
 
@@ -26,7 +24,7 @@ export const STAGE = Object.freeze({ x: 0, y: 0, w: 72, h: 68 })
 
 const f1 = n => String(Math.round(n * 10) / 10)
 const bandBoxes = new Map()
-const ESSENTIAL = new Set(['dots', 'thought', 'excl', 'alert', 'spinner', 'sweat'])
+const ESSENTIAL = new Set(['thought', 'excl', 'alert', 'spinner', 'sweat'])
 
 /**
  * The tight box around one character for the compact band: everything it ever draws (body, what it holds, effects) with
@@ -207,13 +205,29 @@ const rectsMarkup = (list, palette) => {
  * pose to pose, so motion is smooth and the picture stays small.
  * @param {{ character: string, colors?: { body?: string | null, accent?: string | null }, state: string, helpers?: number, scale?: number, reduced?: boolean, background?: string, crop?: 'band', height?: number, hover?: boolean }} options
  */
-function buildSvg({ character, colors = {}, state, helpers = 0, scale = 4, reduced = false, background, crop, height, hover = false }) {
+function buildSvg({ character, colors = {}, state, helpers = 0, scale = 4, reduced = false, background, crop, height, hover = false, title }) {
   const anim = animation(state, { helpers, character })
   const palette = buildPalette(character, colors, { gray: anim.gray ? 0.8 : 0 })
   const box = crop === 'band' ? bandBox(character, helpers > 0) : STAGE
   if (height) scale = height / box.h
   const total = anim.total
   const rest = pose => ({ ...pose, dy: 0, sx: 1, sy: 1, shake: 0 })
+
+  // Parts that move on their own (a tail, an antenna): cut out of the body at rest, drawn apart and swung (see parts.js).
+  const bare = drawScene(character, { ...rest(anim.frames[0].pose), fx: [], prop: null, hands: 'rest', helpers: 0 }, 'over')
+  const parts = partsOf(character).map(part => {
+    const canvas = new Canvas()
+    const [x0, y0, x1, y1] = part.rect
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) canvas.px[y * canvas.w + x] = bare.px[y * bare.w + x]
+    return { ...part, canvas }
+  }).filter(part => part.canvas.px.some(Boolean))
+  const withoutParts = canvas => {
+    if (!parts.length) return canvas
+    const out = new Canvas()
+    out.px.set(canvas.px)
+    for (const part of parts) for (let k = 0; k < out.px.length; k++) if (part.canvas.px[k] && out.px[k] === part.canvas.px[k]) out.px[k] = 0
+    return out
+  }
 
   // The pictures of one layer: every distinct frame once, and when each shows. What is the same in all of them is drawn once.
   const layer = (name, kind, shared) => {
@@ -222,7 +236,8 @@ function buildSvg({ character, colors = {}, state, helpers = 0, scale = 4, reduc
     const spans = []
     let at = 0
     for (const item of anim.frames) {
-      const canvas = drawScene(character, rest(item.pose), kind)
+      const drawn = drawScene(character, rest(item.pose), kind)
+      const canvas = kind === 'over' ? withoutParts(drawn) : drawn
       const signature = canvas.px.join(',')
       let index = bySignature.get(signature)
       if (index === undefined) { index = unique.length; bySignature.set(signature, index); unique.push(canvas) }
@@ -279,21 +294,38 @@ function buildSvg({ character, colors = {}, state, helpers = 0, scale = 4, reduc
   }
   const stillMove = moves[Math.min(anim.still, moves.length - 1)]
 
+  // The parts swing slowly while the pet is calm, and quickly when it is happy; they stay still when it is asleep.
+  const lively = ['success', 'finished', 'petted', 'giggle', 'delighted', 'permission'].includes(state)
+  const swinging = !reduced && state !== 'disconnected'
+  const partsMarkup = parts.map((part, n) => `<g class="pt pt${n}">${rectsMarkup(rects(part.canvas, box), palette)}</g>`).join('')
+  const partsCss = swinging && parts.length
+    ? `@media (prefers-reduced-motion:no-preference){.pt{transform-box:view-box;animation-duration:${lively ? 0.45 : 3.2}s;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}` +
+      parts.map((part, n) => `.pt${n}{transform-origin:${f1(part.pivot[0] - box.x)}px ${f1(part.pivot[1] - box.y)}px;animation-name:pt${n};animation-delay:-${n * 0.7}s}`).join('') + '}' +
+      parts.map((part, n) => `@keyframes pt${n}{from{transform:rotate(${-part.swing * (lively ? 1.8 : 1)}deg)}to{transform:rotate(${part.swing * (lively ? 1.8 : 1)}deg)}}`).join('')
+    : ''
+
   // Under the pointer (where the host draws the picture interactively) the pet hops, squashing and stretching on the way.
   const hop = hover && !reduced
   const hopCss = hop ? `@media (prefers-reduced-motion:no-preference){svg:hover .hv{transform-box:view-box;transform-origin:${ox}px ${oy}px;animation:hv .55s ease-out}}@keyframes hv{0%{transform:none}22%{transform:translateY(-3px) scale(.96,1.07)}48%{transform:scale(1.05,.93)}72%{transform:translateY(-1px) scale(.99,1.02)}100%{transform:none}}` : ''
-  const css = under.css + over.css + moveCss + hopCss
-  const body = under.markup + `<g class="mv"${attr3(stillMove)}>${over.markup}</g>`
+  // A new state arrives with a short pop (a little lift and settle) as the picture is loaded, so a change of state is a gesture
+  // and not a swap. Reactions have a motion of their own.
+  const pop = !reduced && !REACTIONS.includes(state)
+  const popCss = pop ? `@media (prefers-reduced-motion:no-preference){.en{transform-box:view-box;transform-origin:${ox}px ${oy}px;animation:en .32s ease-out}}@keyframes en{0%{transform:translateY(-2.5px) scale(1.04,.96)}55%{transform:translateY(.8px) scale(.99,1.015)}100%{transform:none}}` : ''
+  const css = under.css + over.css + moveCss + partsCss + popCss + hopCss
+  const still = under.markup + `<g class="mv"${attr3(stillMove)}>${partsMarkup}${over.markup}</g>`
+  const body = pop ? `<g class="en">${still}</g>` : still
   const w = box.w * scale
   const h = box.h * scale
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${box.w} ${box.h}" width="${w}" height="${h}" shape-rendering="crispEdges">${css ? `<style>${css}</style>` : ''}${background ? `<rect x="0" y="0" width="${box.w}" height="${box.h}" fill="${background}"/>` : ''}${hop ? `<g class="hv">${body}</g>` : body}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${box.w} ${box.h}" width="${w}" height="${h}" shape-rendering="crispEdges">${title ? `<title>${escapeXml(title)}</title>` : ''}${css ? `<style>${css}</style>` : ''}${background ? `<rect x="0" y="0" width="${box.w}" height="${box.h}" fill="${background}"/>` : ''}${hop ? `<g class="hv">${body}</g>` : body}</svg>`
 }
+
+const escapeXml = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c])
 
 const svgCache = new Map()
 
 export function petSvg(options) {
   // Building a picture draws every frame of the animation, so the same request is answered from memory.
-  const key = JSON.stringify([options.character, options.colors?.body, options.colors?.accent, options.state, options.helpers, options.scale, options.reduced, options.background, options.crop, options.height, options.hover])
+  const key = JSON.stringify([options.character, options.colors?.body, options.colors?.accent, options.state, options.helpers, options.scale, options.reduced, options.background, options.crop, options.height, options.hover, options.title])
   const known = svgCache.get(key)
   if (known) return known
   const svg = buildSvg(options)

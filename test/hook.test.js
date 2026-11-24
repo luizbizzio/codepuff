@@ -271,3 +271,23 @@ test('the CLI validates settings and guards destructive commands', () => {
     assert.equal(existsSync(dir), false)
   } finally { done() }
 })
+
+test('the Codex hook judges the user\'s message the same way: hearts fall, nothing of the text is kept, and the switch turns it off', () => {
+  const { dir, done } = tempDir()
+  try {
+    const store = openStore(dir)
+    store.ensurePet(T0)
+    const prompt = text => ({ session_id: 'thread-9', cwd: '/p', hook_event_name: 'UserPromptSubmit', prompt: text })
+    handleHook('codex', JSON.stringify(prompt('você é um idiota')), { store, now: T0 })
+    assert.equal(store.readPet().pet.affection.score, 85)
+    handleHook('codex', JSON.stringify(prompt('this stupid bug, fix it')), { store, now: T0 + 1000 })
+    assert.equal(store.readPet().pet.affection.score, 85, 'swearing at a bug does not count')
+    handleHook('codex', JSON.stringify(prompt('thanks, great job')), { store, now: T0 + 2000 })
+    assert.equal(store.readPet().pet.affection.score, 89)
+    const all = [store.paths.pet, store.readRecord('codex', 'thread-9') && JSON.stringify(store.readRecord('codex', 'thread-9'))].filter(Boolean).map(x => (x.startsWith('{') ? x : readFileSync(x, 'utf8'))).join('\n')
+    assert.ok(!/idiot|stupid|great job/.test(all), 'the text is not stored')
+    store.writePet({ ...store.readPet().pet, prefs: { ...store.readPet().pet.prefs, mood: false } })
+    handleHook('codex', JSON.stringify(prompt('burro')), { store, now: T0 + 3000 })
+    assert.equal(store.readPet().pet.affection.score, 89, 'with the switch off nothing is judged')
+  } finally { done() }
+})

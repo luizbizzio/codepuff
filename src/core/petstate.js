@@ -22,7 +22,7 @@ export const WINDOWS = Object.freeze({
 })
 
 export const STATES = [
-  'idle', 'tired', 'thinking', 'reading', 'searching', 'coding', 'running', 'git', 'mcp', 'testing', 'web', 'delegating', 'planning',
+  'idle', 'tired', 'sad', 'thinking', 'reading', 'searching', 'coding', 'running', 'git', 'mcp', 'testing', 'web', 'delegating', 'planning',
   'success', 'error', 'investigating', 'waiting', 'permission', 'finished', 'disconnected',
 ]
 
@@ -32,7 +32,7 @@ const ACT_STATE = { read: 'reading', search: 'searching', edit: 'coding', run: '
 export const RANK = Object.freeze({
   permission: 7, error: 6,
   thinking: 5, reading: 5, searching: 5, coding: 5, running: 5, git: 5, mcp: 5, testing: 5, web: 5, delegating: 5, planning: 5, investigating: 5,
-  success: 4, finished: 3, waiting: 2, tired: 1, idle: 1, disconnected: 0,
+  success: 4, finished: 3, waiting: 2, tired: 1, sad: 1, idle: 1, disconnected: 0,
 })
 
 const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's')
@@ -45,6 +45,7 @@ export function labelFor(state, detail = {}) {
     case 'coding': return 'Editing code'
     case 'running': return 'Running a command'
     case 'tired': return `Tired · ${detail.percent ?? '?'}% of the ${detail.window ?? 'plan limit'} used`
+    case 'sad': return 'Feeling down'
     case 'git': return 'Using git'
     case 'mcp': return 'Using a connected tool'
     case 'testing': return 'Running tests'

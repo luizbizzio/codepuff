@@ -69,14 +69,35 @@ test('the pet follows real agent events and draws on every surface', async ($: a
 
 test('the statistics tab shows the current session, and the pane can be customized', async ($: any, on: any) => {
   const { clock } = world(on)
+  on('ui.toast', () => ({ value: undefined }))
   await $.session.start({ cwd: '/work/app', surface: 'desktop', isInteractive: true })
   await $.classic.UserPromptSubmit({ prompt: 'x' })
 
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
   await ui.press({ plugin: 'codepuff', key: 'tab-stats' })
   await clock.advance(400)
+  // Platform first (Claude Code, the host, then Codex, then Combined), then the period; the long list is behind a button.
+  const texts = async () => (await ui.findAll({ type: 'Text' })).map((x: any) => x.text)
+  expect(await texts()).toEqual(expect.arrayContaining(['Platform', 'Period', 'Prompts', 'Tool calls', 'Last 14 days']))
+  const labels = async () => (await ui.findAll({ type: 'Button' })).map((x: any) => x.text ?? x.label)
+  const first = await labels()
+  expect(first.indexOf('Claude Code')).toBeLessThan(first.indexOf('Codex'))
+  expect(first.indexOf('Codex')).toBeLessThan(first.indexOf('Combined'))
+  expect(first).toEqual(expect.arrayContaining(['This session', '7 days', '30 days', 'All time']))
+  expect(await ui.find({ type: 'Text', text: 'Prompts submitted' })).toBeFalsy()
+  await ui.press({ plugin: 'codepuff', key: 'details' })
+  await clock.advance(400)
   expect(await ui.find({ type: 'Text', text: 'Prompts submitted' })).toBeTruthy()
-  expect(await ui.find({ type: 'Text', text: 'This session' })).toBeTruthy()
+  // On another platform there is no "this session".
+  await ui.press({ plugin: 'codepuff', key: 'agent-codex' })
+  await clock.advance(400)
+  expect(await labels()).not.toContain('This session')
+  await ui.press({ plugin: 'codepuff', key: 'agent-all' })
+  await clock.advance(400)
+  expect(await labels()).not.toContain('This session')
+  await ui.press({ plugin: 'codepuff', key: 'agent-claude' })
+  await clock.advance(400)
+  expect(await labels()).toContain('This session')
 
   await ui.press({ plugin: 'codepuff', key: 'tab-look' })
   await clock.advance(400)
@@ -125,11 +146,14 @@ test('the compact band shows the pet and what it is doing; pressing the activity
     const texts = async () => [...(await ui.findAll({ type: 'Text' })), ...(await ui.findAll({ type: 'Button' }))].map((t: any) => t.text ?? t.label)
     const shown = await texts()
     expect(shown.length).toBeGreaterThan(0)
-    // No name and no numbers: just the activity.
-    expect(shown.some((t: string) => String(t).includes('Alpha') || /prompt|tools|streak/.test(String(t)))).toBe(false)
+    // No name; the activity, with the streak and this session's prompts under it.
+    expect(shown.some((t: string) => String(t).includes('Alpha'))).toBe(false)
+    expect(shown.some((t: string) => /Streak: [0-9]+ days? · 1 prompt this session/.test(String(t)))).toBe(true)
     // On the right: how the session's tasks went (a pie on the desktop, counts everywhere).
     expect(shown.some((x: string) => String(x).includes('✔ 1'))).toBe(true)
     expect(shown.some((x: string) => String(x).includes('✖ 0'))).toBe(true)
+    // The hearts: how much the pet likes the user.
+    expect(shown.some((t: string) => String(t).includes('♥♥♥♥♥'))).toBe(true)
     expect(await ui.find({ type: 'Button', text: 'Open' })).toBeFalsy()
     expect(await ui.find({ type: 'Button', text: 'Hide' })).toBeFalsy()
     await ui.press({ plugin: 'codepuff', key: 'pet-it' })
@@ -138,4 +162,43 @@ test('the compact band shows the pet and what it is doing; pressing the activity
     await clock.advance(1200)
     await ui.unmount()
   }
+})
+
+test('a sound is played when the agent asks something and when a turn ends well', async ($: any, on: any) => {
+  const { clock } = world(on)
+  const calls: string[] = []
+  on('audio.play', (_: any, e: any) => { calls.push(JSON.stringify(e)); return { value: undefined } })
+  on('turn.complete', () => ({ text: 'done' }))
+  await $.session.start({ cwd: '/work/app', surface: 'desktop', isInteractive: true })
+  await $.classic.UserPromptSubmit({ prompt: 'x' })
+  await $.classic.PermissionRequest({ tool_name: 'Bash', tool_input: { command: 'ls' }, tool_use_id: 'p1' })
+  await clock.advance(500)
+  expect(calls.some(c => c.includes('chime'))).toBe(true)
+  calls.length = 0
+  await clock.advance(5000)
+  await $.turn.complete({ answer: 'done', durationMs: 10, isAborted: false, turnId: 't1', reason: 'answer' })
+  await clock.advance(500)
+  expect(calls.some(c => c.includes('tada'))).toBe(true)
+})
+
+test('Customize: the sound, volume, band size and mood buttons save what they say', async ($: any, on: any) => {
+  const { files, clock } = world(on)
+  on('audio.play', () => ({ value: undefined }))
+  on('ui.toast', () => ({ value: undefined }))
+  await $.session.start({ cwd: '/work/app', surface: 'desktop', isInteractive: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await ui.press({ plugin: 'codepuff', key: 'tab-look' })
+  await clock.advance(400)
+  for (const key of ['q-bell', 'f-off', 'r5-pop', 'rw-off', 'v-low', 'band-large', 'mood']) {
+    await ui.press({ plugin: 'codepuff', key })
+    await clock.advance(400)
+  }
+  const prefs = JSON.parse(String(files.get('/data/codepuff/pet.json'))).prefs
+  expect(prefs.sounds).toMatchObject({ question: 'bell', finish: 'off' })
+  expect(prefs.sounds).toMatchObject({ reset5h: 'pop', resetWeek: 'off' })
+  expect(prefs.volume).toBe('low')
+  expect(prefs.bandSize).toBe('large')
+  expect(prefs.mood).toBe(false)
+  expect(await ui.find({ type: 'Button', text: 'Hearts react to my messages: off' })).toBeTruthy()
+  await ui.unmount()
 })

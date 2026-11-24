@@ -230,3 +230,16 @@ test('the pie chart is vector art with a slice for what worked and one for what 
   const none = pieSvg({ ok: 0, failed: 0 })
   assert.ok(!none.includes('#3fb950') && !none.includes('#f85149') && none.includes('<circle'), 'no tasks yet: an empty ring')
 })
+
+test('the activity chart is a vector bar chart with a tooltip on every bar and today in green', async () => {
+  const { activitySvg } = await import('../src/core/render/charts.js')
+  const days = Array.from({ length: 14 }, (_, i) => ({ day: `2026-11-${String(10 + i).padStart(2, '0')}`, tools: i === 3 ? 0 : i * 2 }))
+  const svg = activitySvg(days, { width: 280, height: 64 })
+  assert.equal((svg.match(/<rect /g) ?? []).length, 14)
+  assert.equal((svg.match(/<title>/g) ?? []).length, 14)
+  assert.ok(svg.includes('2026-11-23: 26 tool calls'))
+  assert.ok(svg.includes('2026-11-13: 0 tool calls'))
+  assert.ok(svg.lastIndexOf('#3fb950') > svg.indexOf('#58a6ff'), 'today (the last bar) is green')
+  assert.match(svg, /^<svg [^>]*width="280" height="64">/)
+  assert.ok(!activitySvg([{ day: 'a<b', tools: 1 }]).includes('a<b'), 'text is escaped')
+})

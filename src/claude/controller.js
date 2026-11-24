@@ -6,9 +6,9 @@
 // writer (this controller), so no locking is needed, and all other sessions are only ever read.
 
 import { aggregate, activity, petAge, series } from '../core/aggregate.js'
+import { heartsOf } from '../core/mood.js'
 import { addDays, dayKey } from '../core/days.js'
-import { AGENT_LABELS, CATEGORY_LABELS, ago, statRows } from '../core/format.js'
-import { PRESETS, isHex } from '../core/color.js'
+import { AGENT_LABELS, ago, statBars, statRows, statTiles } from '../core/format.js'
 import { buildBackup, mergeRecords, parseBackup } from '../core/backup.js'
 import { sessionKey } from '../core/hash.js'
 import { GIT_SHOW_ARGS, parseShow } from '../core/gitparse.js'
@@ -16,35 +16,17 @@ import { normalizeHook } from '../core/normalize.js'
 import { WINDOWS, focus, labelFor, stateOf } from '../core/petstate.js'
 import { sanitizeRecord } from '../core/records.js'
 import { newRecord, reduce } from '../core/session.js'
-import { CHARACTERS, DEFAULT_NAMES, BAND_SIZES, NAME_MAX, cleanName, defaultPet, displayName, restoreAppearance, sanitizePet } from '../core/settings.js'
+import { BAND_SIZES, defaultPet, displayName, restoreAppearance, sanitizePet } from '../core/settings.js'
+import { createAffection } from './affection.js'
+import { runCommand } from './commands.js'
+import { AGENT_FILTERS, BLOCKS, PERIODS, PAT_COMBO_MS, REACTION_LABEL, REACTION_LENGTH, SAD_AT, SCOPES, reactionLevel } from './constants.js'
+import { createMoments } from './moments.js'
+import { RESET_TEXT, TIRED_AT, resetsBetween, tiredOf } from './usage.js'
+
+export { AGENT_FILTERS, SCOPES, TIRED_AT }
 
 const join = (...parts) => parts.join('/').replace(/\\/g, '/').replace(/([^:])\/{2,}/g, '$1/')
 const stamp = now => new Date(now).toISOString().replace(/[:.]/g, '-')
-const BLOCKS = '▁▂▃▄▅▆▇█'
-/** Pats closer together than this build up: a few make the pet giggle, many make it overjoyed. */
-const PAT_COMBO_MS = 2500
-const reactionLevel = count => (count >= 5 ? 'delighted' : count >= 3 ? 'giggle' : 'petted')
-const REACTION_LABEL = { petted: 'Happy to see you', giggle: 'Giggling', delighted: 'Overjoyed!' }
-const REACTION_LENGTH = { petted: 1000, giggle: 1300, delighted: 1700 }
-/** The pet looks tired from this share of a plan window (or spending limit) being used. */
-export const TIRED_AT = 80
-const WINDOW_NAMES = { five_hour: '5-hour limit', seven_day: 'weekly limit', spend_limit: 'spending limit' }
-
-function tiredOf(usage, at) {
-  if (!usage) return null
-  let worst = null
-  for (const limit of usage.limits) {
-    if (typeof limit?.percentUsed !== 'number') continue
-    if (limit.resetsAt && Date.parse(limit.resetsAt) < at) continue // that window has already reset
-    if (!worst || limit.percentUsed > worst.percentUsed) worst = limit
-  }
-  if (!worst || worst.percentUsed < TIRED_AT) return null
-  const percent = Math.round(worst.percentUsed)
-  const resets = worst.resetsAt ? Math.max(0, Date.parse(worst.resetsAt) - at) : 0
-  return { percent, window: WINDOW_NAMES[worst.kind] ?? 'plan limit', kind: worst.kind, resetsInMs: resets, exhausted: percent >= 95 }
-}
-export const SCOPES = ['session', 'all', '7d', '30d']
-export const AGENT_FILTERS = ['all', 'claude', 'codex']
 
 /**
  * @typedef {object} Io
@@ -56,18 +38,24 @@ export const AGENT_FILTERS = ['all', 'claude', 'codex']
  * @property {(argv: string[], cwd?: string) => Promise<{ exitCode: number, stdout: string }>} [run] optional; commit details need it
  */
 
-/** @param {Io} io */
-export function createController(io) {
+/**
+ * @param {Io} io
+ * @param {{ host?: 'claude' | 'codex' }} [options] which agent this controller lives in: its platform is listed first and "This session"
+ *   is only offered for it (the mod runs in Claude Code, so the default is `claude`)
+ */
+export function createController(io, { host = 'claude' } = {}) {
   const s = {
     dir: '', sid: '', cwd: '', pet: null, rec: null,
     others: new Map(), // file -> { key, rec }
-    dirty: false, ui: { tab: 'stats', scope: 'session', agent: 'all' }, react: 0, pats: [], reaction: 'petted',
+    dirty: false, ui: { tab: 'stats', scope: 'session', agent: host, details: false }, react: 0, pats: [], reaction: 'petted', cues: [], cueAt: {}, toasts: [], milestoneAt: 0,
     health: { storage: 'ok', git: 'ok' }, lastRefresh: 0, usage: null,
     listeners: new Set(),
   }
   const now = () => io.now()
   const file = (...p) => join(s.dir, ...p)
   const changed = () => { for (const fn of s.listeners) { try { fn() } catch { /* a listener must never break an event */ } } }
+  const affection = createAffection({ s, io, file, now, writePet: () => writePet() })
+  const moments = createMoments({ s, now, records: () => records(), writePet: () => writePet() })
 
   async function loadPet() {
     const t = now()
@@ -83,6 +71,7 @@ export function createController(io) {
   }
 
   async function writePet() {
+    await affection.sync()
     try { await io.write(file('pet.json'), JSON.stringify(s.pet, null, 2) + '\n') } catch { s.health.storage = 'error' }
   }
 
@@ -97,7 +86,7 @@ export function createController(io) {
   /** Reads the other sessions (both agents) whose files changed since the last look. Cheap: one listing per agent. */
   async function refreshOthers() {
     const seen = new Set()
-    let any = false
+    let any = await affection.sync()
     for (const agent of ['claude', 'codex']) {
       let entries = []
       try { entries = await io.list(file('sessions', agent)) } catch { continue }
@@ -158,8 +147,11 @@ export function createController(io) {
       s.cwd = cwd
       s.dir = await io.dataDir()
       await loadPet()
+      if (affection.heal(now())) await writePet()
+      if (moments.welcome()) await writePet()
       await loadOwn()
       await refreshOthers()
+      moments.checkMilestones(true)
       changed()
     },
 
@@ -170,8 +162,14 @@ export function createController(io) {
         if (!ev) return
         if (!s.rec) s.rec = newRecord(ev)
         reduce(s.rec, ev)
+        if (ev.kind === 'prompt') affection.feel(payload?.prompt, now())
+        // The moments that make a sound, read from the events themselves: the agent asks the user something (a permission or a
+        // question), or a turn ends well.
+        if (ev.kind === 'perm' || (ev.kind === 'tool_start' && ev.act === 'ask')) moments.cue('question')
+        if (ev.kind === 'turn_end' && ev.reason === 'done') moments.cue('finish')
         s.dirty = true
         if (ev.commit) void lookupCommit(ev)
+        moments.checkMilestones()
         changed()
       } catch { /* never throw into the host */ }
     },
@@ -179,6 +177,15 @@ export function createController(io) {
     flush,
     refreshOthers,
     records,
+
+    /** A sound moment the host reports itself (a turn that ended well). */
+    cue(moment) { moments.cue(moment); changed() },
+
+    /** The messages for milestones reached since the last call. */
+    takeToasts: () => moments.takeToasts(),
+
+    /** The sound moments that happened since the last call (`question`, `finish`), each with its sound and the volume. */
+    takeCues: () => moments.takeCues(),
 
     /** The next time the displayed state changes by itself (a celebration ends, a wait times out); undefined if never. */
     nextTick(at = now()) {
@@ -190,7 +197,13 @@ export function createController(io) {
     },
 
     /** The plan's usage as the host reports it (`$.session.usage()`): the rate-limit windows. Read only; nothing is stored. */
-    setUsage(usage) { s.usage = usage ? { at: now(), limits: Array.isArray(usage.rateLimits) ? usage.rateLimits : [], cost: usage.cost ?? null } : null; changed() },
+    setUsage(usage) {
+      const next = usage ? { at: now(), limits: Array.isArray(usage.rateLimits) ? usage.rateLimits : [], cost: usage.cost ?? null } : null
+      // A window that reset since the last reading is a moment worth a sound (and a word).
+      for (const moment of resetsBetween(s.usage, next, now())) { moments.cue(moment); s.toasts.push(RESET_TEXT[moment]) }
+      s.usage = next
+      changed()
+    },
 
     /** A purely visual reaction to a click or tap. Nothing is sent to the agent and no statistic changes. */
     pat() {
@@ -210,24 +223,30 @@ export function createController(io) {
       // Tired: the plan's limit is nearly used up. It shows while the pet has nothing else to do (working states stay as they are).
       const tired = tiredOf(s.usage, at)
       if (tired && ['idle', 'waiting', 'finished', 'success'].includes(mine.state)) mine = { ...mine, state: 'tired', label: labelFor('tired', { percent: tired.percent, window: tired.window }) }
+      // Down: the user has been unkind, and the pet has nothing else to do.
+      const hearts = heartsOf(pet.affection.score)
+      if (pet.prefs.mood && hearts <= SAD_AT && ['idle', 'waiting', 'finished', 'success', 'tired'].includes(mine.state)) mine = { ...mine, state: 'sad', label: labelFor('sad') }
       // A click makes the pet happy for a moment, unless the agent needs the user (that always wins).
       if (at - s.react < REACTION_LENGTH[s.reaction] && mine.state !== 'permission') mine = { ...mine, state: s.reaction, label: REACTION_LABEL[s.reaction] }
       const others = focus(all.filter(r => r !== s.rec), at)
       const life = activity(all, { today })
       const age = petAge(pet.createdAt, at)
-      const scope = s.ui.scope
-      const agent = scope === 'session' ? 'claude' : s.ui.agent
+      // Platform first (this host's own, then the other, then both), then the period. "This session" only exists for the host's
+      // own platform: for the other agent or for both there is no one session to speak of.
+      const agent = s.ui.agent
+      const periods = agent === host ? PERIODS : PERIODS.filter(period => period !== 'session')
+      const scope = periods.includes(s.ui.scope) ? s.ui.scope : '7d'
       const range = scope === '7d' ? { since: addDays(today, -6) } : scope === '30d' ? { since: addDays(today, -29) } : {}
       const stats = scope === 'session'
         ? aggregate(s.rec ? [s.rec] : [], { now: at })
         : aggregate(all, { agent, now: at, ...range })
-      const week = series(all, { days: 14, today, agent: scope === 'session' ? 'all' : s.ui.agent })
+      const week = series(all, { days: 14, today, agent })
       const peak = Math.max(1, ...week.map(d => d.tools))
       const todayStats = aggregate(all, { since: today, until: today, now: at })
       // How this session's tasks went, as the agent reported them (every tool call's success or failure).
       const session = s.rec ? aggregate([s.rec], { now: at }).tools : { ok: 0, failed: 0 }
       return {
-        pet: { name: displayName(pet), isCustom: !!pet.name, character: pet.character, colors: pet.colors, motion: pet.prefs.motion, line: pet.prefs.line, band: pet.prefs.band, bandSize: pet.prefs.bandSize, bandHeight: BAND_SIZES[pet.prefs.bandSize], createdAt: pet.createdAt },
+        pet: { name: displayName(pet), isCustom: !!pet.name, character: pet.character, colors: pet.colors, motion: pet.prefs.motion, line: pet.prefs.line, band: pet.prefs.band, hearts: heartsOf(pet.affection.score), mood: pet.prefs.mood, sounds: pet.prefs.sounds, volume: pet.prefs.volume, bandSize: pet.prefs.bandSize, bandHeight: BAND_SIZES[pet.prefs.bandSize], createdAt: pet.createdAt },
         age, life: { current: life.current, longest: life.longest, last: life.last, days: life.total },
         me: mine,
         outcome: { ok: session.ok, failed: session.failed },
@@ -235,12 +254,18 @@ export function createController(io) {
         others: others.current.agent ? [others.current, ...others.others].slice(0, 3) : [],
         otherCount: others.current.agent ? 1 + others.others.length : 0,
         today: { prompts: todayStats.prompts, tools: todayStats.tools.total, tests: todayStats.tests.run, passed: todayStats.tests.passed, commits: todayStats.git.commits },
-        stats: { rows: statRows(stats), categories: Object.entries(stats.tools.byCategory).filter(([, n]) => n > 0).map(([k, n]) => `${CATEGORY_LABELS[k] ?? k} ${n}`) },
-        scopeLabel: scope === 'session' ? 'This session' : scope === 'all' ? `All time · ${AGENT_LABELS[agent]}` : `Last ${scope.slice(0, -1)} days · ${AGENT_LABELS[agent]}`,
+        stats: { rows: statRows(stats), tiles: statTiles(stats), bars: statBars(stats), ok: stats.tools.ok, failed: stats.tools.failed },
+        host,
+        platforms: host === 'codex' ? ['codex', 'claude', 'all'] : ['claude', 'codex', 'all'],
+        periods,
+        period: scope,
+        chart: week.map(d => ({ day: d.day, tools: d.tools })),
+        scopeLabel: scope === 'session' ? `This session · ${AGENT_LABELS[agent]}` : scope === 'all' ? `All time · ${AGENT_LABELS[agent]}` : `Last ${scope.slice(0, -1)} days · ${AGENT_LABELS[agent]}`,
         spark: week.map(d => BLOCKS[Math.min(7, Math.floor((d.tools / peak) * 7.999))]).join(''),
         ui: s.ui,
         health: s.health,
         sessionLabel: s.rec?.pname || '',
+        sessionPrompts: s.rec ? aggregate([s.rec], { now: at }).prompts : 0,
       }
     },
 
@@ -248,14 +273,17 @@ export function createController(io) {
       const next = { ...s.ui, ...patch }
       if (!['stats', 'look'].includes(next.tab)) next.tab = 'stats'
       if (!SCOPES.includes(next.scope)) next.scope = 'session'
-      if (!AGENT_FILTERS.includes(next.agent)) next.agent = 'all'
+      if (!AGENT_FILTERS.includes(next.agent)) next.agent = host
+      // "This session" belongs to the host's own platform only.
+      if (next.scope === 'session' && next.agent !== host) next.scope = '7d'
+      next.details = next.details === true
       s.ui = next
       changed()
     },
 
     /** Applies a validated change to the pet's identity or look, and saves it at once. */
     async setPet(patch) {
-      const merged = { ...s.pet, ...patch, colors: { ...s.pet.colors, ...(patch.colors ?? {}) }, prefs: { ...s.pet.prefs, ...(patch.prefs ?? {}) } }
+      const merged = { ...s.pet, ...patch, colors: { ...s.pet.colors, ...(patch.colors ?? {}) }, prefs: { ...s.pet.prefs, ...(patch.prefs ?? {}), sounds: { ...s.pet.prefs.sounds, ...(patch.prefs?.sounds ?? {}) } } }
       s.pet = sanitizePet(merged, now()).pet
       await writePet()
       changed()
@@ -304,68 +332,8 @@ export function createController(io) {
 
     // ---- the /codepuff command ---------------------------------------------------------------------------
 
-    /** @returns {Promise<{ text: string, open?: boolean }>} */
-    async command(args = '') {
-      const [word = '', ...rest] = String(args).trim().split(/\s+/)
-      const value = rest.join(' ')
-      const say = text => ({ text })
-      switch (word.toLowerCase()) {
-        case '':
-        case 'open':
-        case 'pet': {
-          const m = api.model()
-          return { text: `${m.pet.name}: ${m.me.label}. Streak ${m.life.current} day${m.life.current === 1 ? '' : 's'}, ${m.age.days} days old. Use /codepuff help for more.`, open: true }
-        }
-        case 'help': return say('/codepuff [open] · stats [session|all|7d|30d] · name <name> · character <id> · characters · palette <id> · body <#hex> · accent <#hex> · motion <auto|reduced> · band <on|off|small|medium|large> · line <on|off> · restore · export · import <file> · reset stats|pet confirm · palettes')
-        case 'palettes': return say('Palettes: ' + PRESETS.map(p => p.id).join(', '))
-        case 'stats': {
-          if (value && SCOPES.includes(value)) api.setUi({ scope: value })
-          const m = api.model()
-          return say([`${m.scopeLabel}`, ...m.stats.rows.map(r => (r.group ? `\n${r.group}\n` : '') + `  ${r.label}: ${r.value}`), `Last 14 days: ${m.spark}`].join('\n').replace(/\n\n\n/g, '\n\n'))
-        }
-        case 'name': { const n = cleanName(value); await api.setPet({ name: n }); return say(n ? `Your pet is now called ${n}.` : `Name cleared. Your pet is called ${displayName(s.pet)} again. (Names are at most ${NAME_MAX} characters.)`) }
-        case 'characters': return say(CHARACTERS.map(id => `${id} (${DEFAULT_NAMES[id]})`).join(', '))
-        case 'character': {
-          if (!CHARACTERS.includes(value)) return say('Characters: ' + CHARACTERS.join(', '))
-          await api.setPet({ character: value }); return say(`Switched to ${DEFAULT_NAMES[value]}. Statistics and progress are unchanged.`)
-        }
-        case 'band':
-          if (Object.hasOwn(BAND_SIZES, value)) { await api.setPet({ prefs: { band: true, bandSize: value } }); return say(`Compact band: ${value}.`) }
-          if (!['on', 'off'].includes(value)) return say('Usage: /codepuff band on|off|small|medium|large')
-          await api.setPet({ prefs: { band: value === 'on' } }); return say(`Compact band ${value}.`)
-        case 'palette': {
-          const preset = PRESETS.find(p => p.id === value)
-          if (!preset) return say('Palettes: ' + PRESETS.map(p => p.id).join(', '))
-          await api.setPet({ colors: { body: preset.body, accent: preset.accent } }); return say(`Palette: ${preset.name}.`)
-        }
-        case 'body':
-        case 'accent': {
-          if (value !== 'default' && !isHex(value)) return say('Use a color like #7cc4ff, or "default".')
-          await api.setPet({ colors: { [word]: value === 'default' ? null : value.toLowerCase() } }); return say('Saved.')
-        }
-        case 'motion':
-          if (!['auto', 'reduced'].includes(value)) return say('Motion: auto or reduced.')
-          await api.setPet({ prefs: { motion: value } }); return say(`Motion: ${value}.`)
-        case 'line':
-          if (!['on', 'off'].includes(value)) return say('Usage: /codepuff line on|off')
-          await api.setPet({ prefs: { line: value === 'on' } }); return say(`Status line ${value}.`)
-        case 'restore': await api.restoreAppearance(); return say('Default appearance restored. Your pet keeps its birthday and statistics.')
-        case 'export': { const r = await api.exportBackup(); return say(`Exported ${r.sessions} sessions to ${r.file}`) }
-        case 'import': {
-          if (!value) return say('Usage: /codepuff import <path to a CodePuff backup>')
-          const r = await api.importFile(value)
-          return say(r.ok ? `Imported ${r.imported} sessions${r.skipped ? ` (${r.skipped} invalid entries skipped)` : ''}.` : r.error)
-        }
-        case 'reset': {
-          const [what, confirm] = rest
-          if (!['stats', 'pet'].includes(what)) return say('Usage: /codepuff reset stats confirm | reset pet confirm')
-          if (confirm !== 'confirm') return say(what === 'stats' ? 'This forgets all statistics (a backup is saved first). Your pet stays. Run: /codepuff reset stats confirm' : 'This starts a brand-new pet with a new birthday. Statistics stay. Run: /codepuff reset pet confirm')
-          if (what === 'stats') { const r = await api.resetStats(); return say(`Statistics reset (${r.removed} sessions). Backup: ${r.safety}`) }
-          await api.resetPet(); return say('A new pet was created. Statistics are unchanged.')
-        }
-        default: return say(`Unknown option "${word}". Try /codepuff help`)
-      }
-    },
+    /** The /codepuff slash command (see commands.js). @returns {Promise<{ text: string, open?: boolean }>} */
+    command: args => runCommand(api, args),
 
     ago: t => ago(t, now()),
   }

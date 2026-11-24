@@ -1,0 +1,5 @@
+# One line ending for everyone: text is LF in the repository and in checkouts.
+* text=auto eol=lf
+*.png binary
+*.wav binary
+*.npy binary

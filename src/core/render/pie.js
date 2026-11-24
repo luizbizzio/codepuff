@@ -11,7 +11,7 @@ const n = value => String(Math.round(value * 100) / 100)
  * @param {{ ok: number, failed: number, size?: number }} data
  * @returns {string} an SVG document, `size` pixels square
  */
-export function pieSvg({ ok, failed, size = 40 }) {
+export function pieSvg({ ok, failed, size = 40, title }) {
   const total = ok + failed
   const r = size / 2 - 1
   const c = size / 2
@@ -29,7 +29,6 @@ export function pieSvg({ ok, failed, size = 40 }) {
       `<path d="M${n(c)} ${n(c)}L${n(x)} ${n(y)}A${n(r)} ${n(r)} 0 ${1 - large} 1 ${n(c)} ${n(c - r)}Z" fill="${BAD}"/>` +
       `<path d="M${n(c)} ${n(c)}L${n(c)} ${n(c - r)}M${n(c)} ${n(c)}L${n(x)} ${n(y)}" stroke="#0d1117" stroke-width="1.2"/>`
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">${body}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">${title ? `<title>${String(title).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c])}</title>` : ''}${body}</svg>`
 }
 
-export const pieColors = { good: GOOD, bad: BAD }

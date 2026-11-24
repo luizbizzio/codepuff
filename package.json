@@ -18,8 +18,8 @@
   "files": [
     "bin",
     "src",
-    "web",
     "hooks",
+    "assets",
     "types",
     "codex",
     ".claude-plugin",
@@ -33,7 +33,9 @@
   "scripts": {
     "test": "node --test \"test/*.test.js\"",
     "bench": "node scripts/bench.mjs",
-    "preview": "node scripts/preview.mjs"
+    "preview": "node scripts/preview.mjs",
+    "check:mod": "claude plugin validate . && claude plugin test .",
+    "art:hashes": "node scripts/art-hashes.mjs"
   },
   "keywords": [
     "claude-code",

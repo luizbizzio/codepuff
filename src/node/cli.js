@@ -10,7 +10,7 @@ import { addDays, dayKey } from '../core/days.js'
 import { AGENT_LABELS, ago, statRows } from '../core/format.js'
 import { focus } from '../core/petstate.js'
 import { PRESETS, isHex } from '../core/color.js'
-import { BAND_SIZES, CHARACTERS, cleanName, displayName, NAME_MAX } from '../core/settings.js'
+import { BAND_SIZES, CHARACTERS, SOUNDS, SOUND_MOMENTS, VOLUMES, cleanName, displayName, NAME_MAX } from '../core/settings.js'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 export const VERSION = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8')).version
@@ -22,7 +22,7 @@ function parse(args) {
     if (arg.startsWith('--')) {
       const [key, inline] = arg.slice(2).split('=')
       if (inline !== undefined) out.flags[key] = inline
-      else if (args[i + 1] && !args[i + 1].startsWith('--') && ['agent', 'scope', 'days', 'port', 'codex-home', 'session'].includes(key)) out.flags[key] = args[++i]
+      else if (args[i + 1] && !args[i + 1].startsWith('--') && ['agent', 'scope', 'days', 'port', 'codex-home', 'session', 'host'].includes(key)) out.flags[key] = args[++i]
       else out.flags[key] = true
     } else out._.push(arg)
   }
@@ -41,6 +41,9 @@ Usage: codepuff <command>
   pet                        the full terminal app: live pet, statistics, customization and data controls
   set name <name>            rename your pet (up to ${NAME_MAX} characters; "" for the default)
   set character <${CHARACTERS.join('|')}>
+  set mood <on|off>          whether the pet's hearts react to how kind your messages are (they are judged, never stored)
+  set volume <low|medium|high>   how loud the sounds are
+  set sound <question|finish|reset5h|resetWeek> <off|chime|bell|pop|ding|tada>   the sounds played in Claude Code: when it asks you something, when it finishes, when the 5-hour or weekly limit resets
   set band <on|off|small|medium|large>   the compact band above the Claude Code prompt, and its size
   set body <#rrggbb|default>  set accent <#rrggbb|default>
   set palette <id>           one of: ${PRESETS.map(p => p.id).join(', ')}
@@ -68,7 +71,7 @@ export async function main(argv) {
       case 'doctor': return (await import('./doctor.js')).doctor(store, ROOT)
       case 'install': return (await import('./install.js')).installCommand(rest[0], flags, ROOT)
       case 'uninstall': return (await import('./install.js')).uninstallCommand(rest[0], flags, ROOT)
-      case 'pet': return (await import('./tui.js')).runTui(store)
+      case 'pet': return (await import('./tui.js')).runTui(store, { host: ['claude', 'codex'].includes(flags.host) ? flags.host : undefined })
       default: return fail(`Unknown command "${command}".\n\n${HELP}`, 2)
     }
   } catch (error) {
@@ -152,6 +155,20 @@ function set(store, [key, ...values]) {
       if (!CHARACTERS.includes(value)) return fail('Characters: ' + CHARACTERS.join(', '))
       pet.character = value
       break
+    case 'mood':
+      if (!['on', 'off'].includes(value)) return fail('Usage: codepuff set mood on|off')
+      pet.prefs.mood = value === 'on'
+      break
+    case 'volume':
+      if (!VOLUMES.includes(value)) return fail('Usage: codepuff set volume <' + VOLUMES.join('|') + '>')
+      pet.prefs.volume = value
+      break
+    case 'sound': {
+      const [moment, choice] = value.split(/\s+/)
+      if (!SOUND_MOMENTS.includes(moment) || !SOUNDS.includes(choice)) return fail(`Usage: codepuff set sound <${SOUND_MOMENTS.join('|')}> <${SOUNDS.join('|')}>`)
+      pet.prefs.sounds = { ...pet.prefs.sounds, [moment]: choice }
+      break
+    }
     case 'band':
       if (Object.hasOwn(BAND_SIZES, value)) { pet.prefs.band = true; pet.prefs.bandSize = value; break }
       if (!['on', 'off'].includes(value)) return fail('Usage: codepuff set band on|off|small|medium|large')
@@ -173,7 +190,7 @@ function set(store, [key, ...values]) {
       pet.prefs.motion = value
       break
     case 'restore': store.resetAppearance(); return out('Appearance restored. Your pet keeps its birthday and statistics.')
-    default: return fail('Usage: codepuff set name|character|band|body|accent|palette|motion <value>, or: codepuff set restore')
+    default: return fail('Usage: codepuff set name|character|sound|volume|mood|band|body|accent|palette|motion <value>, or: codepuff set restore')
   }
   store.writePet(pet)
   const saved = store.ensurePet()

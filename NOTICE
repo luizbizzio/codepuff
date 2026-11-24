@@ -20,7 +20,9 @@ Third-party code and assets
 CodePuff has no runtime dependencies. The animations, color logic, Alpha and the "Claude" critter are drawn in
 code for this project. The artwork of Classic, Foxy, Bot, Slime, Mage and Penny (src/core/art/sprites.js) is
 converted to pixel art, by scripts/sprites/*.py, from character sheets supplied by the project owner. The owner is
-responsible for the rights to that artwork; whoever redistributes CodePuff should confirm them.
+responsible for the rights to that artwork; whoever redistributes CodePuff should confirm them. The sheets themselves are not
+in this repository, so src/core/art/sprites.js cannot be regenerated from it alone (see docs/ARCHITECTURE.md, "Keep the sheets").
+The sound clips (assets/sounds) are synthesized by scripts/make-sounds.mjs and are original.
 
 Trademarks and affiliation
 --------------------------

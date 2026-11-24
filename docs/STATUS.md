@@ -7,7 +7,7 @@ what was checked, where, and what was not.
 
 | Area | How | Result |
 | --- | --- | --- |
-| Engine, statistics, pet states, storage, CLI, installer | `npm test`: 155 tests, no dependencies | pass |
+| Engine, statistics, pet states, storage, CLI, installer | `npm test`: 180 tests, no dependencies (the mod has 6 more, run by `claude plugin test`) | pass |
 | Eight characters, hi-res pixel art | Tests render every character through 10 states with all subagent helpers, check detail (tones, pixel counts), faces, recoloring, SVG size under the host's limit, narrow-terminal fitting; and contact sheets were looked at | pass |
 | Concurrent writers | 6 OS processes x 40 events on one session; 4 processes across sessions and agents | no lost update, no temp files left |
 | Date logic | fixed-offset zones, a simulated DST change, midnight crossing, leap day, streak survival after reload | pass |
@@ -25,6 +25,7 @@ what was checked, where, and what was not.
 
 ## Not verified
 
+* **Sounds, toasts and tooltips in the live window.** `$.audio.play({ asset })` is documented to play through `afplay` on macOS and nothing on Windows, so on Windows the clip is played by PowerShell's `System.Media.SoundPlayer` (checked to run, not heard). Whether the sound is audible in the desktop app, and whether `$.ui.toast` and the SVG `<title>` tooltips show, has not been seen. The cues themselves (when the agent asks, when a turn ends well) and the milestones are tested. The plan-reset sounds read the limits from `$.session.usage()` (a window that reset shows a later reset time or a much lower share used); they are tested with made-up readings, not with a real reset.
 * **How the pane and the compact band look in a live Claude Code window.** The engine tests mount the same drawings on
   both surfaces, but nobody has yet looked at the drawn band above the prompt or the widget in the desktop window, in
   the Svg hover hop included. The live check above was of an earlier build of the mod.

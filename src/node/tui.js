@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { aggregate, activity, petAge, series } from '../core/aggregate.js'
 import { addDays, dayKey } from '../core/days.js'
-import { AGENT_LABELS, CATEGORY_LABELS, ago, statRows } from '../core/format.js'
+import { AGENT_LABELS, ago, statBars, statRows, statTiles } from '../core/format.js'
 import { focus } from '../core/petstate.js'
 import { PRESETS } from '../core/color.js'
 import { CHARACTERS, DEFAULT_NAMES, NAME_MAX, cleanName, displayName } from '../core/settings.js'
@@ -23,11 +23,11 @@ const bold = text => `${ESC}[1m${text}${ESC}[0m`
 const inverse = text => `${ESC}[7m${text}${ESC}[0m`
 const plain = text => text.replace(/\x1b\[[0-9;]*m/g, '')
 const TABS = ['Pet', 'Statistics', 'Customize', 'Data']
-const SCOPES = ['session', 'all', '7d', '30d']
-const AGENTS = ['all', 'claude', 'codex']
+const PERIODS = ['session', '7d', '30d', 'all']
+const PERIOD_LABEL = { session: 'This session', '7d': '7 days', '30d': '30 days', all: 'All time' }
 const BLOCKS = '▁▂▃▄▅▆▇█'
 
-export async function runTui(store, { tab: startTab = 0 } = {}) {
+export async function runTui(store, { tab: startTab = 0, host: wantedHost } = {}) {
   const out = process.stdout
   if (!out.isTTY) {
     const pet = store.ensurePet()
@@ -38,8 +38,13 @@ export async function runTui(store, { tab: startTab = 0 } = {}) {
   let pet = store.ensurePet()
   let records = store.listRecords()
   let tab = startTab
-  let scope = 'all'
-  let agent = 'all'
+  // The host is the agent this terminal sits next to: its platform is listed first and "This session" belongs to it. When it is not
+  // said (`codepuff pet --host codex`), it is the agent heard from most recently, and Codex when nothing has been heard.
+  const host = wantedHost ?? ([...records].sort((a, b) => b.last - a.last)[0]?.agent ?? 'codex')
+  const platforms = host === 'codex' ? ['codex', 'claude', 'all'] : ['claude', 'codex', 'all']
+  let scope = 'session'
+  let agent = host
+  let detail = false
   let row = 0 // selected row in Customize
   let pat = 0
   let message = ''
@@ -98,38 +103,54 @@ export async function runTui(store, { tab: startTab = 0 } = {}) {
 
   const viewStats = (cols, rows, now) => {
     const today = dayKey(now)
+    const periods = agent === host ? PERIODS : PERIODS.filter(period => period !== 'session')
+    if (!periods.includes(scope)) scope = '7d'
     const since = scope === '7d' ? addDays(today, -6) : scope === '30d' ? addDays(today, -29) : undefined
-    const latest = [...records].sort((a, b) => b.last - a.last)[0]
+    // "This session" is the host's own most recent session.
+    const latest = [...records].filter(r => r.agent === host).sort((a, b) => b.last - a.last)[0]
     const stats = scope === 'session'
       ? aggregate(latest ? [latest] : [], { now })
       : aggregate(records, { agent, since, now })
-    const title = scope === 'session' ? `This session${latest ? `: ${AGENT_LABELS[latest.agent]}${latest.pname ? ' · ' + latest.pname : ''}, ${ago(latest.last, now)}` : ''}` : `${scope === 'all' ? 'All time' : 'Last ' + scope.slice(0, -1) + ' days'} · ${AGENT_LABELS[agent]}`
-    const rowsOut = statRows(stats)
-    const wide = cols >= 96
-    const cells = []
-    for (const r of rowsOut) { if (r.group) cells.push({ group: r.group }); cells.push(r) }
-    const fmt = r => (r.group ? bold(r.group) : `${r.label.padEnd(30)}${r.value}`)
-    const lines = []
-    if (wide) {
-      const half = Math.ceil(cells.length / 2)
-      for (let i = 0; i < half; i++) lines.push('  ' + (fmt(cells[i]) + ' '.repeat(Math.max(0, 48 - plain(fmt(cells[i])).length))) + (cells[i + half] ? fmt(cells[i + half]) : ''))
-    } else for (const c of cells) lines.push('  ' + fmt(c))
-    const week = series(records, { days: 30, today, agent: scope === 'session' ? 'all' : agent })
+    const title = scope === 'session' ? `This session · ${AGENT_LABELS[agent]}${latest ? `: ${latest.pname ? latest.pname + ', ' : ''}${ago(latest.last, now)}` : ''}` : `${scope === 'all' ? 'All time' : 'Last ' + scope.slice(0, -1) + ' days'} · ${AGENT_LABELS[agent]}`
+    const pick = (list, current, label) => list.map(item => (item === current ? inverse(` ${label(item)} `) : ` ${label(item)} `)).join(' ')
+    const platformLine = pick(platforms, agent, a => AGENT_LABELS[a])
+    const periodLine = pick(periods, scope, p => PERIOD_LABEL[p])
+    // The few numbers that matter, two to a line; the long list only when asked for (d).
+    const tiles = statTiles(stats)
+    const cell = tile => `${tile.label.padEnd(14)}${bold(tile.value)}${tile.note ? dim('  ' + tile.note) : ''}`
+    const tileLines = []
+    for (let k = 0; k < tiles.length; k += 2) {
+      const left = cell(tiles[k])
+      tileLines.push('  ' + left + (tiles[k + 1] ? ' '.repeat(Math.max(2, 40 - plain(left).length)) + cell(tiles[k + 1]) : ''))
+    }
+    const settled = stats.tools.ok + stats.tools.failed
+    const green = settled ? Math.max(stats.tools.ok ? 1 : 0, Math.round((stats.tools.ok / settled) * 24)) : 0
+    const rate = settled ? `  ${'Success'.padEnd(14)}${ESC}[38;2;63;185;80m${'█'.repeat(green)}${ESC}[38;2;248;81;73m${'█'.repeat(Math.max(stats.tools.failed ? 1 : 0, 24 - green))}${ESC}[0m ${Math.round((stats.tools.ok / settled) * 100)}%` : ''
+    const week = series(records, { days: 30, today, agent })
     const peak = Math.max(1, ...week.map(d => d.tools))
     const spark = week.map(d => BLOCKS[Math.min(7, Math.floor((d.tools / peak) * 7.999))]).join('')
-    const cats = Object.entries(stats.tools.byCategory).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 5)
-    const top = Math.max(1, ...cats.map(([, v]) => v))
+    const bars = statBars(stats, 5)
     const claude = aggregate(records, { agent: 'claude', since, now })
     const codex = aggregate(records, { agent: 'codex', since, now })
     const share = claude.tools.total + codex.tools.total ? Math.round((claude.tools.total / (claude.tools.total + codex.tools.total)) * 24) : 12
+    const detailRows = []
+    if (detail) {
+      detailRows.push('')
+      for (const r of statRows(stats)) detailRows.push(r.group ? '  ' + bold(r.group) : '  ' + r.label.padEnd(32) + r.value)
+    }
     return {
       lines: [
-        bold(title), dim('[s] scope: This session / All time / 7d / 30d   [a] agent: Combined / Claude Code / Codex'), '',
-        ...lines, '',
+        bold('Platform') + '  ' + platformLine,
+        bold('Period') + '    ' + periodLine,
+        dim('[a] platform   [s] period   [d] ' + (detail ? 'hide' : 'show') + ' all numbers'), '',
+        bold(title), '',
+        ...tileLines,
+        ...(rate ? ['', rate] : []),
+        '',
         `Tool calls, last 30 days  ${ESC}[38;2;88;166;255m${spark}${ESC}[0m`,
-        ...(cats.length ? ['Tools by category: ' + cats.map(([k, v]) => `${CATEGORY_LABELS[k] ?? k} ${v}`).join(' · ')] : []),
-        ...(cats.length ? cats.map(([k, v]) => `  ${(CATEGORY_LABELS[k] ?? k).padEnd(8)} ${'█'.repeat(Math.max(1, Math.round((v / top) * 24)))} ${v}`) : []),
-        `Claude Code ${ESC}[38;2;217;119;87m${'█'.repeat(share)}${ESC}[38;2;88;166;255m${'█'.repeat(24 - share)}${ESC}[0m Codex   (${claude.tools.total} · ${codex.tools.total} tool calls)`,
+        ...(bars.length ? ['', bold('What it did'), ...bars.map(b => `  ${b.label.padEnd(9)} ${ESC}[38;2;88;166;255m${'█'.repeat(Math.max(1, Math.round(b.share * 24)))}${ESC}[0m ${b.count}`)] : []),
+        ...(agent === 'all' ? ['', `Claude Code ${ESC}[38;2;217;119;87m${'█'.repeat(share)}${ESC}[38;2;88;166;255m${'█'.repeat(24 - share)}${ESC}[0m Codex   (${claude.tools.total} · ${codex.tools.total} tool calls)`] : []),
+        ...detailRows,
       ],
     }
   }
@@ -235,8 +256,9 @@ export async function runTui(store, { tab: startTab = 0 } = {}) {
     if (key >= '1' && key <= '4') tab = Number(key) - 1
     else if (key === '\t') tab = (tab + 1) % TABS.length
     else if (key === ' ') pat = Date.now() + 900
-    else if (tab === 1 && key === 's') scope = SCOPES[(SCOPES.indexOf(scope) + 1) % SCOPES.length]
-    else if (tab === 1 && key === 'a') agent = AGENTS[(AGENTS.indexOf(agent) + 1) % AGENTS.length]
+    else if (tab === 1 && key === 's') { const list = agent === host ? PERIODS : PERIODS.filter(period => period !== 'session'); scope = list[(list.indexOf(scope) + 1) % list.length] }
+    else if (tab === 1 && key === 'a') { agent = platforms[(platforms.indexOf(agent) + 1) % platforms.length]; if (agent !== host && scope === 'session') scope = '7d' }
+    else if (tab === 1 && key === 'd') detail = !detail
     else if (tab === 2) {
       const list = items()
       if (key === `${ESC}[A`) row = (row + list.length - 1) % list.length

@@ -9,8 +9,15 @@ export const NAME_MAX = 16
 export const CHARACTERS = CHARACTER_IDS
 export const DEFAULT_CHARACTER = 'alpha'
 export const DEFAULT_NAMES = CHARACTER_NAMES
-/** How tall the compact band's pet (and its pie chart) is drawn, in pixels, for each size the user can pick. */
-export const BAND_SIZES = Object.freeze({ small: 48, medium: 68, large: 96 })
+/** The sounds the pet can play, and the moments it plays them at (each moment takes any of the sounds, or none). */
+export const SOUNDS = Object.freeze(['off', 'chime', 'bell', 'pop', 'ding', 'tada'])
+/** How loud the sounds are (there is a clip for each sound at each level; see scripts/make-sounds.mjs). */
+export const VOLUMES = Object.freeze(['low', 'medium', 'high'])
+/** question: the agent asks you something; finish: a turn ends well; reset5h and resetWeek: the plan's 5-hour or weekly limit has reset. */
+export const SOUND_MOMENTS = Object.freeze(['question', 'finish', 'reset5h', 'resetWeek'])
+export const DEFAULT_SOUNDS = Object.freeze({ question: 'chime', finish: 'tada', reset5h: 'ding', resetWeek: 'bell' })
+/** How tall the compact band is (its pet is drawn this tall, and the pie column beside it), in pixels, for each size the user can pick. */
+export const BAND_SIZES = Object.freeze({ small: 72, medium: 96, large: 128 })
 
 // Line breaks become spaces; control characters, zero-width and bidirectional marks and markup characters are dropped.
 const LINE_BREAKS = new RegExp('[\\r\\n\\t\\u2028\\u2029]', 'g')
@@ -41,7 +48,10 @@ export function defaultPet(now = Date.now()) {
     name: '',
     character: DEFAULT_CHARACTER,
     colors: { body: null, accent: null },
-    prefs: { motion: 'auto', scope: 'session', line: false, band: true, bandSize: 'medium' },
+    prefs: { motion: 'auto', scope: 'session', line: false, band: true, bandSize: 'medium', sounds: { ...DEFAULT_SOUNDS }, volume: 'medium', mood: true },
+    seen: [], // one-time notices already shown
+    affection: { score: 100, day: '', at: 0 }, // how much the pet likes the user (1 to 100, shown as one to five hearts); see mood.js
+    milestones: null, // the milestones already celebrated; null until the first look at the statistics (what was reached before is not celebrated)
   }
 }
 
@@ -68,12 +78,22 @@ export function sanitizePet(raw, now = Date.now()) {
       body: isHex(migrated.colors?.body) ? migrated.colors.body.toLowerCase() : null,
       accent: isHex(migrated.colors?.accent) ? migrated.colors.accent.toLowerCase() : null,
     },
+    affection: {
+      score: Number.isFinite(migrated.affection?.score) ? Math.max(1, Math.min(100, Math.round(migrated.affection.score))) : 100,
+      day: /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(migrated.affection?.day ?? '') ? migrated.affection.day : '',
+      at: Number.isFinite(migrated.affection?.at) && migrated.affection.at > 0 ? Math.round(migrated.affection.at) : 0,
+    },
+    seen: Array.isArray(migrated.seen) ? [...new Set(migrated.seen.filter(id => typeof id === 'string' && id.length <= 24))].slice(0, 20) : [],
+    milestones: Array.isArray(migrated.milestones) ? [...new Set(migrated.milestones.filter(id => typeof id === 'string' && id.length <= 24))].slice(0, 80) : null,
     prefs: {
       motion: migrated.prefs?.motion === 'reduced' ? 'reduced' : 'auto',
       scope: migrated.prefs?.scope === 'all' ? 'all' : 'session',
       line: migrated.prefs?.line === true,
       band: migrated.prefs?.band !== false,
       bandSize: Object.hasOwn(BAND_SIZES, migrated.prefs?.bandSize) ? migrated.prefs.bandSize : 'medium',
+      mood: migrated.prefs?.mood !== false,
+      volume: VOLUMES.includes(migrated.prefs?.volume) ? migrated.prefs.volume : 'medium',
+      sounds: Object.fromEntries(SOUND_MOMENTS.map(moment => [moment, SOUNDS.includes(migrated.prefs?.sounds?.[moment]) ? migrated.prefs.sounds[moment] : DEFAULT_SOUNDS[moment]])),
     },
   }
   const repaired = JSON.stringify(pet) !== JSON.stringify({ ...raw, v: PET_SCHEMA })

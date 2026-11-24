@@ -112,17 +112,6 @@ function drawProp(c, a, prop) {
 }
 
 // ---- effects -------------------------------------------------------------------------------------------
-const BUBBLE_DOT = ['.M.', 'MWM', '.M.']
-function dots(c, a, n) {
-  const spots = [[a.cx + 8, a.top + 1, 1], [a.cx + 11, a.top - 2, 2], [a.cx + 14, a.top - 6, 3]]
-  for (let i = 0; i < Math.min(n, 3); i++) {
-    const [x, y, size] = spots[i]
-    if (size === 1) { c.set(x, y, R.METAL2); c.set(x + 1, y, R.METAL2) }
-    else if (size === 2) c.patch(x, y, ['.MM.', 'MWWM', 'MWWM', '.MM.'], map({ M: R.METAL2, W: R.WHITE }))
-    else c.patch(x, y, ['..MMMM..', '.MWWWWM.', 'MWMWMWWM', '.MWWWWM.', '..MMMM..'], map({ M: R.METAL2, W: R.WHITE }))
-  }
-}
-
 const GLYPH = {
   excl: ['.RRR.', '.RRR.', '..R..', '..R..', '..R..', '.....', '..R..'],
   quest: ['.BBB.', 'B...B', '....B', '..BB.', '..B..', '.....', '..B..'],
@@ -145,7 +134,6 @@ const CONFETTI = [R.RED, R.YEL, R.GRN, R.BLU, R.PINK]
 function fx(c, a, item) {
   const f = item.f ?? 0
   switch (item.id) {
-    case 'dots': return dots(c, a, item.n ?? 1)
     case 'excl': return symbol(c, a, 'excl', f)
     case 'quest': return symbol(c, a, 'quest', f)
     case 'sweat': c.patch(a.cx + 8, a.faceY - 3 + (f % 3), ['.B.', 'BBB', 'BWB', '.B.'], map({ B: R.BLU, W: R.WHITE })); return

@@ -10,6 +10,8 @@ import { dirname } from 'node:path'
 import { openStore } from './store.js'
 import { readHeadCommit } from './git.js'
 import { normalizeHook } from '../core/normalize.js'
+import { dayKey } from '../core/days.js'
+import { felt, judge } from '../core/mood.js'
 
 /**
  * @param {'claude' | 'codex'} agent
@@ -20,7 +22,12 @@ export function handleHook(agent, text, { store = openStore(), now = Date.now(),
   const payload = JSON.parse(String(text).replace(/^(?:﻿|ï»¿)+/, ''))
   const ev = normalizeHook(agent, payload, now)
   if (!ev) return { applied: false }
-  store.ensurePet(now)
+  const pet = store.ensurePet(now)
+  // How the user's message felt (see mood.js): the text is judged here and dropped; only the affection number is kept.
+  if (ev.kind === 'prompt' && pet.prefs.mood) {
+    const affection = felt(pet.affection, judge(payload.prompt), dayKey(now), now)
+    if (affection !== pet.affection) store.writePet({ ...pet, affection })
+  }
   store.applyEvent(ev)
   let commit
   if (ev.commit && ev.cwd) {

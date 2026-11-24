@@ -8,7 +8,7 @@ import { K, R, SPRITE_BASE, W } from './canvas.js'
 import { SPRITES } from './sprites.js'
 import { drawFace } from './faces.js'
 
-export const HEADROOM = 10
+const HEADROOM = 10
 const ALPHABET ='0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 /** @param {string} id a key of SPRITES @param {{ ground?: number, depth?: number }} [options] ground is the feet row in design units */

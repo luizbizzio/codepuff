@@ -84,12 +84,12 @@ export function judge(prompt) {
   return { insult, kind }
 }
 
-export const MAX_AFFECTION = 100
+const MAX_AFFECTION = 100
 /** What a message costs (in the score out of 100): abuse takes 15, harsh criticism nothing (it only stings). */
-export const HURT = { 1: 0, 2: 15 }
-export const THANKS = 4
+const HURT = { 1: 0, 2: 15 }
+const THANKS = 4
 /** What a day of not being insulted heals. */
-export const DAILY_HEAL = 10
+const DAILY_HEAL = 10
 
 /** One to five hearts for a score of 1 to 100. */
 export const heartsOf = score => Math.max(1, Math.min(5, Math.ceil(score / 20)))
@@ -105,7 +105,7 @@ export const afterDays = (score, days) => Math.min(MAX_AFFECTION, score + Math.m
 /** @typedef {{ score: number, day: string, at: number }} Affection  score 1 to 100; the day it was last settled (yyyy-mm-dd); when a message last changed it (ms) */
 
 /** The affection once time has passed: each whole day since it was settled gives some back. */
-export function healed(affection, today) {
+function healed(affection, today) {
   if (affection.day === today) return affection
   const days = affection.day ? Math.round((Date.parse(today) - Date.parse(affection.day)) / 86_400_000) : 0
   return { ...affection, score: afterDays(affection.score, days), day: today }

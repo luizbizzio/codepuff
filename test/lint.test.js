@@ -21,7 +21,7 @@ test('every Svg drawn interactively says how big it is', () => {
   for (const [name, text] of sources) {
     for (const [tag] of text.matchAll(/<Svg\b[^>]*\/>/g)) {
       if (!tag.includes('isInteractive')) continue
-      assert.ok(/width=\{|\.\.\.sizeOf\(/.test(tag), `${name}: an interactive Svg needs its width and height: ${tag.slice(0, 80)}`)
+      assert.ok(/width=\{|\.\.\.(?:sizeOf\(|\w+Size\b)/.test(tag), `${name}: an interactive Svg needs its width and height: ${tag.slice(0, 80)}`)
     }
   }
 })

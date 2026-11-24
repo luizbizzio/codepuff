@@ -9,7 +9,7 @@
 // under a per-session lock, so any number of Claude Code and Codex processes can run at once without
 // lost updates or torn files. Reading never needs a lock. Nothing in here talks to a network.
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { layout } from './paths.js'
 import { atomicWrite, createExclusive, withLock } from './fsx.js'

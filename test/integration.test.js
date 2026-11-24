@@ -7,7 +7,7 @@ import { openStore } from '../src/node/store.js'
 import { PLUGIN_HOOK_COMMAND, pluginHooksDocument } from '../src/node/install.js'
 import { aggregate } from '../src/core/aggregate.js'
 import { normalizeHook } from '../src/core/normalize.js'
-import { T0, tempDir } from './helpers.js'
+import { tempDir } from './helpers.js'
 
 const ROOT = join(import.meta.dirname, '..')
 const payload = JSON.stringify({ hook_event_name: 'UserPromptSubmit', session_id: 'plug-1', cwd: '/p/demo', turn_id: 't', prompt: 'x' })

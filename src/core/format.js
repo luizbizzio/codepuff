@@ -1,7 +1,15 @@
 // Turning statistics into the rows people read. One place decides what is shown, so the terminal, the web
 // view and the Claude pane never disagree, and "Unavailable" is applied in exactly one spot.
 
-export const UNAVAILABLE = 'Unavailable'
+const UNAVAILABLE = 'Unavailable'
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "2026-11-24" as "Nov 24" (empty for anything that is not a day key). */
+export function shortDay(key) {
+  const match = /^[0-9]{4}-([0-9]{2})-([0-9]{2})$/.exec(String(key))
+  return match && MONTHS[Number(match[1]) - 1] ? `${MONTHS[Number(match[1]) - 1]} ${Number(match[2])}` : ''
+}
 
 export function duration(ms) {
   if (!Number.isFinite(ms) || ms <= 0) return '—'
@@ -62,7 +70,7 @@ export function statRows(s) {
   ]
 }
 
-export const CATEGORY_LABELS = { read: 'Read', search: 'Search', edit: 'Edit', shell: 'Shell', web: 'Web', agent: 'Subagents', plan: 'Plan', mcp: 'MCP', other: 'Other' }
+const CATEGORY_LABELS = { read: 'Read', search: 'Search', edit: 'Edit', shell: 'Shell', web: 'Web', agent: 'Subagents', plan: 'Plan', mcp: 'MCP', other: 'Other' }
 
 export const AGENT_LABELS = { claude: 'Claude Code', codex: 'Codex', all: 'Combined' }
 
@@ -78,7 +86,9 @@ export function statTiles(s) {
     { id: 'tools', label: 'Tool calls', value: n(s.tools.total), note: settled ? `${Math.round((s.tools.ok / settled) * 100)}% succeeded` : '' },
     { id: 'files', label: 'Files changed', value: n(s.files), note: '' },
     { id: 'commits', label: 'Commits', value: n(s.git.commits), note: s.git.commits && s.git.withLines ? `+${n(s.git.added)} −${n(s.git.removed)}` : '' },
-    { id: 'tests', label: 'Tests passed', value: n(t.passed), note: t.run ? `of ${n(t.run)} run` : '' },
+    // The number of runs, and how they ended: a run whose result could not be read (a piped command hides its exit code) is
+    // "unconfirmed", not a pass and not a failure.
+    { id: 'tests', label: 'Test runs', value: n(t.run), note: t.run ? [`${n(t.passed)} passed`, t.failed ? `${n(t.failed)} failed` : '', t.unknown ? `${n(t.unknown)} unconfirmed` : ''].filter(Boolean).join(' · ') : '' },
     { id: 'time', label: 'Agent time', value: duration(s.activeMs), note: '' },
   ]
 }

@@ -16,7 +16,7 @@ const time = value => (Number.isFinite(value) && value > 0 && value < 8.64e15 ? 
 const text = (value, max) => (typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f<>]/g, '').slice(0, max) : '')
 
 /** Upgrades older record layouts. Version 1 is the first; this is where version 2's upgrade will go. */
-export function migrateRecord(raw) {
+function migrateRecord(raw) {
   return raw
 }
 

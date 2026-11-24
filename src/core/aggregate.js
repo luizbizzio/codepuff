@@ -11,7 +11,7 @@ import { CATEGORIES } from './classify.js'
 import { isActiveBucket } from './session.js'
 
 /** A session counts as active when it was heard from this recently and has not ended. */
-export const ACTIVE_WINDOW = 10 * 60_000
+const ACTIVE_WINDOW = 10 * 60_000
 
 export const emptyStats = () => ({
   sessions: { observed: 0, active: 0 },

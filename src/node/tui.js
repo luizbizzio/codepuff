@@ -164,7 +164,7 @@ export async function runTui(store, { tab: startTab = 0, host: wantedHost } = {}
   ]
   const currentPalette = () => PRESETS.find(p => (p.body ?? null) === (pet.colors.body ?? null) && (p.accent ?? null) === (pet.colors.accent ?? null))?.name ?? 'Custom'
   const cycleCharacter = d => save({ character: CHARACTERS[(CHARACTERS.indexOf(pet.character) + d + CHARACTERS.length) % CHARACTERS.length] })
-  const toggleMotion = () => save({ prefs: { motion: pet.prefs.motion === 'reduced' ? 'auto' : 'reduced' } })
+  const toggleMotion = () => save({ prefs: { motion: pet.prefs.motion === 'reduced' ? 'calm' : 'reduced' } })
   const cyclePalette = d => {
     const at = PRESETS.findIndex(p => (p.body ?? null) === (pet.colors.body ?? null) && (p.accent ?? null) === (pet.colors.accent ?? null))
     const next = PRESETS[(at + d + PRESETS.length) % PRESETS.length]

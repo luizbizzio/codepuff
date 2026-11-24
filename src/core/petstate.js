@@ -29,7 +29,7 @@ export const STATES = [
 const ACT_STATE = { read: 'reading', search: 'searching', edit: 'coding', run: 'running', git: 'git', test: 'testing', web: 'web', delegate: 'delegating', plan: 'planning', mcp: 'mcp', other: 'running', ask: 'permission' }
 
 /** How much a state deserves the single display slot when several sessions compete (higher wins). */
-export const RANK = Object.freeze({
+const RANK = Object.freeze({
   permission: 7, error: 6,
   thinking: 5, reading: 5, searching: 5, coding: 5, running: 5, git: 5, mcp: 5, testing: 5, web: 5, delegating: 5, planning: 5, investigating: 5,
   success: 4, finished: 3, waiting: 2, tired: 1, sad: 1, idle: 1, disconnected: 0,
@@ -96,7 +96,7 @@ export function stateOf(rec, now) {
 const rankOf = result => RANK[result.state] ?? 1
 
 /** The deterministic order used whenever several sessions compete for one pet. */
-export function byPriority(a, b) {
+function byPriority(a, b) {
   return rankOf(b) - rankOf(a) || b.last - a.last || (a.agent < b.agent ? -1 : a.agent > b.agent ? 1 : 0) || (a.session < b.session ? -1 : a.session > b.session ? 1 : 0)
 }
 

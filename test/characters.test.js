@@ -289,3 +289,60 @@ test('every character waits for you in its own way, and always with a happy face
   }
   assert.equal(seen.size, MASCOT_IDS.length, 'all different')
 })
+
+test('the ! badge of an error or a question stays put (it does not blink), and the pet sways only a little to the sides', () => {
+  for (const [state, id] of [['error', 'alert'], ['permission', 'excl']]) {
+    const frames = animation(state).frames
+    assert.ok(frames.every(f => f.pose.fx.some(item => item.id === id)), state + ': the badge is on in every frame')
+    assert.equal(new Set(frames.map(f => f.pose.fx.find(item => item.id === id).f)).size, 1, state + ': and it never changes')
+  }
+  const LIMIT = { error: 0.6, giggle: 0.45 }
+  for (const state of ['thinking', 'reading', 'searching', 'investigating', 'coding', 'running', 'git', 'mcp', 'testing', 'web', 'delegating', 'planning', 'idle', 'waiting', 'error', 'giggle']) {
+    for (const id of MASCOT_IDS) {
+      for (const { pose } of animation(state, { character: id }).frames) assert.ok(Math.abs(pose.shake ?? 0) <= (LIMIT[state] ?? 0.35), `${id}/${state} shakes ${pose.shake}`)
+    }
+  }
+  for (const id of ['fox', 'classic', 'bot', 'mage', 'aquatic']) assert.ok(partsOf(id)[0].swing <= 5, id + "'s part swings gently")
+})
+
+test('the task ring keeps a margin all round, so its edge is never cut off', async () => {
+  const { ringSvg } = await import('../src/core/render/pie.js')
+  for (const size of [40, 58, 76]) {
+    const svg = ringSvg({ ok: 891, failed: 39, size })
+    const r = Number(/<circle[^>]*r="([0-9.]+)"/.exec(svg)[1])
+    const stroke = Number(/stroke-width="([0-9.]+)"/.exec(svg)[1])
+    assert.ok(r + stroke / 2 <= size / 2 - 1.5, `${size}: the outer edge (${r + stroke / 2}) is inside the picture (${size / 2})`)
+  }
+})
+
+test('motion has three levels: full sways about twice as far as calm, and still does not move at all', async () => {
+  const { sanitizePet, defaultPet, MOTIONS } = await import('../src/core/settings.js')
+  const reach = svg => Math.max(...[...svg.matchAll(/translate\((-?[0-9.]+)px/g)].map(match => Math.abs(Number(match[1]))))
+  const calm = petSvg({ character: 'fox', state: 'running', motion: 'calm' })
+  const full = petSvg({ character: 'fox', state: 'running', motion: 'full' })
+  assert.ok(reach(full) > reach(calm) * 1.5, `full ${reach(full)} against calm ${reach(calm)}`)
+  assert.equal(petSvg({ character: 'fox', state: 'running' }), calm, 'calm is the default')
+  assert.ok(!petSvg({ character: 'fox', state: 'running', motion: 'full', reduced: true }).includes('@keyframes'), 'still is still, whatever the level')
+  assert.deepEqual([...MOTIONS], ['full', 'calm', 'reduced'])
+  assert.equal(defaultPet(T0).prefs.motion, 'calm')
+  assert.equal(sanitizePet({ ...defaultPet(T0), prefs: { motion: 'auto' } }, T0).pet.prefs.motion, 'calm', 'the old default, "auto", is calm')
+  assert.equal(sanitizePet({ ...defaultPet(T0), prefs: { motion: 'full' } }, T0).pet.prefs.motion, 'full')
+})
+
+test("Foxy's errors float a 404 over its head (only Foxy's), steady apart from a slow drift, with the ! badge still there", () => {
+  const frames = animation('error', { character: 'fox' }).frames
+  assert.ok(frames.every(f => f.pose.fx.some(item => item.id === 'e404')), '404 in every frame')
+  assert.ok(frames.every(f => f.pose.fx.some(item => item.id === 'alert')), 'and the ! with it')
+  assert.ok(frames.every(f => f.d >= 70))
+  assert.equal(frames.reduce((sum, f) => sum + f.d, 0), animation('error').frames.reduce((sum, f) => sum + f.d, 0), 'the same length as every other error')
+  for (const id of MASCOT_IDS.filter(name => name !== 'fox')) assert.ok(!animation('error', { character: id }).frames.some(f => f.pose.fx.some(item => item.id === 'e404')), id + ' has no 404')
+  // It is really drawn, above the head and inside the frame, and the band's tight crop keeps it.
+  const withIt = drawScene('fox', frames.at(-1).pose)
+  const without = drawScene('fox', animation('error').frames.at(-1).pose)
+  let extra = 0
+  for (let i = 0; i < withIt.px.length; i++) if (withIt.px[i] !== without.px[i]) extra++
+  assert.ok(extra > 60, 'the 404 adds pixels (' + extra + ')')
+  const band = bandBox('fox')
+  const top = (() => { for (let y = 0; y < withIt.h; y++) for (let x = 0; x < withIt.w; x++) if (withIt.px[y * withIt.w + x] && withIt.px[y * withIt.w + x] !== R.SHADOW) return y })()
+  assert.ok(band.y <= top, `the band crop starts at ${band.y}, the 404 at ${top}`)
+})

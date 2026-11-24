@@ -20,14 +20,14 @@ export function recolorTone(tone, base, target) {
 
 export const isHex = value => typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
 
-export function hexToRgb(hex) {
+function hexToRgb(hex) {
   const n = parseInt(hex.slice(1), 16)
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
 }
 
-export const rgbToHex = ([r, g, b]) => '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')
+const rgbToHex = ([r, g, b]) => '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')
 
-export function rgbToHsl([r, g, b]) {
+function rgbToHsl([r, g, b]) {
   r /= 255; g /= 255; b /= 255
   const max = Math.max(r, g, b)
   const min = Math.min(r, g, b)
@@ -42,7 +42,7 @@ export function rgbToHsl([r, g, b]) {
   return [h * 60, s, l]
 }
 
-export function hslToRgb([h, s, l]) {
+function hslToRgb([h, s, l]) {
   h = ((h % 360) + 360) % 360 / 360
   if (s === 0) return [l * 255, l * 255, l * 255]
   const q = l < 0.5 ? l * (1 + s) : l + s - l * s

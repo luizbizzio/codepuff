@@ -8,7 +8,7 @@
 import { aggregate, activity, petAge, series } from '../core/aggregate.js'
 import { heartsOf } from '../core/mood.js'
 import { addDays, dayKey } from '../core/days.js'
-import { AGENT_LABELS, ago, statBars, statRows, statTiles } from '../core/format.js'
+import { AGENT_LABELS, ago, shortDay, statBars, statRows, statTiles } from '../core/format.js'
 import { buildBackup, mergeRecords, parseBackup } from '../core/backup.js'
 import { sessionKey } from '../core/hash.js'
 import { GIT_SHOW_ARGS, parseShow } from '../core/gitparse.js'
@@ -24,6 +24,9 @@ import { createMoments } from './moments.js'
 import { RESET_TEXT, TIRED_AT, planWindows, resetsBetween, tiredOf } from './usage.js'
 
 export { AGENT_FILTERS, SCOPES, TIRED_AT }
+
+/** The earliest day any record of this agent (or of both) has numbers for. */
+const firstDay = (records, agent) => records.filter(r => agent === 'all' || r.agent === agent).flatMap(r => Object.keys(r.days ?? {})).sort()[0]
 
 const join = (...parts) => parts.join('/').replace(/\\/g, '/').replace(/([^:])\/{2,}/g, '$1/')
 const stamp = now => new Date(now).toISOString().replace(/[:.]/g, '-')
@@ -276,7 +279,7 @@ export function createController(io, { host = 'claude' } = {}) {
       // How this session's tasks went, as the agent reported them (every tool call's success or failure).
       const session = s.rec ? aggregate([s.rec], { now: at }).tools : { ok: 0, failed: 0 }
       return {
-        pet: { name: displayName(pet), isCustom: !!pet.name, character: pet.character, colors: pet.colors, motion: pet.prefs.motion, line: pet.prefs.line, band: pet.prefs.band, hearts: heartsOf(pet.affection.score), mood: pet.prefs.mood, sounds: pet.prefs.sounds, volume: pet.prefs.volume, bandSize: pet.prefs.bandSize, bandHeight: BAND_SIZES[pet.prefs.bandSize], createdAt: pet.createdAt },
+        pet: { name: displayName(pet), isCustom: !!pet.name, character: pet.character, colors: pet.colors, motion: pet.prefs.motion, line: pet.prefs.line, band: pet.prefs.band, hearts: heartsOf(pet.affection.score), heartScore: pet.affection.score, mood: pet.prefs.mood, sounds: pet.prefs.sounds, volume: pet.prefs.volume, bandSize: pet.prefs.bandSize, bandHeight: BAND_SIZES[pet.prefs.bandSize], createdAt: pet.createdAt },
         age, life: { current: life.current, longest: life.longest, last: life.last, days: life.total },
         me: mine,
         outcome: { ok: session.ok, failed: session.failed },
@@ -286,6 +289,8 @@ export function createController(io, { host = 'claude' } = {}) {
         otherCount: others.current.agent ? 1 + others.others.length : 0,
         today: { prompts: todayStats.prompts, tools: todayStats.tools.total, tests: todayStats.tests.run, passed: todayStats.tests.passed, commits: todayStats.git.commits },
         stats: { rows: statRows(stats), tiles: statTiles(stats), bars: statBars(stats), ok: stats.tools.ok, failed: stats.tools.failed },
+        // Which days these numbers cover, in a few words (the buttons already say "7 days" or "This session").
+        rangeLabel: scope === 'session' ? [s.rec?.pname, s.rec ? 'started ' + ago(s.rec.started, at) : 'nothing yet'].filter(Boolean).join(' · ') : scope === 'all' ? (firstDay(all, agent) ? 'since ' + shortDay(firstDay(all, agent)) : 'nothing recorded yet') : `${shortDay(range.since)} – ${shortDay(today)}`,
         host,
         platforms: host === 'codex' ? ['codex', 'claude', 'all'] : ['claude', 'codex', 'all'],
         periods,

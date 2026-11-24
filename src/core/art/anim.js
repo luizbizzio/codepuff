@@ -52,7 +52,7 @@ const PERSONALITY = {
   ],
   // A tidy little critter: shuffles its feet from side to side, then stands proud.
   claude: [
-    breathe(1200), breathe(160, { shake: 0.6 }), breathe(160, { shake: -0.6 }), breathe(160, { shake: 0.6 }), breathe(160, { shake: 0 }), breathe(1000, { sy: 1.04 }),
+    breathe(1200), breathe(160, { shake: 0.3 }), breathe(160, { shake: -0.3 }), breathe(160, { shake: 0.3 }), breathe(160, { shake: 0 }), breathe(1000, { sy: 1.04 }),
     breathe(110, { eyes: 'blink' }), breathe(800, { lookX: 1 }), breathe(800, { lookX: -1 }), breathe(1200, { sy: 1.04, mouth: 'smile' }),
   ],
   // Waves a hand now and then.
@@ -72,7 +72,7 @@ const WAITING = {
   aquatic: [happyWait(700, { dy: 0 }), happyWait(700, { dy: -1 }), happyWait(900, { dy: -1.5, eyes: 'happy', mouth: 'grin' }), happyWait(700, { dy: -0.5 }), happyWait(110, { eyes: 'blink' }), happyWait(900, { dy: 0, lookX: 1 })],
   classic: [happyWait(900), happyWait(200, { dy: -1.5, sy: 1.05, eyes: 'happy', mouth: 'grin' }), happyWait(160, { sy: 0.96 }), happyWait(900, { lookX: -1 }), happyWait(110, { eyes: 'blink' }), happyWait(1000, { sy: 1.04 })],
   alpha: [happyWait(900), happyWait(220, { hands: 'wave', eyes: 'happy', mouth: 'grin' }), happyWait(220, { hands: 'rest', eyes: 'happy' }), happyWait(220, { hands: 'wave', eyes: 'happy', mouth: 'grin' }), happyWait(220, { hands: 'rest' }), happyWait(1100, { sy: 1.04 }), happyWait(110, { eyes: 'blink' })],
-  claude: [happyWait(900), happyWait(160, { shake: 0.6 }), happyWait(160, { shake: -0.6 }), happyWait(160, { shake: 0.6 }), happyWait(160, { shake: 0 }), happyWait(1000, { sy: 1.04, eyes: 'happy', mouth: 'grin' }), happyWait(110, { eyes: 'blink' })],
+  claude: [happyWait(900), happyWait(160, { shake: 0.3 }), happyWait(160, { shake: -0.3 }), happyWait(160, { shake: 0.3 }), happyWait(160, { shake: 0 }), happyWait(1000, { sy: 1.04, eyes: 'happy', mouth: 'grin' }), happyWait(110, { eyes: 'blink' })],
 }
 
 const loops = {
@@ -98,7 +98,7 @@ const loops = {
 
   // The eyes sweep along a line of the book, drop to the next, and a page turns now and then.
   reading: () => {
-    const page = (d, f, lookX, extra = {}) => frame(d, { eyes: 'open', lookX, lookY: 1, mouth: 'flat', hands: 'hold', shake: lookX * 0.5, sy: 1.015, prop: { id: 'book', f }, ...extra })
+    const page = (d, f, lookX, extra = {}) => frame(d, { eyes: 'open', lookX, lookY: 1, mouth: 'flat', hands: 'hold', shake: lookX * 0.2, sy: 1.015, prop: { id: 'book', f }, ...extra })
     return {
       frames: [
         page(380, 0, -1), page(380, 0, 0), page(380, 0, 1), page(160, 1, 1), page(160, 2, 1),
@@ -109,12 +109,12 @@ const loops = {
   },
 
   searching: () => ({
-    frames: [0, 1, 2, 3].map(f => frame(450, { eyes: 'open', lookX: [0, 1, 1, 0][f], mouth: 'flat', hands: 'point', shake: [0, 0.8, 0.8, 0][f], sx: [1, 1.02, 1.02, 1][f], prop: { id: 'magnifier', f } })),
+    frames: [0, 1, 2, 3].map(f => frame(450, { eyes: 'open', lookX: [0, 1, 1, 0][f], mouth: 'flat', hands: 'point', shake: [0, 0.3, 0.3, 0][f], sx: [1, 1.01, 1.01, 1][f], prop: { id: 'magnifier', f } })),
     still: 1,
   }),
 
   investigating: () => ({
-    frames: [0, 1, 2, 3].map(f => frame(450, { eyes: 'open', brows: 'worry', lookX: [0, 1, 1, 0][f], mouth: 'flat', hands: 'point', shake: [0, 0.8, 0.8, 0][f], sy: 0.98, prop: { id: 'magnifier', f }, fx: [{ id: 'quest', f }] })),
+    frames: [0, 1, 2, 3].map(f => frame(450, { eyes: 'open', brows: 'worry', lookX: [0, 1, 1, 0][f], mouth: 'flat', hands: 'point', shake: [0, 0.3, 0.3, 0][f], sy: 0.98, prop: { id: 'magnifier', f }, fx: [{ id: 'quest', f }] })),
     still: 1,
   }),
 
@@ -124,7 +124,7 @@ const loops = {
   }),
 
   running: () => ({
-    frames: Array.from({ length: 8 }, (_, i) => frame(i % 2 ? 150 : 230, { eyes: 'focus', mouth: 'flat', lookY: 1, hands: i % 2 ? 'type1' : 'type0', led: 'think', shake: i % 2 ? 0.45 : -0.45, prop: { id: 'shell', f: i >> 1 }, fx: [{ id: 'spinner', f: i }] })),
+    frames: Array.from({ length: 8 }, (_, i) => frame(i % 2 ? 150 : 230, { eyes: 'focus', mouth: 'flat', lookY: 1, hands: i % 2 ? 'type1' : 'type0', led: 'think', shake: i % 2 ? 0.15 : -0.15, prop: { id: 'shell', f: i >> 1 }, fx: [{ id: 'spinner', f: i }] })),
     still: 1,
   }),
 
@@ -136,7 +136,7 @@ const loops = {
 
   // A connected tool (MCP): a plug slides into its socket and sparks.
   mcp: () => ({
-    frames: [0, 1, 2, 3].map(f => frame(f === 3 ? 600 : 380, { eyes: 'open', lookX: 1, mouth: f === 3 ? 'smile' : 'flat', shake: [0, 0.4, 0.8, 0][f], dy: f === 3 ? -1.4 : 0, sy: f === 3 ? 1.05 : 1, prop: { id: 'plug', f } })),
+    frames: [0, 1, 2, 3].map(f => frame(f === 3 ? 600 : 380, { eyes: 'open', lookX: 1, mouth: f === 3 ? 'smile' : 'flat', shake: [0, 0.15, 0.3, 0][f], dy: f === 3 ? -1.4 : 0, sy: f === 3 ? 1.05 : 1, prop: { id: 'plug', f } })),
     still: 3,
   }),
 
@@ -146,14 +146,14 @@ const loops = {
   }),
 
   web: () => ({
-    frames: [0, 1, 2, 3].map(f => frame(500, { eyes: 'open', lookX: 1, lookY: -1, mouth: 'cat', shake: [0, 0.6, 1, 0.6][f], prop: { id: 'globe', f } })),
+    frames: [0, 1, 2, 3].map(f => frame(500, { eyes: 'open', lookX: 1, lookY: -1, mouth: 'cat', shake: [0, 0.2, 0.35, 0.2][f], prop: { id: 'globe', f } })),
     still: 0,
   }),
 
   delegating: () => ({
     frames: [
-      frame(700, { lookX: -1, hands: 'up0', mouth: 'cat', shake: -0.6 }), frame(700, { lookX: 1, hands: 'up1', mouth: 'cat', shake: 0.6 }),
-      frame(700, { lookX: -1, hands: 'up1', mouth: 'cat', shake: -0.6 }), frame(700, { lookX: 1, hands: 'up0', mouth: 'cat', shake: 0.6 }),
+      frame(700, { lookX: -1, hands: 'up0', mouth: 'cat', shake: -0.25 }), frame(700, { lookX: 1, hands: 'up1', mouth: 'cat', shake: 0.25 }),
+      frame(700, { lookX: -1, hands: 'up1', mouth: 'cat', shake: -0.25 }), frame(700, { lookX: 1, hands: 'up0', mouth: 'cat', shake: 0.25 }),
     ],
     still: 0,
   }),
@@ -178,11 +178,12 @@ const loops = {
 
   error: () => ({
     frames: [
-      frame(70, { eyes: 'wide', brows: 'up', mouth: 'o', shake: -1, led: 'error', fx: [{ id: 'sweat', f: 0 }, { id: 'alert', f: 0 }] }),
-      frame(70, { eyes: 'wide', brows: 'up', mouth: 'o', shake: 1, led: 'error', fx: [{ id: 'sweat', f: 0 }, { id: 'alert', f: 1 }] }),
-      frame(70, { eyes: 'wide', brows: 'up', mouth: 'o', shake: -1, led: 'error', fx: [{ id: 'sweat', f: 1 }] }),
-      frame(70, { eyes: 'wide', brows: 'up', mouth: 'o', shake: 1, led: 'error', fx: [{ id: 'sweat', f: 1 }] }),
-      frame(900, { eyes: 'wide', brows: 'worry', mouth: 'frown', led: 'error', fx: [{ id: 'sweat', f: 2 }, { id: 'alert', f: 2 }] }),
+      // The ! badge stays put the whole time (it does not blink); only the pet flinches, and then settles.
+      frame(70, { eyes: 'wide', brows: 'up', mouth: 'o', shake: -0.6, led: 'error', fx: [{ id: 'sweat', f: 0 }, { id: 'alert', f: 0 }] }),
+      frame(70, { eyes: 'wide', brows: 'up', mouth: 'o', shake: 0.6, led: 'error', fx: [{ id: 'sweat', f: 0 }, { id: 'alert', f: 0 }] }),
+      frame(70, { eyes: 'wide', brows: 'up', mouth: 'o', shake: -0.4, led: 'error', fx: [{ id: 'sweat', f: 1 }, { id: 'alert', f: 0 }] }),
+      frame(70, { eyes: 'wide', brows: 'up', mouth: 'o', shake: 0.4, led: 'error', fx: [{ id: 'sweat', f: 1 }, { id: 'alert', f: 0 }] }),
+      frame(900, { eyes: 'wide', brows: 'worry', mouth: 'frown', led: 'error', fx: [{ id: 'sweat', f: 2 }, { id: 'alert', f: 0 }] }),
     ],
     still: 4,
   }),
@@ -216,8 +217,8 @@ const loops = {
 
   permission: () => ({
     frames: [
-      frame(380, { eyes: 'wide', brows: 'up', mouth: 'o', hands: 'up0', dy: -1, led: 'wait', fx: [{ id: 'excl', f: 0 }] }),
-      frame(380, { eyes: 'wide', brows: 'up', mouth: 'o', hands: 'up1', dy: 0, led: 'wait', fx: [{ id: 'excl', f: 1 }] }),
+      frame(380, { eyes: 'wide', brows: 'up', mouth: 'o', hands: 'up0', dy: -1, led: 'wait', fx: [{ id: 'excl', f: 0 }] }), // the ! stays put while the hands go up and down
+      frame(380, { eyes: 'wide', brows: 'up', mouth: 'o', hands: 'up1', dy: 0, led: 'wait', fx: [{ id: 'excl', f: 0 }] }),
     ],
     still: 0,
   }),
@@ -266,7 +267,7 @@ const loops = {
   giggle: () => ({
     frames: [
       frame(100, { eyes: 'open', mouth: 'smile', sy: 0.97 }),
-      ...Array.from({ length: 11 }, (_, f) => frame(100, { eyes: 'happy', mouth: 'grin', cheeks: 'bright', shake: f % 2 ? 0.8 : -0.8, dy: f % 2 ? -0.8 : 0, sy: f % 2 ? 1.02 : 0.98, hands: f % 3 === 0 ? 'wave' : 'rest', fx: [{ id: 'sparkles', f: f % 4 }, ...(f % 3 === 1 ? [{ id: 'heart', f: f % 5 }] : [])] })),
+      ...Array.from({ length: 11 }, (_, f) => frame(100, { eyes: 'happy', mouth: 'grin', cheeks: 'bright', shake: f % 2 ? 0.45 : -0.45, dy: f % 2 ? -0.8 : 0, sy: f % 2 ? 1.02 : 0.98, hands: f % 3 === 0 ? 'wave' : 'rest', fx: [{ id: 'sparkles', f: f % 4 }, ...(f % 3 === 1 ? [{ id: 'heart', f: f % 5 }] : [])] })),
       frame(100, { eyes: 'open', mouth: 'smile', cheeks: 'bright' }),
     ],
     still: 3,
@@ -286,6 +287,19 @@ const loops = {
   }),
 }
 
+/**
+ * Foxy's error: the usual flinch and the steady ! badge, and a "404" floating over its head the whole time (drifting a pixel up
+ * and down, slowly, while the pet holds its worried look; the long hold is cut into four so the 404 can drift).
+ */
+function foxError() {
+  const base = loops.error().frames
+  const with404 = (item, f, d = item.d) => ({ d, pose: { ...item.pose, fx: [...item.pose.fx, { id: 'e404', f }] } })
+  const frames = base.slice(0, -1).map(item => with404(item, 0))
+  const hold = base.at(-1)
+  ;[0, 1, 2, 3].forEach(f => frames.push(with404(hold, f, hold.d / 4)))
+  return { frames, still: frames.length - 1 }
+}
+
 /** One-shot reactions to the user (a pat; patting again and again escalates). */
 export const REACTIONS = ['petted', 'giggle', 'delighted', 'hurt']
 
@@ -299,10 +313,12 @@ export function animation(state, { helpers = 0, character } = {}) {
   // At rest each character has its own manner (see PERSONALITY); every other state is the same for all.
   const table = state === 'idle' ? PERSONALITY : state === 'waiting' ? WAITING : undefined
   const own = table && Object.hasOwn(table, character) ? table[character] : undefined
-  const key = state + ':' + helpers + (own ? ':' + character : '')
+  // Foxy's errors also float a "404" over its head.
+  const special = state === 'error' && character === 'fox'
+  const key = state + ':' + helpers + (own || special ? ':' + character : '')
   const known = cache.get(key)
   if (known) return known
-  const { frames, still } = own ? { frames: own, still: 0 } : (Object.hasOwn(loops, state) ? loops[state] : loops.idle)()
+  const { frames, still } = special ? foxError() : own ? { frames: own, still: 0 } : (Object.hasOwn(loops, state) ? loops[state] : loops.idle)()
   const count = Math.max(0, Math.min(3, helpers | 0))
   const out = {
     state,

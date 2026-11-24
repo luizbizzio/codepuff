@@ -17,7 +17,9 @@ const esc = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 export function ringSvg({ ok, failed, size = 56, title }) {
   const total = ok + failed
   const stroke = Math.max(4, Math.round(size * 0.17))
-  const r = (size - stroke) / 2
+  // A margin of two pixels all round: the outer edge of the stroke would otherwise touch the edge of the picture and be clipped.
+  const margin = 2
+  const r = (size - stroke) / 2 - margin
   const c = size / 2
   const circumference = 2 * Math.PI * r
   const ring = (color, share) => `<circle cx="${n(c)}" cy="${n(c)}" r="${n(r)}" fill="none" stroke="${color}" stroke-width="${stroke}"${share < 1 ? ` stroke-dasharray="${n(circumference * share)} ${n(circumference)}" transform="rotate(-90 ${n(c)} ${n(c)})"` : ''}/>`

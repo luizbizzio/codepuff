@@ -1,6 +1,6 @@
 // The `codepuff` command. Everything that is not the hot-path hook lives here.
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { openStore } from './store.js'
@@ -10,10 +10,10 @@ import { addDays, dayKey } from '../core/days.js'
 import { AGENT_LABELS, ago, statRows } from '../core/format.js'
 import { focus } from '../core/petstate.js'
 import { PRESETS, isHex } from '../core/color.js'
-import { BAND_SIZES, CHARACTERS, SOUNDS, SOUND_MOMENTS, VOLUMES, cleanName, displayName, NAME_MAX } from '../core/settings.js'
+import { BAND_SIZES, CHARACTERS, MOTIONS, SOUNDS, SOUND_MOMENTS, VOLUMES, cleanName, displayName, NAME_MAX } from '../core/settings.js'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
-export const VERSION = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8')).version
+const VERSION = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8')).version
 
 function parse(args) {
   const out = { _: [], flags: {} }
@@ -47,7 +47,7 @@ Usage: codepuff <command>
   set band <on|off|small|medium|large>   the compact band above the Claude Code prompt, and its size
   set body <#rrggbb|default>  set accent <#rrggbb|default>
   set palette <id>           one of: ${PRESETS.map(p => p.id).join(', ')}
-  set motion <auto|reduced>
+  set motion <full|calm|reduced>   how much the pet moves (calm is the default)
   set restore                restore the default appearance
   data where | export [file] | import <file> [--replace] [--pet]
   data reset stats|pet|appearance --yes | data delete --yes
@@ -186,8 +186,9 @@ function set(store, [key, ...values]) {
       break
     }
     case 'motion':
-      if (!['auto', 'reduced'].includes(value)) return fail('Motion: auto or reduced.')
-      pet.prefs.motion = value
+      { const level = { auto: 'calm', off: 'reduced' }[value] ?? value
+        if (!MOTIONS.includes(level)) return fail('Motion: full, calm or reduced.')
+        pet.prefs.motion = level }
       break
     case 'restore': store.resetAppearance(); return out('Appearance restored. Your pet keeps its birthday and statistics.')
     default: return fail('Usage: codepuff set name|character|sound|volume|mood|band|body|accent|palette|motion <value>, or: codepuff set restore')

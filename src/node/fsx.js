@@ -1,11 +1,11 @@
 // File-system primitives for concurrent processes: atomic replace and a directory lock.
 
-import { mkdirSync, renameSync, rmSync, rmdirSync, statSync, writeFileSync, openSync, closeSync, writeSync, fsyncSync, unlinkSync } from 'node:fs'
+import { mkdirSync, renameSync, rmSync, rmdirSync, statSync, openSync, closeSync, writeSync, fsyncSync, unlinkSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { randomBytes } from 'node:crypto'
 
 const sleeper = new Int32Array(new SharedArrayBuffer(4))
-export const sleepSync = ms => Atomics.wait(sleeper, 0, 0, ms)
+const sleepSync = ms => Atomics.wait(sleeper, 0, 0, ms)
 
 /** Writes a file so a reader sees either the old content or the new content, never half of it. */
 export function atomicWrite(path, text) {

@@ -45,5 +45,9 @@
     "mascot",
     "hooks",
     "statistics"
-  ]
+  ],
+  "homepage": "https://github.com/luizbizzio/codepuff#readme",
+  "bugs": {
+    "url": "https://github.com/luizbizzio/codepuff/issues"
+  }
 }

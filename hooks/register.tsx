@@ -241,12 +241,12 @@ export const register: Register = on => {
         animate((e as any).requestId, m.pet.character, m.pet.colors, m.me.state, helpers, reduced, Math.max(12, columns))
       }
     } else if (Svg) {
-      const svg = petSvg({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers, scale: isWidget ? 2.2 : 2.8, reduced, hover: true })
+      const svg = petSvg({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers, scale: isWidget ? 2.2 : 2.8, reduced, motion: m.pet.motion, hover: true })
       picture = <Svg source={svg} alt={`${m.pet.name}: ${m.me.label}`} isInteractive {...sizeOf(svg)} />
     }
 
     const els = { Box, Text, Button, Input, Svg }
-    const head = renderHead(els, m, isWidget)
+    const head = renderHead(els, m, isWidget, surface)
     if (isWidget) return <Box flexDirection="column" alignItems="center">{picture}{head}</Box>
 
     const tabs = renderTabs(els, m, ctl)

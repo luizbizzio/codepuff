@@ -8,11 +8,11 @@ import { STAND } from './scene.js'
 import { SPRITES } from './sprites.js'
 
 const PARTS = {
-  fox: [{ name: 'tail', rect: [0, 22, 9, 42], pivot: [10, 34], swing: 3.5 }],
-  classic: [{ name: 'curl', rect: [25, 0, 36, 6], pivot: [30, 7], swing: 6 }],
-  bot: [{ name: 'antenna', rect: [21, 0, 31, 10], pivot: [22, 11], swing: 6 }],
-  mage: [{ name: 'star', rect: [38, 6, 48, 17], pivot: [43, 12], swing: 8 }],
-  aquatic: [{ name: 'fin', rect: [42, 11, 55, 32], pivot: [42, 22], swing: 3.5 }],
+  fox: [{ name: 'tail', rect: [0, 22, 9, 42], pivot: [10, 34], swing: 2 }],
+  classic: [{ name: 'curl', rect: [25, 0, 36, 6], pivot: [30, 7], swing: 3.5 }],
+  bot: [{ name: 'antenna', rect: [21, 0, 31, 10], pivot: [22, 11], swing: 3.5 }],
+  mage: [{ name: 'star', rect: [38, 6, 48, 17], pivot: [43, 12], swing: 5 }],
+  aquatic: [{ name: 'fin', rect: [42, 11, 55, 32], pivot: [42, 22], swing: 2 }],
 }
 
 /** The parts of a character in scene pixels (the same coordinates as the canvas), or an empty list. */

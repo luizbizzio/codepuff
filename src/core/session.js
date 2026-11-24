@@ -62,6 +62,25 @@ export function newRecord(ev) {
 
 const bump = (bucket, key, by = 1) => { bucket[key] = (bucket[key] ?? 0) + by }
 
+/** How the pet's activity of a tool call is counted in statistics (the activity is finer than the category). */
+const CATEGORY_OF = { read: 'read', search: 'search', edit: 'edit', run: 'shell', test: 'shell', git: 'shell', web: 'web', delegate: 'agent', plan: 'plan', mcp: 'mcp', ask: 'other', other: 'other' }
+
+/**
+ * A tool call whose completion never came. Codex 0.171 (checked against the real host, see docs/STATUS.md) delivers
+ * `PreToolUse` but no `PostToolUse`, so for Codex the call is counted when the turn ends (or when it is pushed out of the
+ * in-flight list), with an unknown outcome: the call is a fact, how it went is not known and is never guessed. A host that does
+ * send the completion removes the call from the list first, so nothing is counted twice.
+ */
+function countUnfinished(rec, bucket, tool) {
+  if (rec.agent !== 'codex' || !tool?.i || rec.seen.includes(tool.i)) return
+  rec.seen.push(tool.i)
+  if (rec.seen.length > LIMITS.seen) rec.seen.shift()
+  bump(bucket, 'tl')
+  bucket.c ??= {}
+  bump(bucket.c, CATEGORY_OF[tool.a] ?? 'other')
+  bump(bucket, 'un')
+}
+
 /**
  * Applies one event to a record. Mutates and returns the record.
  * Events are applied at most once by their callers; a duplicate *tool completion* is also ignored here,
@@ -114,7 +133,7 @@ export function reduce(rec, ev) {
       const isAsk = ev.act === 'ask'
       live.tools = live.tools.filter(tool => tool.i !== ev.id)
       live.tools.push({ i: ev.id ?? '', a: ev.act, t: at })
-      if (live.tools.length > LIMITS.inflight) live.tools.shift()
+      if (live.tools.length > LIMITS.inflight) countUnfinished(rec, bucket, live.tools.shift())
       if (!live.run) Object.assign(live, { run: 1, t0: at, te: 0 })
       live.think = 0
       // A tool starting means any approval was given. Asking the user a question is itself a wait.
@@ -196,6 +215,7 @@ export function reduce(rec, ev) {
     case 'turn_end':
       if (ev.reason === 'done') bump(bucket, 'tc')
       else bump(bucket, 'tx')
+      for (const tool of live.tools) countUnfinished(rec, bucket, tool)
       Object.assign(live, { run: 0, te: at, think: 0, perm: 0, pk: '', tools: [] })
       break
 

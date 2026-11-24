@@ -1,13 +1,13 @@
-# Status of CodePuff 0.1.0 (MVP)
+# Status of CodePuff 0.1.0 (preview)
 
-A functional MVP, **not a production release**. No GitHub release or tag has been created. This page says exactly
+A working preview, **not a production release**. No GitHub release or tag has been created. This page says exactly
 what was checked, where, and what was not.
 
 ## Verified
 
 | Area | How | Result |
 | --- | --- | --- |
-| Engine, statistics, pet states, storage, CLI, installer | `npm test`: 184 tests, no dependencies (the mod has 6 more, run by `claude plugin test`) | pass |
+| Engine, statistics, pet states, storage, CLI, installer | `npm test`: 192 tests, no dependencies (the mod has 6 more, run by `claude plugin test`) | pass |
 | Eight characters, hi-res pixel art | Tests render every character through 10 states with all subagent helpers, check detail (tones, pixel counts), faces, recoloring, SVG size under the host's limit, narrow-terminal fitting; and contact sheets were looked at | pass |
 | Robustness | `npm run fuzz` (scripts/fuzz.mjs): 30,000 random hook payloads, 30,000 random prompts through the insult judge (plus a corpus of 54 realistic prompts, checked by hand), 20,000 random saved files, a 20,000-step stream of events, commands and settings through the controller, and 3,000 odd picture requests; and all 632 pictures the pet can draw parsed as strict XML in Chrome (scripts are in the scratch notes, not the repository) | no failures after the fixes |
 | Concurrent writers | 6 OS processes x 40 events on one session; 4 processes across sessions and agents | no lost update, no temp files left |
@@ -17,8 +17,8 @@ what was checked, where, and what was not.
 | **Claude Code (static)** | `claude plugin validate .` on Claude Code 2.1.330 | pass |
 | **Claude Code (engine)** | `claude plugin test .` on 2.1.330: the mod raises the host's real `classic.*` events, persists through a fake host file system, mounts the pane **and the compact band above the prompt** on the terminal and desktop surfaces, presses tabs/buttons, submits the name field | 4 of 4 pass |
 | **Claude Code (live session)** | An earlier build of the mod, copied into this desktop session's dev-mods folder, was loaded by the host (2.1.330) and wrote `pet.json` and this session's record in `~/.codepuff` (session id, project, a prompt, a running turn, a tool in flight, the **local** calendar day) | live hook events, `$.env`, `$.fs`, `$.session.id()` and the sandbox's time zone work |
-| **Codex (real host)** | One real `codex exec` (Codex CLI 0.171.0-alpha.13), ephemeral, temp project, hooks injected for that run only | the host delivered `SessionStart`, `UserPromptSubmit`, `PreModelRequest`, `PostModelRequest`, `SessionEnd`; payload fields matched the documented schema; CodePuff's command ran in Codex's environment and recorded a session; **`async: true` hooks were accepted and run** |
-| Codex model failure | In that run the model request failed (the account's usage limit): the pet shows *The model request failed*; the error text is not stored | pass |
+| **Codex (real host)** | `node scripts/live-codex.mjs` against the real Codex (CLI 0.171.0-alpha.13.2, the desktop app's own binary), three runs, ephemeral, temp project, hooks injected for the run only; one run asked for `apply_patch` and a shell command, the others for two shell commands | the host delivered `SessionStart`, `UserPromptSubmit`, `PreModelRequest`, `PostModelRequest`, `PreToolUse` (with `tool_name: "Bash"`, `tool_input.command`, `tool_use_id`), `Stop`, `SessionEnd`; CodePuff recorded the prompt, the turn and the tool calls. **It never delivered `PostToolUse`**, for a shell command or for `apply_patch` (see below) |
+| Codex model failure | In an earlier run the model request failed (the account's usage limit): the pet shows *The model request failed*; the error text is not stored | pass |
 | Codex plugin hook command | The exact command in `codex/hooks.json` run through `cmd.exe`, PowerShell and a POSIX shell with only `PLUGIN_ROOT` set; also with a missing folder (answers `{}`, exit 0) | pass |
 | Codex installer | Merge/uninstall against temp `hooks.json` files: keeps the user's hooks, backs up, idempotent, refuses invalid JSON, uninstall restores the original | pass |
 | Terminal app | The rewritten app (four views, hi-res pet shrunk to the pane) was started in a real terminal (Windows PowerShell, the app's Terminal panel) and drew the Puff Mage with its label, numbers and key help. The earlier version reacted live to real hook payloads (*No agent connected*, *Working on a response*, *Running tests*) | renders; live reaction seen on the earlier version |
@@ -26,21 +26,24 @@ what was checked, where, and what was not.
 
 ## Not verified
 
-* **Sounds, toasts and tooltips in the live window.** `$.audio.play({ asset })` is documented to play through `afplay` on macOS and nothing on Windows, so on Windows the clip is played by PowerShell's `System.Media.SoundPlayer` (checked to run, not heard). Whether the sound is audible in the desktop app, and whether `$.ui.toast` and the SVG `<title>` tooltips show, has not been seen. The cues themselves (when the agent asks, when a turn ends well) and the milestones are tested. The plan-reset sounds read the limits from `$.session.usage()` (a window that reset shows a later reset time or a much lower share used); they are tested with made-up readings, not with a real reset.
-* **How the pane and the compact band look in a live Claude Code window.** The engine tests mount the same drawings on
-  both surfaces, but nobody has yet looked at the drawn band above the prompt or the widget in the desktop window, in
-  the Svg hover hop included. The live check above was of an earlier build of the mod.
+* **Toasts and tooltips in the live window.** The sounds were confirmed audible by the owner on the Windows desktop app (played through PowerShell's `System.Media.SoundPlayer`). The toasts and the SVG `<title>` tooltips (on the pet, the ring, the hearts in the pane, the chart bars) have not been confirmed. The plan-reset sounds read the limits from `$.session.usage()` (a window that reset shows a later reset time or a much lower share used); they are tested with made-up readings, not with a real reset.
+* **How the mod looks in a live Claude Code window.** The owner ran builds of the mod in the Claude Code desktop app through the
+  dev-mods folder and sent screenshots of the compact band (pet, status block, ring, hearts) and of the Statistics page, and
+  fixed what they showed; every later change to these was checked by tests and in Chrome, not seen again in the window. What
+  nobody has confirmed in the window: the hover hop, the tooltips, the toasts, and the sounds. Installing the mod through the
+  marketplace (`/plugin install codepuff@codepuff`) has not been tried: every live run was a copy in the dev-mods folder.
 * **Keyboard use of the new terminal app** (Customize arrows, name entry, import, confirmations): the key handling was
   not driven by a real keyboard in this build's checks; only its first screen was read.
-* **Codex tool events in a live Codex run** (`PreToolUse`, `PostToolUse`, `Stop`, `PermissionRequest`, subagents):
-  the account hit its usage limit, so no tool ran. Their payloads follow the published schema (`tool_input`,
-  `tool_response` are untyped there); the exit-code reader handles several shapes and answers *unknown* otherwise.
-  Run `node scripts/live-codex.mjs` when you have quota; it prints the real payloads it received.
+* **Codex tool completions.** In the real Codex checked (0.171.0-alpha.13.2), `PreToolUse` arrives for every tool call but `PostToolUse` never does, so
+  CodePuff cannot know how a Codex tool call ended. It counts each call when the turn ends, with an *unknown* outcome (so tool calls, and the
+  categories, are right; succeeded/failed, test results and commits are not available for Codex, and the pet shows the tool while it runs but
+  has no success or failure to celebrate). If a later Codex sends `PostToolUse`, the real outcome is used and nothing is counted twice
+  (tested). `PermissionRequest` and subagent events were not triggered in these runs.
 * **Installing the Codex plugin bundle through Codex** (`codex plugin marketplace add`): not run, because it edits the
   user's Codex configuration. `codepuff install codex` (user `hooks.json`) is the checked path. Either way Codex asks
   you to trust the hooks first; that step is manual by design.
 * `codepuff install claude` through the `claude` CLI.
-* macOS and Linux (CI is configured but has not run). Windows 11 with Node 26 is the only tested environment.
+* macOS and Linux run only in CI (the test suite on Node 20 and 22, passing on all three systems); the mod itself was only ever run on Windows 11 (Node 26 locally). Nobody has run the mod or the sounds on macOS or Linux.
 * Terminals without truecolor or half-block characters, and a screen reader.
 * The six sprite characters are the reference sheets' artwork shrunk to pixel art and checked by eye on close-ups and
   contact sheets (several states); the faces are redrawn by the engine (so every expression exists), so

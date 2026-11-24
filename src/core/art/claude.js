@@ -13,7 +13,7 @@ const FRONT = Object.freeze([R.OUT, R.BASE, R.BASE, R.BASE, R.BASE])
 const TOPFACE = Object.freeze([R.OUT, R.LIGHT, R.LIGHT, R.LIGHT, R.LIGHT])
 const SIDEFACE = Object.freeze([R.OUT, R.SHADE, R.SHADE, R.SHADE, R.SHADE])
 
-export function drawClaude(c, pose) {
+function drawClaude(c, pose) {
   const tf = transform(pose, [18, 24])
   const d = 3 // depth in design units
   const key = ['claude', pose.dy ?? 0, pose.sx ?? 1, pose.sy ?? 1, pose.shake ?? 0].join('|')

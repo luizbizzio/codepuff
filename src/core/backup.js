@@ -4,8 +4,8 @@
 import { sanitizePet } from './settings.js'
 import { sanitizeRecord } from './records.js'
 
-export const BACKUP_FORMAT = 'codepuff-backup'
-export const BACKUP_VERSION = 1
+const BACKUP_FORMAT = 'codepuff-backup'
+const BACKUP_VERSION = 1
 const MAX_RECORDS = 50_000
 
 export function buildBackup(pet, records, now = Date.now()) {

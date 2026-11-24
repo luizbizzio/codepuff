@@ -1,7 +1,7 @@
 // Measures what CodePuff costs. Every number printed here is measured on the machine that runs it; nothing is estimated.
 // Usage: node scripts/bench.mjs [--json]
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { cpus, tmpdir, totalmem } from 'node:os'
 import { join } from 'node:path'
 import { performance } from 'node:perf_hooks'

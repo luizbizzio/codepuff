@@ -24,7 +24,7 @@ export const STAGE = Object.freeze({ x: 0, y: 0, w: 72, h: 68 })
 
 const f1 = n => String(Math.round(n * 10) / 10)
 const bandBoxes = new Map()
-const ESSENTIAL = new Set(['thought', 'excl', 'alert', 'spinner', 'sweat'])
+const ESSENTIAL = new Set(['e404', 'thought', 'excl', 'alert', 'spinner', 'sweat'])
 
 /**
  * The tight box around one character for the compact band: everything it ever draws (body, what it holds, effects) with
@@ -124,7 +124,7 @@ export function toCells(canvas, palette, box = { x: 0, y: 0, w: canvas.w, h: can
 }
 
 /** The smallest shrink factor (1 to 6) at which a picture  pixels wide fits  terminal columns. */
-export const fitFactor = (width, columns, height = 0, rows = Infinity) => [1, 1.5, 2, 3, 4, 5, 6].find(f => Math.ceil(width / f) <= columns && Math.ceil(Math.ceil(height / f) / 2) <= rows) ?? 6
+const fitFactor = (width, columns, height = 0, rows = Infinity) => [1, 1.5, 2, 3, 4, 5, 6].find(f => Math.ceil(width / f) <= columns && Math.ceil(Math.ceil(height / f) / 2) <= rows) ?? 6
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 /** Standard padded base64 (no dependency on btoa or Buffer, so it runs inside a host's module sandbox). */
@@ -205,7 +205,9 @@ const rectsMarkup = (list, palette) => {
  * pose to pose, so motion is smooth and the picture stays small.
  * @param {{ character: string, colors?: { body?: string | null, accent?: string | null }, state: string, helpers?: number, scale?: number, reduced?: boolean, background?: string, crop?: 'band', height?: number, hover?: boolean }} options
  */
-function buildSvg({ character, colors = {}, state, helpers = 0, scale = 4, reduced = false, background, crop, height, hover = false, title }) {
+function buildSvg({ character, colors = {}, state, helpers = 0, scale = 4, reduced = false, motion = 'calm', background, crop, height, hover = false, title }) {
+  // Full motion sways about twice as far to the sides as calm does.
+  const energy = motion === 'full' ? 1.8 : 1
   const anim = animation(state, { helpers, character })
   const palette = buildPalette(character, colors ?? {}, { gray: anim.gray ? 0.8 : 0 })
   const box = crop === 'band' ? bandBox(character, helpers > 0) : STAGE
@@ -281,7 +283,7 @@ function buildSvg({ character, colors = {}, state, helpers = 0, scale = 4, reduc
   const ox = f1(W / 2 - box.x)
   const oy = f1(STAND - box.y)
   const round = (n, p) => Math.round(n * p) / p
-  const at = pose => ({ x: round((pose.shake ?? 0) * K, 100), y: round((pose.dy ?? 0) * K, 100), sx: round(pose.sx ?? 1, 1000), sy: round(pose.sy ?? 1, 1000) })
+  const at = pose => ({ x: round((pose.shake ?? 0) * K * energy, 100), y: round((pose.dy ?? 0) * K, 100), sx: round(pose.sx ?? 1, 1000), sy: round(pose.sy ?? 1, 1000) })
   const css3 = p => `translate(${p.x}px,${p.y}px) scale(${p.sx},${p.sy})`
   const attr3 = p => (p.x || p.y || p.sx !== 1 || p.sy !== 1 ? ` transform="translate(${p.x} ${p.y}) translate(${ox} ${oy}) scale(${p.sx} ${p.sy}) translate(-${ox} -${oy})"` : '')
   const moves = anim.frames.map(frame => at(frame.pose))
@@ -301,7 +303,7 @@ function buildSvg({ character, colors = {}, state, helpers = 0, scale = 4, reduc
   const partsCss = swinging && parts.length
     ? `@media (prefers-reduced-motion:no-preference){.pt{transform-box:view-box;animation-duration:${lively ? 0.45 : 3.2}s;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}` +
       parts.map((part, n) => `.pt${n}{transform-origin:${f1(part.pivot[0] - box.x)}px ${f1(part.pivot[1] - box.y)}px;animation-name:pt${n};animation-delay:-${n * 0.7}s}`).join('') + '}' +
-      parts.map((part, n) => `@keyframes pt${n}{from{transform:rotate(${-part.swing * (lively ? 1.8 : 1)}deg)}to{transform:rotate(${part.swing * (lively ? 1.8 : 1)}deg)}}`).join('')
+      parts.map((part, n) => `@keyframes pt${n}{from{transform:rotate(${-part.swing * energy * (lively ? 1.5 : 1)}deg)}to{transform:rotate(${part.swing * energy * (lively ? 1.5 : 1)}deg)}}`).join('')
     : ''
 
   // Under the pointer (where the host draws the picture interactively) the pet hops, squashing and stretching on the way.
@@ -325,7 +327,7 @@ const svgCache = new Map()
 
 export function petSvg(options) {
   // Building a picture draws every frame of the animation, so the same request is answered from memory.
-  const key = JSON.stringify([options.character, options.colors?.body, options.colors?.accent, options.state, options.helpers, options.scale, options.reduced, options.background, options.crop, options.height, options.hover, options.title])
+  const key = JSON.stringify([options.character, options.colors?.body, options.colors?.accent, options.state, options.helpers, options.scale, options.reduced, options.motion, options.background, options.crop, options.height, options.hover, options.title])
   const known = svgCache.get(key)
   if (known) return known
   const svg = buildSvg(options)

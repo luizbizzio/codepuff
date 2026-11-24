@@ -9,7 +9,7 @@ import { AGENT_LABELS, duration } from '../src/core/format.js'
 // @ts-ignore
 import { ringSvg } from '../src/core/render/pie.js'
 // @ts-ignore
-import { activitySvg } from '../src/core/render/charts.js'
+import { activitySvg, heartsSvg } from '../src/core/render/charts.js'
 // @ts-ignore
 import { SOUNDS, VOLUMES } from '../src/core/settings.js'
 // @ts-ignore
@@ -35,13 +35,19 @@ const MOMENTS: [string, string, string][] = [
 type Els = { Box: any; Text: any; Button?: any; Svg?: any; Input?: any }
 const cap = (word: string) => word.charAt(0).toUpperCase() + word.slice(1)
 
-/** One to five hearts: how much the pet likes the user (filled ones red, the rest outlined). */
-export const heartsRow = ({ Box, Text }: Els, n: number) => (
-  <Box flexDirection="row">
-    <Text color="#f85149">{'♥'.repeat(n)}</Text>
-    <Text dimColor>{'♡'.repeat(5 - n)}</Text>
-  </Box>
-)
+/** One to five hearts: how much the pet likes the user (filled ones red, the rest outlined). Where the window draws pictures the
+ *  hearts say what they mean when the pointer rests on them; in a terminal they are characters. */
+export function heartsRow({ Box, Text, Svg }: Els, m: any, surface: string, tooltip = true) {
+  const n: number = m.pet.hearts
+  const note = `${n} of 5 hearts (${m.pet.heartScore} out of 100). Abuse aimed at the assistant costs 15, thanks give back 4, and each day without it heals 10. Harsh criticism of the work costs nothing. Your messages are judged and never stored.`
+  if (tooltip && surface !== 'terminal' && Svg) return <Svg source={heartsSvg(n, { title: note })} width={84} height={15} isInteractive alt={`${n} of 5 hearts`} />
+  return (
+    <Box flexDirection="row">
+      <Text color="#f85149">{'♥'.repeat(n)}</Text>
+      <Text dimColor>{'♡'.repeat(5 - n)}</Text>
+    </Box>
+  )
+}
 
 /** The color of the dot and the outline of the status block: green when things went well, amber when it needs you or is worn out,
  *  red when something failed, blue while it works, grey when there is nothing going on. */
@@ -81,7 +87,7 @@ export function renderBand(els: Els, m: any, surface: string, onPat: () => void)
   const size: number = m.pet.bandHeight
   const ringSize = Math.round(size * 0.6)
   const drawn = surface !== 'terminal' && Svg
-  const petPicture = drawn ? petSvg({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers: m.me.helpers, height: size, reduced, crop: 'band', hover: true, title: `${m.pet.name}: ${m.me.label}` }) : ''
+  const petPicture = drawn ? petSvg({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers: m.me.helpers, height: size, reduced, motion: m.pet.motion, crop: 'band', hover: true, title: `${m.pet.name}: ${m.me.label}` }) : ''
   const face = drawn
     ? <Svg source={petPicture} alt={`${m.pet.name}: ${m.me.label}`} isInteractive {...sizeOf(petPicture)} />
     : <Text color={COLORS[m.me.state] ?? undefined}>{GLYPH[m.me.state] ?? 'o_o'}</Text>
@@ -103,7 +109,7 @@ export function renderBand(els: Els, m: any, surface: string, onPat: () => void)
       <Box flexDirection="column" alignItems="center" gap={1}>
         <Box flexDirection="row" gap={2} justifyContent="center">
           <Text dimColor>{`🔥 ${days} day${days === 1 ? '' : 's'}  ·  💬 ${m.sessionPrompts} prompt${m.sessionPrompts === 1 ? '' : 's'}`}</Text>
-          {m.pet.mood ? heartsRow(els, m.pet.hearts) : null}
+          {m.pet.mood ? heartsRow(els, m, surface, false) : null}
         </Box>
         <Box borderStyle="round" borderColor={tone} paddingX={2} minWidth={34} flexDirection="row" gap={1} justifyContent="center">
           <Text color={tone}>●</Text>
@@ -124,13 +130,13 @@ export function renderBand(els: Els, m: any, surface: string, onPat: () => void)
 }
 
 /** The name, hearts and what the pet is doing (and, in the docked pane, which session and what else is going on). */
-export function renderHead(els: Els, m: any, isWidget: boolean) {
+export function renderHead(els: Els, m: any, isWidget: boolean, surface: string) {
   const { Box, Text } = els
   const who = `${AGENT_LABELS.claude}${m.sessionLabel ? ' · ' + m.sessionLabel : ''}`
   return (
     <Box flexDirection="column">
       <Text weight="bold">{m.pet.name}</Text>
-      {m.pet.mood && heartsRow(els, m.pet.hearts)}
+      {m.pet.mood && heartsRow(els, m, surface)}
       <Text color={COLORS[m.me.state]}>{m.me.label}</Text>
       {!isWidget && <Text dimColor>{who}</Text>}
       {!isWidget && m.otherCount > 0 && (
@@ -165,6 +171,7 @@ export function renderStats(els: Els, m: any, ctl: any, tabs: any, surface: stri
   const settled = ok + failed
   const green = settled ? Math.max(ok ? 1 : 0, Math.round((ok / settled) * 24)) : 0
   const chart = activitySvg(m.chart, { width: 280, height: 64 })
+  const chartSize = sizeOf(chart)
   return (
     <Box flexDirection="column" gap={1}>
       {tabs}
@@ -184,10 +191,10 @@ export function renderStats(els: Els, m: any, ctl: any, tabs: any, surface: stri
           </Button>
         ))}
       </Box>
-      <Text dimColor>{m.scopeLabel}</Text>
+      <Text dimColor>{m.rangeLabel}</Text>
       <Box gap={1} flexWrap="wrap">
         {m.stats.tiles.map((tile: any) => (
-          <Box key={'tile-' + tile.id} flexDirection="column" alignItems="center" borderStyle="round" borderColor="#30363d" paddingX={1}>
+          <Box key={'tile-' + tile.id} flexDirection="column" alignItems="center" borderStyle="round" borderColor="#30363d" paddingX={1} minWidth={17}>
             <Text weight="bold">{tile.value}</Text>
             <Text dimColor>{tile.label}</Text>
             {tile.note ? <Text dimColor>{tile.note}</Text> : null}
@@ -196,7 +203,7 @@ export function renderStats(els: Els, m: any, ctl: any, tabs: any, surface: stri
       </Box>
       {settled > 0 && (
         <Box flexDirection="row" gap={1}>
-          <Text dimColor>Success</Text>
+          <Box minWidth={9}><Text dimColor>Success</Text></Box>
           <Text color="#3fb950">{'█'.repeat(green)}</Text>
           <Text color="#f85149">{'█'.repeat(Math.max(failed ? 1 : 0, 24 - green))}</Text>
           <Text dimColor>{Math.round((ok / settled) * 100)}%</Text>
@@ -204,14 +211,14 @@ export function renderStats(els: Els, m: any, ctl: any, tabs: any, surface: stri
       )}
       <Text weight="bold">Last 14 days</Text>
       {surface !== 'terminal' && Svg
-        ? <Svg source={chart} width={280} height={64} isInteractive alt={'Tool calls per day over the last 14 days'} />
+        ? <Svg source={chart} {...chartSize} isInteractive alt={'Tool calls per day over the last 14 days'} />
         : <Text color="#58a6ff">{m.spark}</Text>}
       {m.stats.bars.length > 0 && (
         <Box flexDirection="column">
           <Text weight="bold">What it did</Text>
           {m.stats.bars.map((bar: any) => (
             <Box key={'bar-' + bar.id} flexDirection="row" gap={1}>
-              <Text dimColor>{bar.label.padEnd(9)}</Text>
+              <Box minWidth={9}><Text dimColor>{bar.label}</Text></Box>
               <Text color="#58a6ff">{'█'.repeat(Math.max(1, Math.round(bar.share * 16)))}</Text>
               <Text>{bar.count}</Text>
             </Box>
@@ -270,6 +277,10 @@ export function renderCustomize({ Box, Text, Button, Input }: Els, m: any, ctl: 
           </Box>
         </Box>
       ))}
+      <Text dimColor>Motion</Text>
+      <Box gap={1}>
+        {([['full', 'Full'], ['calm', 'Calm'], ['reduced', 'Still']] as const).map(([level, label]) => choice('motion-' + level, label, m.pet.motion === level, () => set({ prefs: { motion: level } })))}
+      </Box>
       <Text dimColor>Sound volume</Text>
       <Box gap={1}>
         {VOLUMES.map((volume: string) => choice('v-' + volume, cap(volume), m.pet.volume === volume, () => { set({ prefs: { volume } }); play(m.pet.sounds.finish === 'off' ? 'chime' : m.pet.sounds.finish, volume) }))}

@@ -3,11 +3,11 @@
 // the speech bubbles and badges that mark thinking, waiting, failure and "needs you".
 
 import { Canvas, K, R } from './canvas.js'
-import { PI, arc, disc, line } from './draw.js'
-import { BROWN, ell, paint, poly, rrect } from './shapes.js'
+import { PI, disc, line } from './draw.js'
+import { BROWN, paint, poly, rrect } from './shapes.js'
 
 export const HI_PROPS = new Set(['book', 'laptop', 'shell', 'flask', 'magnifier', 'branch', 'plug'])
-export const HI_FX = new Set(['excl', 'alert', 'rays', 'thought', 'spinner', 'glyphs'])
+export const HI_FX = new Set(['excl', 'alert', 'rays', 'thought', 'spinner', 'glyphs', 'e404'])
 
 const flatRamp = (edge, fill) => [edge, fill, fill, fill, fill]
 const PAGE = flatRamp(R.PAPER2, R.PAPER)
@@ -110,7 +110,6 @@ function rays(c, a, f) {
   for (const [dx, dy] of [[-1.4, -2.6], [0.2, -3.2], [1.9, -2.5]]) line(c, P(x + dx * 0.5), P(y + dy * 0.5), P(x + dx * (0.8 + grow)), P(y + dy * (0.8 + grow)), R.GOLD, K * 0.7)
 }
 
-
 /** A commit graph on a small screen: a main line, a branch that splits off and rejoins, and a node that lights up in turn. */
 function branch(c, a, f) {
   const x = a.cx
@@ -211,6 +210,22 @@ export function drawHiProp(c, a, prop, character) {
   }
 }
 
+// "404", in a small pixel font: a page that was not found, floating over a head (Foxy's way of saying something failed).
+const DIGITS = {
+  4: ['...#.', '..##.', '.#.#.', '#..#.', '#####', '...#.', '...#.'],
+  0: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
+}
+function e404(c, a, f) {
+  const text = ['4', '0', '4']
+  const width = text.length * 5 + (text.length - 1) // pixels, with a pixel between the digits
+  // Centered over the head, a little above it; it drifts up and down by a pixel (f).
+  const x0 = Math.round(P(a.cx) - width / 2)
+  const y0 = Math.max(1, Math.round(P(a.top) - 12 + [0, -1, -1, 0][f % 4]))
+  const glyph = (role, dx, dy) => text.forEach((digit, i) => DIGITS[digit].forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '#') c.set(x0 + i * 6 + x + dx, y0 + y + dy, role) })))
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) glyph(R.WHITE, dx, dy) // a pale edge, so it reads on any background
+  glyph(R.RED, 0, 0)
+}
+
 export function drawHiFx(c, a, item) {
   const f = item.f ?? 0
   switch (item.id) {
@@ -220,6 +235,7 @@ export function drawHiFx(c, a, item) {
     case 'thought': return thought(c, a, f)
     case 'spinner': return spinner(c, a, f)
     case 'glyphs': return glyphs(c, a, f)
+    case 'e404': return e404(c, a, f)
     default:
   }
 }

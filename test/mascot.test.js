@@ -7,7 +7,7 @@ import { animation } from '../src/core/art/anim.js'
 import { STILL_STATES } from '../src/core/art/anim.js'
 import { PRESETS, contrast, isHex, ramp } from '../src/core/color.js'
 import { CHARACTERS, cleanName, defaultPet, displayName, restoreAppearance, sanitizePet, NAME_MAX } from '../src/core/settings.js'
-import { base64, petSvg, stageBounds, terminalFrame, toAnsi, toCells } from '../src/core/render/raster.js'
+import { base64, petSvg, stageBounds, terminalFrame, toAnsi } from '../src/core/render/raster.js'
 
 const luminance = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b
 
@@ -144,7 +144,7 @@ test('stored settings are validated field by field', () => {
   assert.equal(pet.name.length, NAME_MAX)
   assert.equal(pet.colors.body, null)
   assert.equal(pet.colors.accent, '#abcdef')
-  assert.equal(pet.prefs.motion, 'auto')
+  assert.equal(pet.prefs.motion, 'calm', 'an unknown level is calm')
   assert.ok(pet.createdAt > 0 && /^[a-f0-9]{16}$/.test(pet.id))
   assert.equal(sanitizePet(null).repaired, true)
   assert.equal(sanitizePet([1, 2]).repaired, true)
@@ -244,6 +244,18 @@ test('the activity chart is a vector bar chart with a tooltip on every bar and t
   assert.ok(svg.includes('2026-11-23: 26 tool calls'))
   assert.ok(svg.includes('2026-11-13: 0 tool calls'))
   assert.ok(svg.lastIndexOf('#3fb950') > svg.indexOf('#58a6ff'), 'today (the last bar) is green')
-  assert.match(svg, /^<svg [^>]*width="280" height="64">/)
+  assert.match(svg, /^<svg [^>]*width="280" height="76">/, 'the bars are 64 tall and the labels take 12 more')
+  assert.ok(svg.includes('>Nov 10<') && svg.includes('>today<') && svg.includes('>busiest: 26<'), 'the first day, today and the peak')
+  assert.ok(!activitySvg([]).includes('busiest'), 'no days: no labels to make up')
   assert.ok(!activitySvg([{ day: 'a<b', tools: 1 }]).includes('a<b'), 'text is escaped')
+})
+
+test('the hearts picture has five hearts, filled up to the count, and a tooltip that says what they mean', async () => {
+  const { heartsSvg } = await import('../src/core/render/charts.js')
+  const three = heartsSvg(3, { title: 'x & y' })
+  assert.equal((three.match(/<path /g) ?? []).length, 5)
+  assert.equal((three.match(/fill="#f85149"/g) ?? []).length, 3)
+  assert.equal((three.match(/fill="none"/g) ?? []).length, 2)
+  assert.ok(three.includes('<title>x &amp; y</title>'))
+  assert.match(heartsSvg(1), /width="84" height="15"/)
 })

@@ -190,3 +190,38 @@ test('nothing sensitive reaches the record', () => {
   const text = JSON.stringify(rec)
   for (const secret of ['hunter2', 'sk-live-123', 'secrets', '.env', 'API_KEY', 'password']) assert.ok(!text.includes(secret), secret)
 })
+
+test('Codex 0.171 sends PreToolUse but no PostToolUse: its tool calls are counted when the turn ends, with an unknown outcome', () => {
+  const pre = (name, id, input) => ['PreToolUse', { tool_name: name, tool_input: input, tool_use_id: id }]
+  const rec = play('codex', [
+    'SessionStart', 'UserPromptSubmit',
+    pre('Bash', 'c1', { command: 'echo hi' }),
+    pre('Bash', 'c2', { command: 'npm test' }),
+    pre('apply_patch', 'c3', { command: '*** Begin Patch\n*** Add File: a.txt\n+x\n*** End Patch' }),
+    'Stop',
+  ])
+  const s = total(rec)
+  assert.equal(s.tools.total, 3, 'the three calls are counted')
+  assert.equal(s.tools.ok, 0)
+  assert.equal(s.tools.failed, 0)
+  assert.equal(s.tools.unknown, 3, 'and none is said to have succeeded or failed')
+  assert.equal(s.tools.byCategory.shell, 2)
+  assert.equal(s.tools.byCategory.edit, 1)
+  assert.equal(s.tests.run, 0, 'a test run is not claimed without its result')
+  assert.equal(s.turns, 1)
+  // A host that does send the completion is counted once, with its real outcome.
+  const full = play('codex', [
+    'UserPromptSubmit',
+    pre('Bash', 'd1', { command: 'echo hi' }),
+    ['PostToolUse', { tool_name: 'Bash', tool_input: { command: 'echo hi' }, tool_use_id: 'd1', tool_response: 'Exit code: 0' }],
+    'Stop',
+  ])
+  assert.equal(total(full).tools.total, 1)
+  assert.equal(total(full).tools.ok, 1)
+  // Claude Code reports every completion, so nothing is counted at the end of a turn there.
+  const claude = play('claude', ['UserPromptSubmit', pre('Bash', 'k1', { command: 'sleep 5' }), 'Stop'])
+  assert.equal(total(claude).tools.total, 0, 'an interrupted Claude call is not made up')
+  // Many calls in one turn: none is lost when the in-flight list is full.
+  const many = play('codex', ['UserPromptSubmit', ...Array.from({ length: 20 }, (_, i) => pre('Read', 'm' + i, { file_path: 'a' + i })), 'Stop'])
+  assert.equal(total(many).tools.total, 20)
+})

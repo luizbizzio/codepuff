@@ -189,7 +189,7 @@ test('Customize: the sound, volume, band size and mood buttons save what they sa
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
   await ui.press({ plugin: 'codepuff', key: 'tab-look' })
   await clock.advance(400)
-  for (const key of ['q-bell', 'f-off', 'r5-pop', 'rw-off', 'v-low', 'band-large', 'mood']) {
+  for (const key of ['q-bell', 'f-off', 'r5-pop', 'rw-off', 'v-low', 'band-large', 'mood', 'motion-full', 'motion-reduced']) {
     await ui.press({ plugin: 'codepuff', key })
     await clock.advance(400)
   }
@@ -199,6 +199,8 @@ test('Customize: the sound, volume, band size and mood buttons save what they sa
   expect(prefs.volume).toBe('low')
   expect(prefs.bandSize).toBe('large')
   expect(prefs.mood).toBe(false)
+  expect(prefs.motion).toBe('reduced')
+  expect(await ui.find({ type: 'Text', text: 'Motion' })).toBeTruthy()
   expect(await ui.find({ type: 'Button', text: 'Hearts react to my messages: off' })).toBeTruthy()
   await ui.unmount()
 })

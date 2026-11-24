@@ -1,7 +1,7 @@
 // The /codepuff slash command: a word and what follows it, answered with a line of text. Everything it changes goes through the
 // controller's own methods (`api`), so it behaves exactly like the buttons in the pane.
 
-import { CHARACTERS, DEFAULT_NAMES, BAND_SIZES, NAME_MAX, SOUNDS, SOUND_MOMENTS, VOLUMES, cleanName, displayName } from '../core/settings.js'
+import { CHARACTERS, DEFAULT_NAMES, BAND_SIZES, MOTIONS, NAME_MAX, SOUNDS, SOUND_MOMENTS, VOLUMES, cleanName, displayName } from '../core/settings.js'
 import { PRESETS, isHex } from '../core/color.js'
 import { SCOPES } from './constants.js'
 
@@ -17,7 +17,7 @@ export async function runCommand(api, args = '') {
         const m = api.model()
         return { text: `${m.pet.name}: ${m.me.label}. Streak ${m.life.current} day${m.life.current === 1 ? '' : 's'}, ${m.age.days} days old. Use /codepuff help for more.`, open: true }
       }
-      case 'help': return say('/codepuff [open] · stats [session|all|7d|30d] · name <name> · character <id> · characters · palette <id> · body <#hex> · accent <#hex> · motion <auto|reduced> · band <on|off|small|medium|large> · sound <question|finish|reset5h|resetWeek> <off|chime|bell|pop|ding|tada> · volume <low|medium|high> · mood <on|off> · line <on|off> · restore · export · import <file> · reset stats|pet confirm · palettes')
+      case 'help': return say('/codepuff [open] · stats [session|all|7d|30d] · name <name> · character <id> · characters · palette <id> · body <#hex> · accent <#hex> · motion <full|calm|reduced> · band <on|off|small|medium|large> · sound <question|finish|reset5h|resetWeek> <off|chime|bell|pop|ding|tada> · volume <low|medium|high> · mood <on|off> · line <on|off> · restore · export · import <file> · reset stats|pet confirm · palettes')
       case 'palettes': return say('Palettes: ' + PRESETS.map(p => p.id).join(', '))
       case 'stats': {
         if (value && SCOPES.includes(value)) api.setUi({ scope: value })
@@ -56,8 +56,12 @@ export async function runCommand(api, args = '') {
         await api.setPet({ colors: { [word]: value === 'default' ? null : value.toLowerCase() } }); return say('Saved.')
       }
       case 'motion':
-        if (!['auto', 'reduced'].includes(value)) return say('Motion: auto or reduced.')
-        await api.setPet({ prefs: { motion: value } }); return say(`Motion: ${value}.`)
+      {
+        // ("auto" is the old name of calm, and "off" of reduced.)
+        const level = { auto: 'calm', off: 'reduced' }[value] ?? value
+        if (!MOTIONS.includes(level)) return say('Motion: full, calm or reduced.')
+        await api.setPet({ prefs: { motion: level } }); return say(`Motion: ${level}.`)
+      }
       case 'line':
         if (!['on', 'off'].includes(value)) return say('Usage: /codepuff line on|off')
         await api.setPet({ prefs: { line: value === 'on' } }); return say(`Status line ${value}.`)

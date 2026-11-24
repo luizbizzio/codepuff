@@ -11,7 +11,6 @@
 import { classifyTool, outcomeOf, testVerdict } from './classify.js'
 import { pathId, sessionKey } from './hash.js'
 
-export const AGENTS = ['claude', 'codex']
 
 const DENIED = /(?:user|you) (?:doesn't|does not|did not|rejected|denied|declined|refused|chose not)|permission (?:to use .* )?(?:has been )?denied|was rejected|tool use was rejected/i
 

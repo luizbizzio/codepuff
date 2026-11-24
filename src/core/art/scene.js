@@ -183,7 +183,7 @@ function enlarge(scene, layer) {
 }
 
 // Only these characters cast a shadow on the ground; the others stand on nothing.
-export const SHADOWED = new Set(['slime', 'mage', 'aquatic'])
+const SHADOWED = new Set(['slime', 'mage', 'aquatic'])
 
 /**
  * Draws one frame to a fresh canvas.

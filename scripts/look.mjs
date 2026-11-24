@@ -3,7 +3,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { png } from './png.mjs'
 import { animation } from '../src/core/art/anim.js'
-import { W, H } from '../src/core/art/canvas.js'
+import { W } from '../src/core/art/canvas.js'
 import { buildPalette } from '../src/core/art/palette.js'
 import { drawScene } from '../src/core/art/scene.js'
 import { stageBounds, toRgba } from '../src/core/render/raster.js'
@@ -18,7 +18,7 @@ const width = cw * states.length
 const rgb = Buffer.alloc(width * ch * 3)
 for (let i = 0; i < width * ch; i++) { rgb[i * 3] = 13; rgb[i * 3 + 1] = 17; rgb[i * 3 + 2] = 23 }
 states.forEach((state, n) => {
-  const anim = animation(state)
+  const anim = animation(state, { character: id })
   const rgba = toRgba(drawScene(id, anim.frames[anim.still].pose), buildPalette(id, {}, { gray: anim.gray ? 0.8 : 0 }))
   for (let y = 0; y < box.h * scale; y++) for (let x = 0; x < box.w * scale; x++) {
     const o = ((box.y + Math.floor(y / scale)) * W + box.x + Math.floor(x / scale)) * 4

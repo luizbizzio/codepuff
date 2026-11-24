@@ -4,7 +4,7 @@ import { focus, labelFor, stateOf, STATES, WINDOWS } from '../src/core/petstate.
 import { animation, frameAt, STILL_STATES } from '../src/core/art/anim.js'
 import { newRecord, reduce } from '../src/core/session.js'
 import { normalizeHook } from '../src/core/normalize.js'
-import { bashFail, bashOk, hook, T0 } from './helpers.js'
+import { hook, T0 } from './helpers.js'
 
 /** Builds a record from hook payloads at explicit offsets (ms from T0) so tests control time exactly. */
 function timeline(agent, steps, session = 's1') {

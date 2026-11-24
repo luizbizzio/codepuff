@@ -31,7 +31,7 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node --test \"test/*.test.js\"",
+    "test": "node scripts/test.mjs",
     "bench": "node scripts/bench.mjs",
     "preview": "node scripts/preview.mjs",
     "check:mod": "claude plugin validate . && claude plugin test .",

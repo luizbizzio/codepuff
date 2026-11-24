@@ -21,7 +21,12 @@ import { sessionKey } from '../core/hash.js'
 
 const stamp = () => new Date().toISOString().replace(/[:.]/g, '-')
 
-export function openStore(dir) {
+/**
+ * @param {string} dir
+ * @param {{ lockTimeout?: number }} [options] how long an event waits for the session's lock before it is applied anyway (a hook must
+ *   not hang the agent, so the default is a few seconds; the tests that put six processes on one session ask for longer)
+ */
+export function openStore(dir, { lockTimeout = 5000 } = {}) {
   const L = layout(dir)
   const cache = new Map() // file -> { mtimeMs, size, rec }
 
@@ -75,7 +80,7 @@ export function openStore(dir) {
       reduce(rec, ev)
       atomicWrite(file, JSON.stringify(rec))
       return rec
-    })
+    }, { timeout: lockTimeout })
   }
 
   /** Every readable record. Files that did not change since the last call are not read again. */

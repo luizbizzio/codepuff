@@ -13,35 +13,37 @@ commands, your file paths or tool outputs.
 > **Status: MVP `0.1.0`, not a production release.** What has and has not been verified in real hosts is listed
 > honestly in [docs/STATUS.md](docs/STATUS.md).
 
-## Eight characters, two styles
+## Eight characters
 
-Every character exists in **pixel** and **3D** (the same drawing extruded into a lit toy block, in the spirit of the
-Metacognition critter). Pixel art is drawn at 72x56, twice the detail of a classic 16-bit sprite: glossy eyes, soft
-cheeks, fine shading.
+Every character is hi-res pixel art, about 40-55 pixels tall (twice the detail of a classic 16-bit sprite), with the
+shading, highlights and expressions of the reference artwork. Each one also has its own way of idling: Foxy sniffs around,
+Bot scans, Slime wobbles, Mage sparks, Penny floats, Classic bounces, Alpha waves and Claude shuffles.
 
-![The eight characters, pixel (left three columns) and 3D (right three), idle, coding and success](docs/images/characters.png)
+![The eight characters, idle, coding, success and error](docs/images/characters.png)
 
-Top to bottom: **Puff Alpha** (the original CodePuff, redesigned), **Puff Classic** (code cloud with headphones),
-**Puff Fox**, **Puff Bot**, **Puff Slime**, **Puff Mage**, **Puff Aquático**, and **Claude** (a boxy orange critter,
+Top to bottom: **Alpha** (the original CodePuff, redesigned), **Classic** (code cloud with headphones),
+**Foxy**, **Bot**, **Slime**, **Mage**, **Penny**, and **Claude** (a boxy orange critter,
 an unofficial fan design). Each has its own colors, and any character wears any palette.
 
 ## What the pet shows
 
-![Puff Classic in every state: idle, thinking, reading, searching, investigating, coding, running, testing, looking things up; planning, success, error, permission, waiting, finished, disconnected](docs/images/classic-states-a.png)
+![Classic in every state: idle, thinking, reading, searching, investigating, coding, running, git, a connected tool, testing, looking things up; planning, success, error, permission, waiting, finished, disconnected](docs/images/classic-states-a.png)
 ![The rest of the states](docs/images/classic-states-b.png)
 
 | State | When (always a real event) |
 | --- | --- |
 | Idle | Nothing is happening: it rests, blinks, looks around. |
-| Thinking | A turn is running and no tool call is in flight. The label says exactly that: *Working on a response*. |
-| Reading / Searching | A read, search or inspecting command (`cat`, `rg`, `git diff`, ...) is running: a book, or a magnifier. |
-| Coding / Running | Editing files, or running a command: a laptop with a glowing `</>`, or a shell prompt. |
+| Thinking | A turn is running and no tool call is in flight. The label says exactly that: *Working on a response*. A thought cloud alternates a light bulb and a turning gear. |
+| Reading / Searching | A read, search or inspecting command (`cat`, `rg`, `git diff`, ...) is running: a book (the eyes sweep along the lines and a page turns), or a magnifier. |
+| Coding / Running | Editing files: a laptop with a glowing `</>` and code symbols floating up. Running a command: a shell prompt and a spinner. |
+| Git / Connected tool | A git command: a commit graph with a branch. A tool from an MCP server: a plug sliding into its socket, with a spark. |
 | Testing | A recognized test run is in flight: goggles and a bubbling flask. |
 | Success | A test run **confirmed passed** (exit code 0, not hidden by a pipe), or a commit was made: sparkles. |
 | Error / Investigating | A tool (or a model request) really failed: a red `!` badge; then *Looking into the failure*. |
 | Permission | The agent is waiting for your approval or answer: a yellow `!` badge. It always wins. |
 | Subagents | Up to three small helpers appear while subagents are really running. |
 | Finished / Waiting | A turn ended: confetti; then it waits for your next prompt (a `...` bubble), then rests. |
+| Tired | The plan is nearly used up: 80% or more of the 5-hour, weekly or spending limit, as Claude Code reports it. Half-closed eyes, a yawn, a sweat drop; shown while the pet has nothing else to do. |
 | Disconnected | No agent has been heard from: grey, eyes closed. |
 
 When several sessions are active, one deterministic rule decides which one the pet shows (needs you, then a
@@ -52,8 +54,8 @@ says which agent and project it is. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE
 
 | Surface | Claude Code | Codex |
 | --- | --- | --- |
-| **Compact band above the prompt**: a mini pet, what it is doing, today's numbers | yes (`/codepuff band on/off`, or *Hide*) | not possible: Codex has no plugin UI |
-| **Pane / widget**: the full animated pet, statistics, customization | yes (desktop widget, docked pane) | not possible |
+| **Compact band above the prompt**: the whole pet, small, what it is doing right now, and on the right a pie chart of how this session's tasks went (successes and failures as the agent reported them) | yes (`/codepuff band on/off`, or the *Compact band* switch in Customize) | not possible: Codex has no plugin UI |
+| **Pane / widget**: the animated pet beside the chat, statistics, customization (Statistics and Customize tabs); click the activity in the compact band to pet it (pat again and again: a pat, a giggle, then overjoyed); the pet hops when the pointer is over it | yes (desktop widget, docked pane) | not possible |
 | **Terminal app** `codepuff pet`: pet, statistics, customization, data | yes | yes (the way to see your pet next to Codex) |
 | One-line status under the prompt | yes (`/codepuff line on`) | - |
 
@@ -113,21 +115,21 @@ Uninstalling **never deletes your statistics**. `codepuff data delete --yes` doe
 `codepuff pet` is a keyboard-driven app with four views: **1 Pet**, **2 Statistics**, **3 Customize**, **4 Data**
 (Tab or the number keys switch; `q` quits; `space` pets it). Statistics has scopes (`s`: this session, all time, 7 or
 30 days) and agents (`a`: combined, Claude Code, Codex), a 30-day chart, tool categories and Claude-vs-Codex bars.
-Customize uses ↑/↓ to choose and ←/→ to change the character, style, palette; Enter edits the name. Data exports,
+Customize uses ↑/↓ to choose and ←/→ to change the character and palette; Enter edits the name. Data exports,
 imports and resets. The pet is drawn with half-block characters and **shrinks to fit** your pane (full detail when
-there is room). Reduced motion stops all animation.
+there is room). Reduced motion (`codepuff set motion reduced`) stops all animation.
 
 ## Your pet
 
-One pet per computer, shared by Claude Code and Codex: its name, character, style, colors, birthday and lifetime
+One pet per computer, shared by Claude Code and Codex: its name, character, colors, birthday and lifetime
 statistics survive new chats, restarts, switching agents and resuming old conversations.
 
-* **Customize**: pick any of the eight characters, pixel or 3D, a name (up to 16 characters), 10 palettes plus any
-  custom body and accent colors, and *Restore default appearance*. Colors become five-tone ramps, so shading always
+* **Customize**: pick any of the eight characters, a name (up to 16 characters), 10 palettes plus any
+  custom body and accent colors. Colors become five-tone ramps, so shading always
   survives; eyes stay readable on every preset.
-* **Reduced motion** is honored (a switch everywhere; the system setting in SVG).
+* **Reduced motion** is honored (`/codepuff motion reduced`, `codepuff set motion reduced`; the system setting in SVG).
 * A click, tap or `space` gives a small reaction. It never sends anything to the agent.
-* Pets saved by the first version (the single "Puff") are migrated to **Puff Alpha** automatically.
+* Pets saved by the first version (the single "Puff") are migrated to **Alpha** automatically.
 
 ## Statistics
 
@@ -155,9 +157,9 @@ resetting one never touches the other.
 codepuff data export [file]          codepuff data import <file> [--replace] [--pet]
 codepuff data reset stats --yes      (keeps the pet; saves a safety backup first)
 codepuff data reset pet --yes        (new pet, new birthday; keeps statistics)
-codepuff set restore                 (default character, style, name and colors; keeps birthday and statistics)
+codepuff set restore                 (default character, name and colors; keeps birthday and statistics)
 codepuff data delete --yes           (deletes everything, explicitly)
-codepuff set character fox | style 3d | band off | palette mint | name Biscuit | motion reduced
+codepuff set character fox | band off | palette mint | name Biscuit | motion reduced
 ```
 
 The same controls are in the terminal app's *Data* view and, in Claude Code, as `/codepuff export | import | reset`.
@@ -188,4 +190,5 @@ node scripts/preview.mjs    # contact sheets: all characters, or `preview.mjs 3 
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE). CodePuff is independent and not affiliated with
-Anthropic or OpenAI. The eight characters are original drawings; "Claude" is an unofficial fan design.
+Anthropic or OpenAI. Alpha is drawn in code and "Claude" is an unofficial fan design; the six other characters are
+pixel-art conversions of character sheets supplied by the project owner (see [NOTICE](NOTICE)).

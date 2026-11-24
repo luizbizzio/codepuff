@@ -1,6 +1,6 @@
 ﻿// Developer tool: renders contact sheets into ./out so the art can be looked at.
-//   node scripts/preview.mjs [scale]            all characters, pixel and 3D, in a few states
-//   node scripts/preview.mjs 5 fox              every state of one character, pixel above 3D
+//   node scripts/preview.mjs [scale]            all characters in a few states
+//   node scripts/preview.mjs 5 fox              every state of one character
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { png } from './png.mjs'
 import { animation, STILL_STATES } from '../src/core/art/anim.js'
@@ -23,10 +23,10 @@ function sheet(rows, cols, name) {
   for (let i = 0; i < width * height; i++) { rgb[i * 3] = BG[0]; rgb[i * 3 + 1] = BG[1]; rgb[i * 3 + 2] = BG[2] }
   rows.forEach((row, r) => row.forEach((cell, col) => {
     if (!cell) return
-    const anim = animation(cell.state, { helpers: cell.helpers ?? 0 })
+    const anim = animation(cell.state, { helpers: cell.helpers ?? 0, character: cell.character })
     const palette = buildPalette(cell.character, {}, { gray: anim.gray ? 0.8 : 0 })
     const frame = anim.frames[Math.min(anim.frames.length - 1, cell.frame ?? anim.still)]
-    const rgba = toRgba(drawScene(cell.character, frame.pose, cell.style), palette)
+    const rgba = toRgba(drawScene(cell.character, frame.pose), palette)
     for (let y = 0; y < H * scale; y++) {
       for (let x = 0; x < W * scale; x++) {
         const o = ((Math.floor(y / scale)) * W + Math.floor(x / scale)) * 4
@@ -46,9 +46,9 @@ if (only) {
   const states = STILL_STATES.filter(s => s !== 'petted')
   const half = Math.ceil(states.length / 2)
   for (const [n, list] of [['a', states.slice(0, half)], ['b', states.slice(half)]]) {
-    sheet(['pixel', '3d'].flatMap(style => [list.map(state => ({ character: only, state, style }))]), list.length, `${only}-states-${n}`)
+    sheet([list.map(state => ({ character: only, state }))], list.length, `${only}-states-${n}`)
   }
 } else {
   const states = ['idle', 'coding', 'success', 'error']
-  sheet(MASCOT_IDS.map(character => [...['pixel', '3d'].flatMap(style => states.slice(0, 3).map(state => ({ character, state, style })))]), 6, 'characters')
+  sheet(MASCOT_IDS.map(character => states.map(state => ({ character, state }))), 4, 'characters')
 }

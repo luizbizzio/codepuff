@@ -3,17 +3,17 @@
 // scarf, hair, cheeks...). Details with a fixed look (gold, goggles, screens, books) do not change.
 export const CHARACTER_DEFAULTS = Object.freeze({
   alpha: { body: '#78c2ff', accent: '#ff9ec0' },
-  classic: { body: '#efe9ff', accent: '#33336e' },
-  fox: { body: '#f08c3c', accent: '#3a3550' },
-  bot: { body: '#e8e4f6', accent: '#3b7be0' },
-  slime: { body: '#37b4ff', accent: '#7fe0ff' },
-  mage: { body: '#e8dcff', accent: '#6c3fb8' },
-  aquatic: { body: '#d9cdfb', accent: '#35112e' },
+  classic: { body: '#cab4e9', accent: '#372d70' },
+  fox: { body: '#e98658', accent: '#382955' },
+  bot: { body: '#c9bbdb', accent: '#3164b4' },
+  slime: { body: '#477cd3', accent: '#6a5bd8' },
+  mage: { body: '#b861ac', accent: '#522795' },
+  aquatic: { body: '#cebcf0', accent: '#341428' },
   claude: { body: '#d97757', accent: '#c4633f' },
 })
 
 export const CHARACTER_NAMES = Object.freeze({
-  alpha: 'Puff Alpha', classic: 'Puff Classic', fox: 'Puff Fox', bot: 'Puff Bot', slime: 'Puff Slime', mage: 'Puff Mage', aquatic: 'Puff Aquático', claude: 'Claude',
+  alpha: 'Alpha', classic: 'Classic', fox: 'Foxy', bot: 'Bot', slime: 'Slime', mage: 'Mage', aquatic: 'Penny', claude: 'Claude',
 })
 
 export const CHARACTER_BLURBS = Object.freeze({

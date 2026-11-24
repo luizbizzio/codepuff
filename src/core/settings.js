@@ -9,7 +9,6 @@ export const NAME_MAX = 16
 export const CHARACTERS = CHARACTER_IDS
 export const DEFAULT_CHARACTER = 'alpha'
 export const DEFAULT_NAMES = CHARACTER_NAMES
-export const STYLES = ['pixel', '3d']
 
 // Line breaks become spaces; control characters, zero-width and bidirectional marks and markup characters are dropped.
 const LINE_BREAKS = new RegExp('[\\r\\n\\t\\u2028\\u2029]', 'g')
@@ -40,13 +39,13 @@ export function defaultPet(now = Date.now()) {
     name: '',
     character: DEFAULT_CHARACTER,
     colors: { body: null, accent: null },
-    prefs: { motion: 'auto', scope: 'session', line: false, band: true, style: 'pixel' },
+    prefs: { motion: 'auto', scope: 'session', line: false, band: true },
   }
 }
 
-/** Restores the look only: character, style, name and colors back to defaults; birthday and id are kept. */
+/** Restores the look only: character, name and colors back to defaults; birthday and id are kept. */
 export function restoreAppearance(pet) {
-  return { ...pet, name: '', character: DEFAULT_CHARACTER, colors: { body: null, accent: null }, prefs: { ...pet.prefs, style: 'pixel' } }
+  return { ...pet, name: '', character: DEFAULT_CHARACTER, colors: { body: null, accent: null }, prefs: pet.prefs }
 }
 
 /**
@@ -72,7 +71,6 @@ export function sanitizePet(raw, now = Date.now()) {
       scope: migrated.prefs?.scope === 'all' ? 'all' : 'session',
       line: migrated.prefs?.line === true,
       band: migrated.prefs?.band !== false,
-      style: migrated.prefs?.style === '3d' ? '3d' : 'pixel',
     },
   }
   const repaired = JSON.stringify(pet) !== JSON.stringify({ ...raw, v: PET_SCHEMA })
@@ -81,7 +79,7 @@ export function sanitizePet(raw, now = Date.now()) {
 
 /**
  * Upgrades older files.
- * v1 -> v2: the single "puff" character became "Puff Alpha" (`alpha`); `prefs.style` and `prefs.band` were added.
+ * v1 -> v2: the single "puff" character became "Alpha" (`alpha`); `prefs.band` was added. (A `prefs.style` of the 3D days is dropped when a file is read.)
  * A file from a newer version is read for the fields understood.
  */
 function migratePet(raw) {

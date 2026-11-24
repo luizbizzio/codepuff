@@ -6,8 +6,7 @@ import { disc } from './draw.js'
 
 // Props, helpers and effects are icon-like and are drawn on the 36x28 design grid, then enlarged to the scene's pixels.
 const W = 36
-const H = 28
-import { extrude } from './solid.js'
+const H = 36
 import { HI_FX, HI_PROPS, drawHiFx, drawHiProp } from './props.js'
 import { mascot } from './registry.js'
 
@@ -195,34 +194,61 @@ function enlarge(scene, layer) {
   for (let y = 0; y < layer.h; y++) for (let x = 0; x < layer.w; x++) { const role = layer.px[y * layer.w + x]; if (role) scene.rect(x * K, y * K, K, K, role) }
 }
 
+// Only these characters cast a shadow on the ground; the others stand on nothing.
+export const SHADOWED = new Set(['slime', 'mage', 'aquatic'])
+
 /**
  * Draws one frame to a fresh canvas.
  * @param {string} character
  * @param {object} pose
- * @param {'pixel' | '3d'} [style] pixel = the flat sprite; 3d = the same sprite extruded into a lit toy block
+
  */
-export function drawScene(character, pose, style = 'pixel') {
-  let c = new Canvas()
+export function drawScene(character, pose) {
+  const who = mascot(character)
   const lift = Math.max(0, -(pose.dy ?? 0))
   const shadowW = Math.max(3, 8.5 - lift / 2)
-  disc(c, 18 * K, 25.5 * K, shadowW * K, 0.9 * K, R.SHADOW)
-  disc(c, 18 * K, 25.6 * K, (shadowW - 2) * K, 1.25 * K, R.SHADOW)
 
-  const who = mascot(character)
-  const solid = style === '3d'
-  if (pose.helpers) { const lo = new Canvas(W, H); helpers(lo, { bottom: who.ground }, pose.helpers, pose.f ?? 0); enlarge(c, lo) }
-  const a = who.draw(c, solid ? { ...pose, flat: true } : pose)
-  if (pose.prop) {
-    if (HI_PROPS.has(pose.prop.id)) drawHiProp(c, a, pose.prop, character)
-    else { const lo = new Canvas(W, H); drawProp(lo, a, pose.prop); enlarge(c, lo) }
+  const shadow = new Canvas()
+  if (SHADOWED.has(character)) {
+    const shadowY = who.shadow ?? 25.5
+    disc(shadow, 18 * K, shadowY * K, shadowW * K, 0.9 * K, R.SHADOW)
+    disc(shadow, 18 * K, (shadowY + 0.1) * K, (shadowW - 2) * K, 1.25 * K, R.SHADOW)
   }
-  a.hands.forEach((hand, i) => who.limb(c, a, i, hand))
-  if (solid) c = extrude(c, Math.round(who.depth * K * 0.75))
+
+  const body = new Canvas()
+  if (pose.helpers) { const lo = new Canvas(W, H); helpers(lo, { bottom: who.ground }, pose.helpers, pose.f ?? 0); enlarge(body, lo) }
+  const a = who.draw(body, pose)
+
+  // What it holds, its hands, and the effects around it: drawn over the body.
+  const held = new Canvas()
+  if (pose.prop) {
+    if (HI_PROPS.has(pose.prop.id)) {
+      const centred = ['laptop', 'shell', 'book', 'branch', 'plug'].includes(pose.prop.id) && a.propCx !== undefined
+      drawHiProp(held, centred ? { ...a, cx: a.propCx, bottom: a.propBottom } : a, pose.prop, character)
+    } else { const lo = new Canvas(W, H); drawProp(lo, a, pose.prop); enlarge(held, lo) }
+  }
+  const hands = new Canvas()
+  a.hands.forEach((hand, i) => who.limb(hands, a, i, hand))
+  const effects = new Canvas()
   if (pose.fx?.length) {
     const lo = new Canvas(W, H)
     for (const item of pose.fx) if (!HI_FX.has(item.id)) fx(lo, a, item)
-    enlarge(c, lo)
-    for (const item of pose.fx) if (HI_FX.has(item.id)) drawHiFx(c, a, item)
+    enlarge(effects, lo)
+    for (const item of pose.fx) if (HI_FX.has(item.id)) drawHiFx(effects, a, item)
   }
-  return c
+
+  shadow.stamp(body); shadow.stamp(held); shadow.stamp(hands); shadow.stamp(effects)
+  // Every character is moved onto the shared line.
+  return standOnLine(shadow, Math.round(who.ground * K))
+}
+
+/** Every character stands on the same line, so the pictures of different characters line up and share one frame. */
+export const STAND = 60
+
+function standOnLine(c, feet) {
+  const down = STAND - feet
+  if (down <= 0) return c
+  const moved = new Canvas(c.w, c.h)
+  moved.px.set(c.px.subarray(0, c.px.length - down * c.w), down * c.w)
+  return moved
 }

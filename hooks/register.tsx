@@ -20,11 +20,15 @@ import { PRESETS } from '../src/core/color.js'
 // @ts-ignore
 import { AGENT_LABELS } from '../src/core/format.js'
 // @ts-ignore
+import { pieSvg } from '../src/core/render/pie.js'
+// @ts-ignore
 import { base64, petSvg, terminalFrame } from '../src/core/render/raster.js'
 // @ts-ignore
 import { MASCOTS, MASCOT_IDS } from '../src/core/art/registry.js'
 
 const PANE = 'codepuff'
+/** How tall the pet is drawn in the compact band (CSS pixels). The picture is cropped tight, so the pet fills it. */
+const BAND_HEIGHT = 68
 const rev = atom({ plugin: 'codepuff', key: 'rev' } as const, 0)
 
 const COLORS: Record<string, string> = { success: '#3fb950', error: '#f85149', permission: '#d29922', investigating: '#d29922', finished: '#3fb950', disconnected: '#8b949e' }
@@ -35,6 +39,7 @@ type Bridge = {
   redraw: () => void
   status: (text: string | undefined) => void
   blit: (args: { requestId: string; key: string; cells: string; columns: number; rows: number }) => Promise<any>
+  usage: () => Promise<any>
 }
 
 export const register: Register = on => {
@@ -45,7 +50,6 @@ export const register: Register = on => {
   let epoch = { key: '', at: 0 }
   let lastCells = ''
   let lastLine: string | undefined = undefined
-  let bandHidden = false
 
   const flushSoon = () => bridge?.later('flush', 600, () => { void ctl?.flush() })
   const refreshSoon = () => bridge?.later('refresh', 10_000, async () => {
@@ -65,19 +69,29 @@ export const register: Register = on => {
     if (text !== lastLine) { lastLine = text; bridge.status(text) }
   }
 
+  // The plan's usage (the rate-limit windows the host reports) tells the pet whether to look tired. It is read every minute;
+  // a host that cannot say simply leaves the pet rested.
+  const readUsage = async () => {
+    try { ctl?.setUsage(await bridge?.usage()) } catch { /* no usage figures: the pet is simply not tired */ }
+  }
+  const watchUsage = () => {
+    void readUsage()
+    bridge?.later('usage', 60_000, () => { watchUsage() })
+  }
+
   // The animation restarts from its first frame whenever what is drawn changes.
-  const epochFor = (character: string, colors: any, state: string, helpers: number, style: string) => {
-    const key = [character, colors?.body, colors?.accent, state, helpers, style].join('|')
+  const epochFor = (character: string, colors: any, state: string, helpers: number) => {
+    const key = [character, colors?.body, colors?.accent, state, helpers].join('|')
     if (epoch.key !== key) { epoch = { key, at: Date.now() }; lastCells = '' }
     return Date.now() - epoch.at
   }
 
   // Terminal animation: frame stepping with $.ui.blit, which repaints cells without a redraw. It runs only while
   // the pane is drawn (a refused blit ends it) and stops by itself when the pose is still.
-  const animate = (requestId: string, character: string, colors: any, state: string, helpers: number, reduced: boolean, style: string, columns: number) => {
+  const animate = (requestId: string, character: string, colors: any, state: string, helpers: number, reduced: boolean, columns: number) => {
     if (reduced || !bridge) { timers.anim?.cancel(); return }
     const step = async () => {
-      const frame = terminalFrame({ character, colors, state, helpers, elapsed: epochFor(character, colors, state, helpers, style), reduced, style: style as any, columns })
+      const frame = terminalFrame({ character, colors, state, helpers, elapsed: epochFor(character, colors, state, helpers), reduced, columns })
       const cells = base64(frame.cells)
       if (cells !== lastCells) {
         const out = await bridge!.blit({ requestId, key: 'pet', cells, columns: frame.columns, rows: frame.rows }).catch(() => ({ deny: 'failed' }))
@@ -104,6 +118,7 @@ export const register: Register = on => {
         },
         status: text => $.ui.status(text),
         blit: args => $.ui.blit(args as any),
+        usage: () => $.session.usage(),
       }
       const io = {
         dataDir: async () => {
@@ -121,6 +136,7 @@ export const register: Register = on => {
       ctl = createController(io)
       ctl.onChange(() => { bridge?.redraw(); flushSoon(); tick(); applyStatusLine() })
       await ctl.init({ sid: await $.session.id(), cwd: e.cwd })
+      watchUsage()
       await $.command.register({ name: 'codepuff', description: 'Open your CodePuff pet; /codepuff help lists the options' })
       void $.ui.open({ id: PANE, title: 'CodePuff', placement: 'widget' }).catch(() => {})
       refreshSoon()
@@ -172,12 +188,12 @@ export const register: Register = on => {
     return next(e)
   })
 
-  // ---- the compact band above the prompt: a mini pet, what it is doing, and a few numbers ---------------------------
+  // ---- the compact band above the prompt: the pet, standing still, and what it is doing right now -------------------
 
   const GLYPH: Record<string, string> = { success: '^_^', finished: '^_^', error: '>_<', permission: 'O_O', investigating: 'o_O', disconnected: '-_-', waiting: 'o_o', idle: 'o_o', thinking: 'o.o' }
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     await read($, rev)
-    if (!ctl || bandHidden || (e as any).props?.hasSurvey) return next(e)
+    if (!ctl || (e as any).props?.hasSurvey) return next(e)
     const m = ctl.model()
     if (!m.pet.band) return next(e)
     const { Box, Text, Button, Svg } = $.ui.resolve(e as any) as any
@@ -185,16 +201,28 @@ export const register: Register = on => {
     const color = COLORS[m.me.state]
     const reduced = m.pet.motion === 'reduced'
     const face = surface !== 'terminal' && Svg
-      ? <Svg source={petSvg({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers: 0, scale: 1.1, reduced, style: m.pet.style, crop: 'head' })} alt={`${m.pet.name}: ${m.me.label}`} />
+      ? <Svg source={petSvg({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers: m.me.helpers, height: BAND_HEIGHT, reduced, crop: 'band', hover: true })} alt={`${m.pet.name}: ${m.me.label}`} isInteractive />
       : <Text color={color ?? undefined}>{GLYPH[m.me.state] ?? 'o_o'}</Text>
+    const { ok, failed } = m.outcome
+    const total = ok + failed
+    const pie = surface !== 'terminal' && Svg
+      ? <Svg source={pieSvg({ ok, failed, size: 40 })} alt={total ? `${ok} of ${total} tasks succeeded, ${failed} failed` : 'No tasks yet'} />
+      : null
     return (
-      <Box gap={1} alignItems="center">
-        {face}
-        <Text weight="bold">{m.pet.name}</Text>
-        <Text color={color}>{m.me.label}</Text>
-        <Text dimColor wrap="truncate-end">· {m.today.prompts} prompt{m.today.prompts === 1 ? '' : 's'} · {m.today.tools} tools · {m.today.tests} tests · streak {m.life.current}d</Text>
-        <Button key="band-open" onPress={() => { void $.ui.open({ id: PANE, title: 'CodePuff' }).catch(() => {}) }}>Open</Button>
-        <Button key="band-hide" onPress={() => { bandHidden = true; void update($, rev, (n: number) => n + 1).catch(() => {}) }}>Hide</Button>
+      <Box flexDirection="row" gap={1} alignItems="center" justifyContent="space-between">
+        <Box flexDirection="row" gap={1} alignItems="center" justifyContent="flex-start">
+          {face}
+          <Box flexDirection="column" justifyContent="center" alignItems="flex-start">
+            <Button plain key="pet-it" onPress={() => ctl!.pat()}>{m.me.label}</Button>
+          </Box>
+        </Box>
+        <Box flexDirection="row" gap={1} alignItems="center" justifyContent="flex-end">
+          <Box flexDirection="column" alignItems="flex-end">
+            <Text color="#3fb950">{'✔ ' + ok}</Text>
+            <Text color="#f85149">{'✖ ' + failed}</Text>
+          </Box>
+          {pie}
+        </Box>
       </Box>
     )
   })
@@ -218,15 +246,15 @@ export const register: Register = on => {
     // The picture.
     let picture: any = null
     if (surface === 'terminal') {
-      const elapsed = epochFor(m.pet.character, m.pet.colors, m.me.state, helpers, m.pet.style)
-      const frame = terminalFrame({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers, elapsed, reduced, style: m.pet.style, columns: Math.max(12, columns) })
+      const elapsed = epochFor(m.pet.character, m.pet.colors, m.me.state, helpers)
+      const frame = terminalFrame({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers, elapsed, reduced, columns: Math.max(12, columns) })
       if (frame.columns <= columns) {
         picture = <Raster key="pet" columns={frame.columns} rows={frame.rows} cells={base64(frame.cells)} />
-        animate((e as any).requestId, m.pet.character, m.pet.colors, m.me.state, helpers, reduced, m.pet.style, Math.max(12, columns))
+        animate((e as any).requestId, m.pet.character, m.pet.colors, m.me.state, helpers, reduced, Math.max(12, columns))
       }
     } else if (Svg) {
-      const svg = petSvg({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers, scale: isWidget ? 2.2 : 2.8, reduced, style: m.pet.style })
-      picture = <Svg source={svg} alt={`${m.pet.name}: ${m.me.label}`} />
+      const svg = petSvg({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers, scale: isWidget ? 2.2 : 2.8, reduced, hover: true })
+      picture = <Svg source={svg} alt={`${m.pet.name}: ${m.me.label}`} isInteractive />
     }
 
     const who = `${AGENT_LABELS.claude}${m.sessionLabel ? ' · ' + m.sessionLabel : ''}`
@@ -246,15 +274,15 @@ export const register: Register = on => {
 
     const tabs = (
       <Box gap={1} flexWrap="wrap">
-        {(['pet', 'stats', 'look'] as const).map(tab => (
+        {(['stats', 'look'] as const).map(tab => (
           <Button key={'tab-' + tab} variant={m.ui.tab === tab ? 'primary' : 'secondary'} onPress={() => ctl!.setUi({ tab })}>
-            {tab === 'pet' ? 'Pet' : tab === 'stats' ? 'Statistics' : 'Customize'}
+            {tab === 'stats' ? 'Statistics' : 'Customize'}
           </Button>
         ))}
       </Box>
     )
 
-    if (m.ui.tab === 'stats') {
+    if (m.ui.tab !== 'look') {
       return (
         <Box flexDirection="column" gap={1}>
           {tabs}
@@ -295,50 +323,27 @@ export const register: Register = on => {
       )
     }
 
-    if (m.ui.tab === 'look') {
-      return (
-        <Box flexDirection="column" gap={1}>
-          {tabs}
-          {picture}
-          <Input key="name" label="Name" placeholder={`up to 16 characters (${m.pet.name})`} value={m.pet.isCustom ? m.pet.name : ''} submitLabel="save" onSubmit={(value: string) => { void ctl!.setPet({ name: value }) }} />
-          <Text dimColor>Character</Text>
-          <Box gap={1} flexWrap="wrap">
-            {MASCOT_IDS.map((c: string) => (
-              <Button key={'char-' + c} variant={m.pet.character === c ? 'primary' : 'secondary'} onPress={() => { void ctl!.setPet({ character: c }) }}>{MASCOTS[c].name}</Button>
-            ))}
-          </Box>
-          <Text dimColor>Style</Text>
-          <Box gap={1}>
-            {(['pixel', '3d'] as const).map(st => (
-              <Button key={'style-' + st} variant={m.pet.style === st ? 'primary' : 'secondary'} onPress={() => { void ctl!.setPet({ prefs: { style: st } }) }}>{st === 'pixel' ? 'Pixel' : '3D'}</Button>
-            ))}
-          </Box>
-          <Text dimColor>Colors</Text>
-          <Box gap={1} flexWrap="wrap">
-            {PRESETS.map((p: any) => (
-              <Button key={'pal-' + p.id} variant={(p.body ?? null) === (m.pet.colors.body ?? null) && (p.accent ?? null) === (m.pet.colors.accent ?? null) ? 'primary' : 'secondary'} onPress={() => { void ctl!.setPet({ colors: { body: p.body, accent: p.accent } }) }}>{p.name}</Button>
-            ))}
-          </Box>
-          <Box gap={1} flexWrap="wrap">
-            <Button key="motion" onPress={() => { void ctl!.setPet({ prefs: { motion: reduced ? 'auto' : 'reduced' } }) }}>{reduced ? 'Reduced motion: on' : 'Reduced motion: off'}</Button>
-            <Button key="band" onPress={() => { bandHidden = false; void ctl!.setPet({ prefs: { band: !m.pet.band } }) }}>{m.pet.band ? 'Compact band: on' : 'Compact band: off'}</Button>
-            <Button key="line" onPress={() => { void ctl!.setPet({ prefs: { line: !m.pet.line } }) }}>{m.pet.line ? 'Status line: on' : 'Status line: off'}</Button>
-            <Button key="restore" onPress={() => { void ctl!.restoreAppearance() }}>Restore default appearance</Button>
-          </Box>
-          <Text dimColor wrap="wrap">Saved automatically and shared with Codex. Export, import and reset: /codepuff help</Text>
-        </Box>
-      )
-    }
-
     return (
       <Box flexDirection="column" gap={1}>
         {tabs}
-        <Box flexDirection="column" alignItems="center">{picture}</Box>
-        {head}
-        <Text dimColor wrap="wrap">Today: {m.today.prompts} prompt{m.today.prompts === 1 ? '' : 's'} · {m.today.tools} tool calls · {m.today.tests} test run{m.today.tests === 1 ? '' : 's'}{m.today.commits ? ` · ${m.today.commits} commit${m.today.commits === 1 ? '' : 's'}` : ''}</Text>
-        <Text dimColor wrap="wrap">Streak {m.life.current} day{m.life.current === 1 ? '' : 's'} (best {m.life.longest}) · {m.age.days} day{m.age.days === 1 ? '' : 's'} old</Text>
-        <Box gap={1}>
-          <Button key="petit" onPress={() => ctl!.pat()}>Pet it</Button>
+        {picture}
+        <Input key="name" label="Name" placeholder={`up to 16 characters (${m.pet.name})`} value={m.pet.isCustom ? m.pet.name : ''} submitLabel="save" onSubmit={(value: string) => { void ctl!.setPet({ name: value }) }} />
+        <Text dimColor>Character</Text>
+        <Box gap={1} flexWrap="wrap">
+          {MASCOT_IDS.map((c: string) => (
+            <Button key={'char-' + c} variant={m.pet.character === c ? 'primary' : 'secondary'} onPress={() => { void ctl!.setPet({ character: c }) }}>{MASCOTS[c].name}</Button>
+          ))}
+        </Box>
+        <Text dimColor>Colors</Text>
+        <Box gap={1} flexWrap="wrap">
+          {PRESETS.map((p: any) => (
+            <Button key={'pal-' + p.id} variant={(p.body ?? null) === (m.pet.colors.body ?? null) && (p.accent ?? null) === (m.pet.colors.accent ?? null) ? 'primary' : 'secondary'} onPress={() => { void ctl!.setPet({ colors: { body: p.body, accent: p.accent } }) }}>{p.name}</Button>
+          ))}
+        </Box>
+        <Text dimColor>Settings</Text>
+        <Box gap={1} flexWrap="wrap">
+          <Button key="band" onPress={() => { void ctl!.setPet({ prefs: { band: !m.pet.band } }) }}>{m.pet.band ? 'Compact band: on' : 'Compact band: off'}</Button>
+          <Button key="line" onPress={() => { void ctl!.setPet({ prefs: { line: !m.pet.line } }) }}>{m.pet.line ? 'Status line: on' : 'Status line: off'}</Button>
         </Box>
       </Box>
     )

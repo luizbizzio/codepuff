@@ -15,14 +15,13 @@ const SIDEFACE = Object.freeze([R.OUT, R.SHADE, R.SHADE, R.SHADE, R.SHADE])
 
 export function drawClaude(c, pose) {
   const tf = transform(pose, [18, 24])
-  const solid = !!pose.flat // 3D style: draw the box flat and let the 3D pass extrude it
-  const d = solid ? 0 : 3 // depth in design units
-  const key = ['claude', pose.dy ?? 0, pose.sx ?? 1, pose.sy ?? 1, pose.shake ?? 0, solid].join('|')
+  const d = 3 // depth in design units
+  const key = ['claude', pose.dy ?? 0, pose.sx ?? 1, pose.sy ?? 1, pose.shake ?? 0].join('|')
   c.stamp(cachedBody(key, body => {
     const shapes = [
       rrect(12, 21, 4.6, 3.2, 0.7, ACC, { border: true }), rrect(19.4, 21, 4.6, 3.2, 0.7, ACC, { border: true }),
     ]
-    if (!solid) shapes.push(
+    shapes.push(
       poly([[26, 9], [26 + d, 9 - d], [26 + d, 21 - d], [26, 21]], SIDEFACE, { flat: true }),
       poly([[10, 9], [10 + d, 9 - d], [26 + d, 9 - d], [26, 9]], TOPFACE, { flat: true }),
     )
@@ -34,7 +33,7 @@ export function drawClaude(c, pose) {
   detail(10.6, 9.6, 14.8, 0.7, R.HI)
   detail(10.6, 10.3, 0.8, 9.6, R.LIGHT)
   // Antenna with a status light.
-  const ay = solid ? 7.6 : 4.6
+  const ay = 4.6
   detail(19.5, ay, 0.9, 2.2, R.METAL3)
   detail(18.6, ay - 2, 2.8, 2, LED[pose.led ?? 'ok'] ?? R.GRN)
   detail(18.8, ay - 1.9, 0.9, 0.8, R.WHITE)

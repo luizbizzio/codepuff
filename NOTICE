@@ -17,7 +17,10 @@ Nothing from Metacognition's reflection, strategy-learning, advice-injection or 
 
 Third-party code and assets
 ---------------------------
-CodePuff has no runtime dependencies. All pixel art, animations and color logic are original to this project.
+CodePuff has no runtime dependencies. The animations, color logic, Alpha and the "Claude" critter are drawn in
+code for this project. The artwork of Classic, Foxy, Bot, Slime, Mage and Penny (src/core/art/sprites.js) is
+converted to pixel art, by scripts/sprites/*.py, from character sheets supplied by the project owner. The owner is
+responsible for the rights to that artwork; whoever redistributes CodePuff should confirm them.
 
 Trademarks and affiliation
 --------------------------

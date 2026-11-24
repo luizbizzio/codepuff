@@ -3,6 +3,21 @@
 // pixel-art rules: lights drift warm, shadows drift cool and a little more saturated, and the outline is
 // a deep version of the hue, never black.
 
+/**
+ * Moves one tone of a sprite from its default body (or accent) color to the user's color, keeping the sprite's shading:
+ * the default color maps to the user's color, white and black stay fixed, and tones in between follow. Hue offsets inside
+ * the ramp (warm lights, cool shadows) are kept, so the result still looks painted, not tinted.
+ */
+export function recolorTone(tone, base, target) {
+  const [h, s, l] = rgbToHsl(hexToRgb(tone))
+  const [hb, sb, lb] = rgbToHsl(hexToRgb(base))
+  const [ht, st, lt] = rgbToHsl(hexToRgb(target))
+  const mapL = l >= lb ? lt + (l - lb) * ((1 - lt) / Math.max(1e-3, 1 - lb)) : lt * (l / Math.max(1e-3, lb))
+  const hue = ht + (((h - hb + 540) % 360) - 180) * 0.35
+  const sat = Math.max(0, Math.min(1, sb < 0.04 ? st * (0.4 + s) : st * (s / sb)))
+  return rgbToHex(hslToRgb([hue, sat, Math.max(0.03, Math.min(0.97, mapL))]))
+}
+
 export const isHex = value => typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
 
 export function hexToRgb(hex) {

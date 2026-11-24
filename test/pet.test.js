@@ -30,7 +30,7 @@ test('each tool shows the matching activity while it runs', () => {
   const cases = [
     ['Read', { file_path: 'a' }, 'reading'], ['Grep', { pattern: 'x' }, 'searching'], ['Edit', { file_path: 'a' }, 'coding'],
     ['Bash', { command: 'make' }, 'running'], ['Bash', { command: 'npm test' }, 'testing'], ['WebFetch', {}, 'web'],
-    ['Task', {}, 'delegating'], ['TodoWrite', {}, 'planning'], ['mcp__x__y', {}, 'running'],
+    ['Task', {}, 'delegating'], ['TodoWrite', {}, 'planning'], ['mcp__x__y', {}, 'mcp'],
   ]
   for (const [name, input, expected] of cases) {
     const rec = timeline('claude', [[0, 'UserPromptSubmit'], [500, 'PreToolUse', tool('t', name, input)]])

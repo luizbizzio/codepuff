@@ -13,15 +13,37 @@ import { buildBackup, mergeRecords, parseBackup } from '../core/backup.js'
 import { sessionKey } from '../core/hash.js'
 import { GIT_SHOW_ARGS, parseShow } from '../core/gitparse.js'
 import { normalizeHook } from '../core/normalize.js'
-import { WINDOWS, focus, stateOf } from '../core/petstate.js'
+import { WINDOWS, focus, labelFor, stateOf } from '../core/petstate.js'
 import { sanitizeRecord } from '../core/records.js'
 import { newRecord, reduce } from '../core/session.js'
-import { CHARACTERS, DEFAULT_NAMES, NAME_MAX, STYLES, cleanName, defaultPet, displayName, restoreAppearance, sanitizePet } from '../core/settings.js'
+import { CHARACTERS, DEFAULT_NAMES, NAME_MAX, cleanName, defaultPet, displayName, restoreAppearance, sanitizePet } from '../core/settings.js'
 
 const join = (...parts) => parts.join('/').replace(/\\/g, '/').replace(/([^:])\/{2,}/g, '$1/')
 const stamp = now => new Date(now).toISOString().replace(/[:.]/g, '-')
 const BLOCKS = '▁▂▃▄▅▆▇█'
 const REACTION_MS = 900
+/** Pats closer together than this build up: a few make the pet giggle, many make it overjoyed. */
+const PAT_COMBO_MS = 2500
+const reactionLevel = count => (count >= 5 ? 'delighted' : count >= 3 ? 'giggle' : 'petted')
+const REACTION_LABEL = { petted: 'Happy to see you', giggle: 'Giggling', delighted: 'Overjoyed!' }
+const REACTION_LENGTH = { petted: REACTION_MS, giggle: 1300, delighted: 1700 }
+/** The pet looks tired from this share of a plan window (or spending limit) being used. */
+export const TIRED_AT = 80
+const WINDOW_NAMES = { five_hour: '5-hour limit', seven_day: 'weekly limit', spend_limit: 'spending limit' }
+
+function tiredOf(usage, at) {
+  if (!usage) return null
+  let worst = null
+  for (const limit of usage.limits) {
+    if (typeof limit?.percentUsed !== 'number') continue
+    if (limit.resetsAt && Date.parse(limit.resetsAt) < at) continue // that window has already reset
+    if (!worst || limit.percentUsed > worst.percentUsed) worst = limit
+  }
+  if (!worst || worst.percentUsed < TIRED_AT) return null
+  const percent = Math.round(worst.percentUsed)
+  const resets = worst.resetsAt ? Math.max(0, Date.parse(worst.resetsAt) - at) : 0
+  return { percent, window: WINDOW_NAMES[worst.kind] ?? 'plan limit', kind: worst.kind, resetsInMs: resets, exhausted: percent >= 95 }
+}
 export const SCOPES = ['session', 'all', '7d', '30d']
 export const AGENT_FILTERS = ['all', 'claude', 'codex']
 
@@ -40,8 +62,8 @@ export function createController(io) {
   const s = {
     dir: '', sid: '', cwd: '', pet: null, rec: null,
     others: new Map(), // file -> { key, rec }
-    dirty: false, ui: { tab: 'pet', scope: 'session', agent: 'all' }, react: 0,
-    health: { storage: 'ok', git: 'ok' }, lastRefresh: 0,
+    dirty: false, ui: { tab: 'stats', scope: 'session', agent: 'all' }, react: 0, pats: [], reaction: 'petted',
+    health: { storage: 'ok', git: 'ok' }, lastRefresh: 0, usage: null,
     listeners: new Set(),
   }
   const now = () => io.now()
@@ -162,14 +184,23 @@ export function createController(io) {
     /** The next time the displayed state changes by itself (a celebration ends, a wait times out); undefined if never. */
     nextTick(at = now()) {
       const live = s.rec?.live
-      const marks = [s.react + REACTION_MS]
+      const marks = [s.react + REACTION_LENGTH[s.reaction]]
       if (s.rec && live) marks.push(live.err + WINDOWS.error, live.ok + WINDOWS.success, live.te + WINDOWS.finished, live.te + WINDOWS.waiting, s.rec.last + WINDOWS.stale, live.err + WINDOWS.investigate)
       const next = marks.filter(t => t > at)
       return next.length ? Math.min(...next) - at : undefined
     },
 
+    /** The plan's usage as the host reports it (`$.session.usage()`): the rate-limit windows. Read only; nothing is stored. */
+    setUsage(usage) { s.usage = usage ? { at: now(), limits: Array.isArray(usage.rateLimits) ? usage.rateLimits : [], cost: usage.cost ?? null } : null; changed() },
+
     /** A purely visual reaction to a click or tap. Nothing is sent to the agent and no statistic changes. */
-    pat() { s.react = now(); changed() },
+    pat() {
+      const at = now()
+      s.pats = [...s.pats.filter(t => at - t < PAT_COMBO_MS), at]
+      s.react = at
+      s.reaction = reactionLevel(s.pats.length)
+      changed()
+    },
 
     /** Everything the pane draws, computed from memory. */
     model(at = now()) {
@@ -177,8 +208,11 @@ export function createController(io) {
       const today = dayKey(at)
       const all = records()
       let mine = s.rec ? stateOf(s.rec, at) : { state: 'idle', label: 'Resting', helpers: 0, since: at, agent: 'claude', session: sessionKey(s.sid), project: '', running: false }
+      // Tired: the plan's limit is nearly used up. It shows while the pet has nothing else to do (working states stay as they are).
+      const tired = tiredOf(s.usage, at)
+      if (tired && ['idle', 'waiting', 'finished', 'success'].includes(mine.state)) mine = { ...mine, state: 'tired', label: labelFor('tired', { percent: tired.percent, window: tired.window }) }
       // A click makes the pet happy for a moment, unless the agent needs the user (that always wins).
-      if (at - s.react < REACTION_MS && mine.state !== 'permission') mine = { ...mine, state: 'petted', label: 'Happy to see you' }
+      if (at - s.react < REACTION_LENGTH[s.reaction] && mine.state !== 'permission') mine = { ...mine, state: s.reaction, label: REACTION_LABEL[s.reaction] }
       const others = focus(all.filter(r => r !== s.rec), at)
       const life = activity(all, { today })
       const age = petAge(pet.createdAt, at)
@@ -191,10 +225,14 @@ export function createController(io) {
       const week = series(all, { days: 14, today, agent: scope === 'session' ? 'all' : s.ui.agent })
       const peak = Math.max(1, ...week.map(d => d.tools))
       const todayStats = aggregate(all, { since: today, until: today, now: at })
+      // How this session's tasks went, as the agent reported them (every tool call's success or failure).
+      const session = s.rec ? aggregate([s.rec], { now: at }).tools : { ok: 0, failed: 0 }
       return {
-        pet: { name: displayName(pet), isCustom: !!pet.name, character: pet.character, colors: pet.colors, motion: pet.prefs.motion, line: pet.prefs.line, band: pet.prefs.band, style: pet.prefs.style, createdAt: pet.createdAt },
+        pet: { name: displayName(pet), isCustom: !!pet.name, character: pet.character, colors: pet.colors, motion: pet.prefs.motion, line: pet.prefs.line, band: pet.prefs.band, createdAt: pet.createdAt },
         age, life: { current: life.current, longest: life.longest, last: life.last, days: life.total },
         me: mine,
+        outcome: { ok: session.ok, failed: session.failed },
+        tired,
         others: others.current.agent ? [others.current, ...others.others].slice(0, 3) : [],
         otherCount: others.current.agent ? 1 + others.others.length : 0,
         today: { prompts: todayStats.prompts, tools: todayStats.tools.total, tests: todayStats.tests.run, passed: todayStats.tests.passed, commits: todayStats.git.commits },
@@ -209,7 +247,7 @@ export function createController(io) {
 
     setUi(patch) {
       const next = { ...s.ui, ...patch }
-      if (!['pet', 'stats', 'look'].includes(next.tab)) next.tab = 'pet'
+      if (!['stats', 'look'].includes(next.tab)) next.tab = 'stats'
       if (!SCOPES.includes(next.scope)) next.scope = 'session'
       if (!AGENT_FILTERS.includes(next.agent)) next.agent = 'all'
       s.ui = next
@@ -279,7 +317,7 @@ export function createController(io) {
           const m = api.model()
           return { text: `${m.pet.name}: ${m.me.label}. Streak ${m.life.current} day${m.life.current === 1 ? '' : 's'}, ${m.age.days} days old. Use /codepuff help for more.`, open: true }
         }
-        case 'help': return say('/codepuff [open] · stats [session|all|7d|30d] · name <name> · character <id> · characters · style <pixel|3d> · palette <id> · body <#hex> · accent <#hex> · motion <auto|reduced> · band <on|off> · line <on|off> · restore · export · import <file> · reset stats|pet confirm · palettes')
+        case 'help': return say('/codepuff [open] · stats [session|all|7d|30d] · name <name> · character <id> · characters · palette <id> · body <#hex> · accent <#hex> · motion <auto|reduced> · band <on|off> · line <on|off> · restore · export · import <file> · reset stats|pet confirm · palettes')
         case 'palettes': return say('Palettes: ' + PRESETS.map(p => p.id).join(', '))
         case 'stats': {
           if (value && SCOPES.includes(value)) api.setUi({ scope: value })
@@ -291,10 +329,6 @@ export function createController(io) {
         case 'character': {
           if (!CHARACTERS.includes(value)) return say('Characters: ' + CHARACTERS.join(', '))
           await api.setPet({ character: value }); return say(`Switched to ${DEFAULT_NAMES[value]}. Statistics and progress are unchanged.`)
-        }
-        case 'style': {
-          if (!STYLES.includes(value)) return say('Styles: ' + STYLES.join(', '))
-          await api.setPet({ prefs: { style: value } }); return say(`Style: ${value}.`)
         }
         case 'band':
           if (!['on', 'off'].includes(value)) return say('Usage: /codepuff band on|off')

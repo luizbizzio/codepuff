@@ -122,7 +122,7 @@ test('names: length, characters and defaults', () => {
   assert.equal(cleanName(undefined), '')
   assert.equal(cleanName('‮evil'), 'evil', 'bidi controls are stripped')
   const pet = defaultPet(1)
-  assert.equal(displayName(pet), 'Puff Alpha')
+  assert.equal(displayName(pet), 'Alpha')
   assert.equal(displayName({ ...pet, character: 'claude' }), 'Claude')
   assert.equal(displayName({ ...pet, name: 'Biscuit', character: 'claude' }), 'Biscuit', 'a custom name follows the pet across characters')
 })
@@ -178,7 +178,7 @@ test('terminal cells: right size, valid code points, colors in range', () => {
   for (const character of CHARACTERS) {
     const frame = terminalFrame({ character, state: 'idle', elapsed: 0 })
     const box = stageBounds(character, false)
-    assert.ok(stageBounds(character, true).w > box.w, 'helpers need extra room, so the box is wider with them')
+    assert.ok(stageBounds(character, true).w >= box.w, 'the box with helpers is never narrower (a wide character may already have the room)')
     assert.equal(frame.columns, box.w)
     assert.equal(frame.rows, Math.ceil(box.h / 2))
     assert.equal(frame.cells.byteLength, frame.columns * frame.rows * 12)
@@ -187,7 +187,7 @@ test('terminal cells: right size, valid code points, colors in range', () => {
       assert.ok([0x20, 0x2580, 0x2584].includes(words[i]), 'only space and half blocks')
       for (const color of [words[i + 1], words[i + 2]]) assert.ok(color === 0x01000000 || color <= 0xffffff)
     }
-    assert.ok(frame.columns <= 80 && frame.rows <= 34)
+    assert.ok(frame.columns <= 80 && frame.rows <= 36)
   }
 })
 
@@ -218,4 +218,15 @@ test('disconnected is visibly inactive: desaturated and with closed eyes', () =>
   const chroma = ([r, g, b]) => Math.max(r, g, b) - Math.min(r, g, b)
   assert.ok(chroma(gray[R.BASE]) < chroma(live[R.BASE]) / 3)
   assert.equal(animation('disconnected').frames[0].pose.eyes, 'sleep')
+})
+
+test('the pie chart is vector art with a slice for what worked and one for what failed', async () => {
+  const { pieSvg } = await import('../src/core/render/pie.js')
+  const some = pieSvg({ ok: 3, failed: 1 })
+  assert.match(some, /<svg[^>]*viewBox/)
+  assert.ok(some.includes('#3fb950') && some.includes('#f85149'))
+  assert.ok(!pieSvg({ ok: 4, failed: 0 }).includes('#f85149'), 'all succeeded: one color')
+  assert.ok(!pieSvg({ ok: 0, failed: 2 }).includes('#3fb950'), 'all failed: one color')
+  const none = pieSvg({ ok: 0, failed: 0 })
+  assert.ok(!none.includes('#3fb950') && !none.includes('#f85149') && none.includes('<circle'), 'no tasks yet: an empty ring')
 })

@@ -9,6 +9,8 @@ const PANE = {
   requestId: 'codepuff',
   props: { title: 'CodePuff', isFocused: false, bodyColumns: 60, placement: 'dock', scroll: { offset: 0, bodyRows: 30 }, view: {} },
 } as const
+// The small pet shown beside the chat: its picture, its name and what it is doing.
+const WIDGET = { ...PANE, props: { ...PANE.props, placement: 'widget' } } as const
 
 function world(on: any) {
   const files = new Map<string, string>()
@@ -50,11 +52,10 @@ test('the pet follows real agent events and draws on every surface', async ($: a
   await clock.advance(1000)
 
   for (const surface of ['terminal', 'desktop'] as const) {
-    const ui = await $.ui.mount({ ...PANE, surface })
+    const ui = await $.ui.mount({ ...WIDGET, surface })
     const shown = (await ui.findAll({ type: 'Text' })).map((t: any) => t.text)
-    expect(shown.includes('Puff Alpha')).toBe(true)
+    expect(shown.includes('Alpha')).toBe(true)
     expect(shown.some((t: string) => /Tests passed|Working on a response|Editing code/.test(t))).toBe(true)
-    expect(shown.some((t: string) => /Today: 1 prompt/.test(t))).toBe(true)
     await ui.unmount()
   }
 
@@ -83,9 +84,16 @@ test('the statistics tab shows the current session, and the pane can be customiz
   await clock.advance(400)
   await ui.input({ plugin: 'codepuff', key: 'name', text: 'Biscuit', kind: 'submit' })
   await clock.advance(400)
-  await ui.press({ plugin: 'codepuff', key: 'tab-pet' })
+  // Customize has Settings under Colors (no Restore button), and there is no Pet tab.
+  const customize = (await ui.findAll({ type: 'Text' })).map((x: any) => x.text)
+  expect(customize).toContain('Settings')
+  expect(await ui.find({ type: 'Button', text: 'Compact band: on' })).toBeTruthy()
+  expect(await ui.find({ type: 'Button', text: 'Status line: off' })).toBeTruthy()
+  expect(await ui.find({ type: 'Button', text: 'Restore default appearance' })).toBeFalsy()
+  expect(await ui.find({ type: 'Button', text: 'Pet' })).toBeFalsy()
+  await ui.press({ plugin: 'codepuff', key: 'tab-stats' })
   await clock.advance(400)
-  expect(await ui.find({ type: 'Text', text: 'Biscuit' })).toBeTruthy()
+  expect((await ui.findAll({ type: 'Text' })).some((x: any) => String(x.text).includes('Biscuit'))).toBe(true)
   await ui.unmount()
 })
 
@@ -95,18 +103,18 @@ test('a failed tool and a permission request are shown, and the hooks never alte
   await $.classic.UserPromptSubmit({ prompt: 'x' })
   await $.classic.PostToolUseFailure({ tool_name: 'Bash', tool_input: { command: 'node broken.js' }, tool_use_id: 'f1', error: 'Exit code 1\nboom' })
   await clock.advance(300)
-  let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  let ui = await $.ui.mount({ ...WIDGET, surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: 'A tool failed' })).toBeTruthy()
   await ui.unmount()
 
   await $.classic.PermissionRequest({ tool_name: 'Bash', tool_input: { command: 'rm -rf build' } })
   await clock.advance(300)
-  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  ui = await $.ui.mount({ ...WIDGET, surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: 'Waiting for permission' })).toBeTruthy()
   await ui.unmount()
 })
 
-test('the compact band above the prompt shows the pet, what it is doing and a few numbers, on both surfaces', async ($: any, on: any) => {
+test('the compact band shows the pet and what it is doing; pressing the activity pets it', async ($: any, on: any) => {
   const { clock } = world(on)
   await $.session.start({ cwd: '/work/app', surface: 'terminal', isInteractive: true })
   await $.classic.UserPromptSubmit({ prompt: 'x' })
@@ -114,16 +122,20 @@ test('the compact band above the prompt shows the pet, what it is doing and a fe
   await clock.advance(500)
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ plugin: 'codepuff', component: 'AbovePrompt', requestId: 'band', props: { hasSurvey: false }, surface })
-    const shown = (await ui.findAll({ type: 'Text' })).map((t: any) => t.text)
-    expect(shown.some((t: string) => t.includes('Puff Alpha'))).toBe(true)
-    expect(shown.some((t: string) => /1 prompt/.test(t))).toBe(true)
-    expect(await ui.find({ type: 'Button', text: 'Open' })).toBeTruthy()
-    if (surface === 'desktop') {
-      // Hide dismisses the band until it is turned on again.
-      await ui.press({ plugin: 'codepuff', key: 'band-hide' })
-      await clock.advance(400)
-      expect((await ui.findAll({ type: 'Text' })).length).toBe(0)
-    }
+    const texts = async () => [...(await ui.findAll({ type: 'Text' })), ...(await ui.findAll({ type: 'Button' }))].map((t: any) => t.text ?? t.label)
+    const shown = await texts()
+    expect(shown.length).toBeGreaterThan(0)
+    // No name and no numbers: just the activity.
+    expect(shown.some((t: string) => String(t).includes('Alpha') || /prompt|tools|streak/.test(String(t)))).toBe(false)
+    // On the right: how the session's tasks went (a pie on the desktop, counts everywhere).
+    expect(shown.some((x: string) => String(x).includes('✔ 1'))).toBe(true)
+    expect(shown.some((x: string) => String(x).includes('✖ 0'))).toBe(true)
+    expect(await ui.find({ type: 'Button', text: 'Open' })).toBeFalsy()
+    expect(await ui.find({ type: 'Button', text: 'Hide' })).toBeFalsy()
+    await ui.press({ plugin: 'codepuff', key: 'pet-it' })
+    await clock.advance(400)
+    expect((await texts()).some((t: string) => String(t).includes('Happy to see you'))).toBe(true)
+    await clock.advance(1200)
     await ui.unmount()
   }
 })

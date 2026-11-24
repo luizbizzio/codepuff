@@ -2,17 +2,18 @@
 // A character picks an eye *set* (round, oval, dot, bar, arch); every set answers to the same expression names, so
 // the animation layer never needs to know which character is on screen. Positions are in design units (K pixels).
 
-import { K, R } from './canvas.js'
+import { K as K0, R } from './canvas.js'
+const K = K0
 import { PI, arc, disc, line } from './draw.js'
 
 // Half-width and half-height of each eye set, in design units.
 const SIZES = { round: [2.1, 2.5], oval: [1.7, 2.3], dot: [1.05, 1.5], bar: [0.95, 2.2], arch: [1.7, 1.2] }
 
-function eye(c, set, kind, cx, cy, role, side) {
+function eye(c, set, kind, cx, cy, role, side, scale = 1) {
   const [sx, sy] = SIZES[set]
-  const rx = sx * K
-  const ry = sy * K
-  const t = K * 0.6
+  const rx = sx * K * scale
+  const ry = sy * K * scale
+  const t = Math.max(1, K * 0.6 * Math.min(1, scale + 0.4))
   if (set === 'arch') {
     // A screen face: glowing arcs and rings.
     switch (kind) {
@@ -55,20 +56,21 @@ function eye(c, set, kind, cx, cy, role, side) {
   }
 }
 
-function brow(c, kind, set, cx, cy, side, role) {
+function brow(c, kind, set, cx, cy, side, role, scale = 1) {
   if (!kind || kind === 'none' || set === 'arch') return
   const [sx, sy] = SIZES[set]
-  const rx = sx * K
-  const y = cy - sy * K * 1.55
-  const t = K * 0.55
-  if (kind === 'up') arc(c, cx, y + K * 0.6, rx, K * 0.8, PI * 1.1, PI * 1.9, role, t)
+  const rx = sx * K * scale
+  const y = cy - sy * K * scale * 1.55
+  const t = Math.max(1, K * 0.55 * Math.min(1, scale + 0.4))
+  if (kind === 'up') arc(c, cx, y + K * 0.6 * scale, rx, K * 0.8 * scale, PI * 1.1, PI * 1.9, role, t)
   // `side` is -1 for the left eye, +1 for the right; the inner end of a worried brow rises, of an angry one falls.
-  else if (kind === 'worry') line(c, cx - side * rx, y + K * 0.9, cx + side * rx * -1, y - K * 0.5, role, t)
-  else if (kind === 'focus') line(c, cx - side * rx, y - K * 0.5, cx + side * rx * -1, y + K * 0.9, role, t)
+  else if (kind === 'worry') line(c, cx - side * rx, y + K * 0.9 * scale, cx + side * rx * -1, y - K * 0.5 * scale, role, t)
+  else if (kind === 'focus') line(c, cx - side * rx, y - K * 0.5 * scale, cx + side * rx * -1, y + K * 0.9 * scale, role, t)
 }
 
-function mouth(c, kind, mx, my, role) {
-  const t = K * 0.55
+function mouth(c, kind, mx, my, role, scale = 1) {
+  const K = K0 * scale
+  const t = Math.max(1, K * 0.55)
   switch (kind) {
     case 'none': return
     case 'smile': arc(c, mx, my - K * 0.5, K * 1.7, K * 1.2, 0.12 * PI, 0.88 * PI, role, t); return
@@ -105,9 +107,11 @@ export function drawFace(c, pose, spec) {
       disc(c, x * K + lx - rx * K * 0.35, y * K + ly - ry * K * 0.3, rx * K * 0.28, ry * K * 0.3, R.WHITE) // soft shine
     }
   }
-  eye(c, spec.set, pose.eyes ?? 'open', ex * K + lx, ey * K + ly, role, -1)
-  eye(c, spec.set, pose.eyes ?? 'open', fx * K + lx, fy * K + ly, role, 1)
-  brow(c, pose.brows, spec.set, ex * K + lx, ey * K + ly, -1, role)
-  brow(c, pose.brows, spec.set, fx * K + lx, fy * K + ly, 1, role)
-  if (spec.mouth) mouth(c, pose.mouth ?? spec.defaultMouth ?? 'cat', spec.mouth[0] * K + lx, spec.mouth[1] * K + ly, spec.mouthRole ?? role)
+  const kind = pose.eyes && pose.eyes !== 'open' ? pose.eyes : (spec.defaultEyes ?? 'open')
+  const es = spec.eyeScale ?? 1
+  eye(c, spec.set, kind, ex * K + lx, ey * K + ly, role, -1, es)
+  eye(c, spec.set, kind, fx * K + lx, fy * K + ly, role, 1, es)
+  brow(c, pose.brows, spec.set, ex * K + lx, ey * K + ly, -1, role, es)
+  brow(c, pose.brows, spec.set, fx * K + lx, fy * K + ly, 1, role, es)
+  if (spec.mouth) mouth(c, pose.mouth ?? spec.defaultMouth ?? 'cat', spec.mouth[0] * K + lx, spec.mouth[1] * K + ly, spec.mouthRole ?? role, spec.mouthScale ?? 1)
 }

@@ -10,7 +10,7 @@ import { addDays, dayKey } from '../core/days.js'
 import { AGENT_LABELS, ago, statRows } from '../core/format.js'
 import { focus } from '../core/petstate.js'
 import { PRESETS, isHex } from '../core/color.js'
-import { CHARACTERS, STYLES, cleanName, displayName, NAME_MAX } from '../core/settings.js'
+import { CHARACTERS, cleanName, displayName, NAME_MAX } from '../core/settings.js'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 export const VERSION = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8')).version
@@ -41,7 +41,6 @@ Usage: codepuff <command>
   pet                        the full terminal app: live pet, statistics, customization and data controls
   set name <name>            rename your pet (up to ${NAME_MAX} characters; "" for the default)
   set character <${CHARACTERS.join('|')}>
-  set style <pixel|3d>
   set band <on|off>          the compact band above the Claude Code prompt
   set body <#rrggbb|default>  set accent <#rrggbb|default>
   set palette <id>           one of: ${PRESETS.map(p => p.id).join(', ')}
@@ -153,10 +152,6 @@ function set(store, [key, ...values]) {
       if (!CHARACTERS.includes(value)) return fail('Characters: ' + CHARACTERS.join(', '))
       pet.character = value
       break
-    case 'style':
-      if (!STYLES.includes(value)) return fail('Styles: ' + STYLES.join(', '))
-      pet.prefs.style = value
-      break
     case 'band':
       if (!['on', 'off'].includes(value)) return fail('Usage: codepuff set band on|off')
       pet.prefs.band = value === 'on'
@@ -177,11 +172,11 @@ function set(store, [key, ...values]) {
       pet.prefs.motion = value
       break
     case 'restore': store.resetAppearance(); return out('Appearance restored. Your pet keeps its birthday and statistics.')
-    default: return fail('Usage: codepuff set name|character|style|band|body|accent|palette|motion <value>, or: codepuff set restore')
+    default: return fail('Usage: codepuff set name|character|band|body|accent|palette|motion <value>, or: codepuff set restore')
   }
   store.writePet(pet)
   const saved = store.ensurePet()
-  out(`Saved. ${displayName(saved)} (${saved.character}, ${saved.prefs.style === '3d' ? '3D' : 'pixel'} style)${saved.colors.body ? ' with custom colors' : ''}.`)
+  out(`Saved. ${displayName(saved)} (${saved.character})${saved.colors.body ? ' with custom colors' : ''}.`)
 }
 
 // ---- data ------------------------------------------------------------------------------------------------------

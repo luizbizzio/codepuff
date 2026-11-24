@@ -1,12 +1,12 @@
 // A tiny indexed-color canvas. Every pixel holds a *role* (not a color): "body shade", "accent base",
 // "paper", "glow". Colors are resolved only when drawing (see palette.js), which is what lets one
-// drawing be recolored without losing its shading, and drawn flat (pixel) or extruded (3D).
+// drawing be recolored without losing its shading.
 
 // The scene is drawn at K times the resolution of the original 36x28 design grid. Characters are described in design
 // units and drawn with K x K pixels per unit, which is what gives them smooth shading, glossy eyes and fine details.
 export const K = 2
 export const W = 36 * K
-export const H = 28 * K
+export const H = 36 * K // room above the tallest sprite for its hop, and below it for the shadow
 
 /** Pixel roles. The first block follows the user's colors; the rest are fixed. */
 export const R = Object.freeze({
@@ -24,15 +24,17 @@ export const R = Object.freeze({
   TEAL: 37, TEAL2: 38, NAVY: 39, NAVY2: 40, CYAN: 41, CYAN2: 42,
 })
 
-/** In 3D, the lit top face and the shaded side face of a role are the role plus these offsets. */
-export const TOP = 64
-export const SIDE = 128
+/** The palette has room for this many roles (character sprites keep theirs from SPRITE_BASE up). */
+export const LEVEL = 128
+
+/** Characters that are sprites keep their colors in role slots SPRITE_BASE .. SPRITE_BASE + 41. */
+export const SPRITE_BASE = 43
 
 export class Canvas {
   constructor(w = W, h = H) {
     this.w = w
     this.h = h
-    this.px = new Uint8Array(w * h)
+    this.px = new Uint16Array(w * h)
   }
 
   get(x, y) { return x < 0 || y < 0 || x >= this.w || y >= this.h ? 0 : this.px[y * this.w + x] }

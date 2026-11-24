@@ -35,7 +35,7 @@ no Node APIs at all.
 | `src/core/records.js`, `backup.js`, `settings.js` | Validation, migration, the backup format, the pet document. | yes |
 | `src/core/aggregate.js`, `days.js`, `format.js` | Statistics over records, local-calendar helpers, display rows. | yes |
 | `src/core/petstate.js` | `stateOf(record, now)` and `focus(records, now)`. | yes |
-| `src/core/art/*`, `render/raster.js` | The hi-res pixel canvas (72x56), shaded shapes, the eight characters, faces, props, the 3D extrusion, animation loops; SVG / terminal cells / ANSI output. | yes |
+| `src/core/art/*`, `render/raster.js` | The hi-res pixel canvas (72x72), the six sprite characters and Alpha's shaded shapes, Claude's drawing, faces, props, animation loops; SVG / terminal cells / ANSI output. | yes |
 | `src/claude/controller.js` | Everything the Claude mod does behind an `io` interface (so it is testable without Claude Code). | yes |
 | `hooks/register.tsx` | The mod: binds the host's `$` to the controller and draws the pane. | (host) |
 | `src/node/*` | Store with locks and atomic writes, git, the hook process, CLI, the terminal app, installer, doctor. There is no web server. | no |
@@ -122,27 +122,41 @@ text.
 
 ## Adding a character
 
-1. Describe it in `src/core/art/chars.js` with `define({ id, pivot, ground, hand, shapes, details, face, anchors })`: a
-   list of shaded shapes (`ell`, `rrect`, `poly`, each with a five-tone ramp such as `BODY` or `ACC`), a few
-   hand-placed details, a face (eye set, eye and mouth positions, cheeks) and the anchors that props are placed
-   against. All coordinates are on the 36x28 *design grid*; the scene draws them at twice that resolution. A character
-   can also write its own `draw` (see `claude.js`).
-2. Add its name, description and default colors to `defaults.js`, register it in `registry.js`, and it is part of
-   `CHARACTERS` (derived from `defaults.js`; a test checks that the registry, the settings and the palettes agree).
+There are two ways to make one.
 
-Because drawings use *roles* and not colors, recoloring, the pixel and 3D styles, the SVG and terminal renderers,
+**From artwork (a sprite).** Six characters (Classic, Foxy, Bot, Slime, Mage, Penny) are the artwork of the reference
+sheets shrunk to pixel art. This is a development-time step, not something the product runs: `scripts/sprites/extract.py`
+crops each character from a sheet and quantizes it to about 40 colors, `analyze.py` sorts the colors into *body*,
+*accent* and *fixed* (so the user's colors can replace the first two and keep the shading), and `build.py` erases the
+eyes and mouth (the engine draws those for every expression) and writes `src/core/art/sprites.js` (generated; do not
+edit it). The scripts need Python with Pillow and numpy; nothing at runtime does. `spritechar.js` places a sprite on the
+scene, squashes and hops it around its feet, and draws its face at the coordinates `build.py` recorded.
+
+**From shapes.** Alpha is described in `src/core/art/chars.js` with `define({ id, pivot, ground, hand, shapes,
+details, face, anchors })`: a list of shaded shapes (`ell`, `rrect`, `poly`, each with a five-tone ramp such as `BODY` or
+`ACC`), a few hand-placed details, a face (eye set, eye and mouth positions, cheeks) and the anchors that props are
+placed against. All coordinates are on the 36-wide *design grid*; the scene draws them at twice that resolution. A
+character can also write its own `draw` (see `claude.js`).
+
+Either way, add its name, description and default colors to `defaults.js` and register it in `registry.js`; it is then part
+of `CHARACTERS` (derived from `defaults.js`; a test checks that the registry, the settings and the palettes agree).
+
+Because drawings use *roles* and not colors, recoloring, the SVG and terminal renderers,
 every animation state, props and helpers work immediately.
 
-### Pixel and 3D
+### Drawing
 
-The 3D style is not a second drawing. The same frame is drawn flat and then extruded (`solid.js`): every solid pixel is
-copied back and to the right, lit on top surfaces and shaded on right-hand sides (the palette derives a top and a side
-tone for every role). Eyes, mouths and effects stay flat on the front, and one-pixel features (antennas, thin arms) are
-not extruded, so they never turn into streaks.
+Every character is pixel art on one 72x72 canvas. The SVG output merges equal pixels into rectangles, draws the body once
+and each frame adds only what differs, so a picture is far under the host's 131072-character limit for `Svg` (the
+largest is about 110 KB, with three subagent helpers; a picture that would pass 118 KB keeps its body still). The terminal
+output shrinks the same canvas to half-block cells. A frame takes a few milliseconds, and rendered frames and finished
+pictures are cached.
 
 ### Resolution
 
-The scene is 72x56 pixels (`K = 2` times the 36x28 design grid). Bodies are shaded shapes lit from the upper left, so
-the shading follows the form; faces are drawn from ellipses and arcs (two shines per eye, cheeks, brows, mouths);
-props and badges (`props.js`) are built the same way. In a terminal the picture is averaged down to fit the pane
+The scene is 72x72 pixels (`K = 2` times the 36x36 design grid); every sprite stands 10 pixels below the top, so its hop
+and stretch never leave the scene, and what is shown is the box around what was actually drawn (`stageBounds`). Sprites
+keep the artwork's shading; Alpha's body is shaded shapes lit from the upper left. Faces are drawn from ellipses and arcs
+(two shines per eye, cheeks, brows, mouths), and props and badges (`props.js`) are built the same way. A held prop (the
+laptop, the book) is placed under the character's face, which on most sprites is not the middle of the sprite. In a terminal the picture is averaged down to fit the pane
 (`fitFactor`), so a narrow pane shows a smaller pet and a wide one shows every pixel.

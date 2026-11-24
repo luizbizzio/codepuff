@@ -31,7 +31,7 @@ export async function runTui(store, { tab: startTab = 0 } = {}) {
   const out = process.stdout
   if (!out.isTTY) {
     const pet = store.ensurePet()
-    const frame = terminalFrame({ character: pet.character, state: 'idle', reduced: true, style: pet.prefs.style, columns: 40 })
+    const frame = terminalFrame({ character: pet.character, state: 'idle', reduced: true, columns: 40 })
     out.write(toAnsi(frame.canvas, frame.palette, frame.box, frame.factor).join('\n') + '\n')
     return
   }
@@ -61,9 +61,9 @@ export async function runTui(store, { tab: startTab = 0 } = {}) {
   // ---- views ---------------------------------------------------------------------------------------------------
 
   const petPicture = (cols, rows, now, state, helpers) => {
-    const key = [pet.character, pet.colors.body, pet.colors.accent, pet.prefs.style, state, helpers].join('|')
+    const key = [pet.character, pet.colors.body, pet.colors.accent, state, helpers].join('|')
     if (epoch.key !== key) epoch = { key, at: now }
-    const frame = terminalFrame({ character: pet.character, colors: pet.colors, state, helpers, elapsed: now - epoch.at, reduced: reduced(), style: pet.prefs.style, columns: cols, rows })
+    const frame = terminalFrame({ character: pet.character, colors: pet.colors, state, helpers, elapsed: now - epoch.at, reduced: reduced(), columns: cols, rows })
     return { lines: toAnsi(frame.canvas, frame.palette, frame.box, frame.factor), width: frame.columns, until: frame.until }
   }
 
@@ -136,7 +136,6 @@ export async function runTui(store, { tab: startTab = 0 } = {}) {
 
   const items = () => [
     { label: 'Character', value: DEFAULT_NAMES[pet.character], left: () => cycleCharacter(-1), right: () => cycleCharacter(1) },
-    { label: 'Style', value: pet.prefs.style === '3d' ? '3D' : 'Pixel', left: toggleStyle, right: toggleStyle },
     { label: 'Palette', value: currentPalette(), left: () => cyclePalette(-1), right: () => cyclePalette(1) },
     { label: 'Name', value: pet.name || `${displayName(pet)} (default)`, enter: () => { prompt = { label: `Name (up to ${NAME_MAX} characters, empty for the default)`, value: pet.name, then: v => { save({ name: cleanName(v) }); message = 'Name saved.' } } } },
     { label: 'Reduced motion', value: pet.prefs.motion === 'reduced' ? 'on' : 'off', left: toggleMotion, right: toggleMotion, enter: toggleMotion },
@@ -144,7 +143,6 @@ export async function runTui(store, { tab: startTab = 0 } = {}) {
   ]
   const currentPalette = () => PRESETS.find(p => (p.body ?? null) === (pet.colors.body ?? null) && (p.accent ?? null) === (pet.colors.accent ?? null))?.name ?? 'Custom'
   const cycleCharacter = d => save({ character: CHARACTERS[(CHARACTERS.indexOf(pet.character) + d + CHARACTERS.length) % CHARACTERS.length] })
-  const toggleStyle = () => save({ prefs: { style: pet.prefs.style === '3d' ? 'pixel' : '3d' } })
   const toggleMotion = () => save({ prefs: { motion: pet.prefs.motion === 'reduced' ? 'auto' : 'reduced' } })
   const cyclePalette = d => {
     const at = PRESETS.findIndex(p => (p.body ?? null) === (pet.colors.body ?? null) && (p.accent ?? null) === (pet.colors.accent ?? null))

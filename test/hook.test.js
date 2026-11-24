@@ -249,7 +249,7 @@ test('the CLI reports statistics from the shared history', () => {
     const text = run(dir, ['stats']).stdout
     assert.match(text, /Prompts submitted\s+2\s+1\s+1/)
     assert.match(run(dir, ['stats', '--scope', 'session']).stdout, /This session/)
-    assert.match(run(dir, []).stdout, /Puff Alpha \(alpha\)/)
+    assert.match(run(dir, []).stdout, /Alpha \(alpha\)/)
   } finally { done() }
 })
 

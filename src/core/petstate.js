@@ -22,17 +22,17 @@ export const WINDOWS = Object.freeze({
 })
 
 export const STATES = [
-  'idle', 'thinking', 'reading', 'searching', 'coding', 'running', 'testing', 'web', 'delegating', 'planning',
+  'idle', 'tired', 'thinking', 'reading', 'searching', 'coding', 'running', 'git', 'mcp', 'testing', 'web', 'delegating', 'planning',
   'success', 'error', 'investigating', 'waiting', 'permission', 'finished', 'disconnected',
 ]
 
-const ACT_STATE = { read: 'reading', search: 'searching', edit: 'coding', run: 'running', git: 'running', test: 'testing', web: 'web', delegate: 'delegating', plan: 'planning', mcp: 'running', other: 'running', ask: 'permission' }
+const ACT_STATE = { read: 'reading', search: 'searching', edit: 'coding', run: 'running', git: 'git', test: 'testing', web: 'web', delegate: 'delegating', plan: 'planning', mcp: 'mcp', other: 'running', ask: 'permission' }
 
 /** How much a state deserves the single display slot when several sessions compete (higher wins). */
 export const RANK = Object.freeze({
   permission: 7, error: 6,
-  thinking: 5, reading: 5, searching: 5, coding: 5, running: 5, testing: 5, web: 5, delegating: 5, planning: 5, investigating: 5,
-  success: 4, finished: 3, waiting: 2, idle: 1, disconnected: 0,
+  thinking: 5, reading: 5, searching: 5, coding: 5, running: 5, git: 5, mcp: 5, testing: 5, web: 5, delegating: 5, planning: 5, investigating: 5,
+  success: 4, finished: 3, waiting: 2, tired: 1, idle: 1, disconnected: 0,
 })
 
 const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's')
@@ -44,6 +44,9 @@ export function labelFor(state, detail = {}) {
     case 'searching': return 'Searching the project'
     case 'coding': return 'Editing code'
     case 'running': return 'Running a command'
+    case 'tired': return `Tired · ${detail.percent ?? '?'}% of the ${detail.window ?? 'plan limit'} used`
+    case 'git': return 'Using git'
+    case 'mcp': return 'Using a connected tool'
     case 'testing': return 'Running tests'
     case 'web': return 'Looking things up online'
     case 'delegating': return detail.helpers ? 'Working with ' + plural(detail.helpers, 'subagent') : 'Starting a subagent'

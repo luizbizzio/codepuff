@@ -1,39 +1,79 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { animation } from '../src/core/art/anim.js'
+import { REACTIONS, animation } from '../src/core/art/anim.js'
 import { buildPalette } from '../src/core/art/palette.js'
-import { H, K, R, SIDE, TOP, W } from '../src/core/art/canvas.js'
+import { Canvas, H, K, LEVEL, R, W } from '../src/core/art/canvas.js'
 import { MASCOTS, MASCOT_IDS } from '../src/core/art/registry.js'
-import { drawScene } from '../src/core/art/scene.js'
-import { petSvg, terminalFrame } from '../src/core/render/raster.js'
-import { STYLES } from '../src/core/settings.js'
+import { STAND, drawScene } from '../src/core/art/scene.js'
+import { bandBox, petSvg, stageBounds, terminalFrame } from '../src/core/render/raster.js'
+import { STATES } from '../src/core/petstate.js'
 import { openStore } from '../src/node/store.js'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { T0, tempDir } from './helpers.js'
 
-test('there are eight characters: Puff Alpha, Classic, Fox, Bot, Slime, Mage, Aquático and Claude', () => {
+test('there are eight characters: Alpha, Classic, Foxy, Bot, Slime, Mage, Penny and Claude', () => {
   assert.deepEqual([...MASCOT_IDS].sort(), ['alpha', 'aquatic', 'bot', 'classic', 'claude', 'fox', 'mage', 'slime'])
   const names = MASCOT_IDS.map(id => MASCOTS[id].name)
-  for (const name of ['Puff Alpha', 'Puff Classic', 'Puff Fox', 'Puff Bot', 'Puff Slime', 'Puff Mage', 'Puff Aquático', 'Claude']) assert.ok(names.includes(name), name)
+  for (const name of ['Alpha', 'Classic', 'Foxy', 'Bot', 'Slime', 'Mage', 'Penny', 'Claude']) assert.ok(names.includes(name), name)
 })
 
 test('the scene is drawn at twice the original resolution', () => {
   assert.equal(K, 2)
   assert.equal(W, 72)
-  assert.equal(H, 56)
+  assert.equal(H, 72)
 })
 
-test('every character renders every state in both styles, with a face', () => {
+test('sprites stay inside the scene in every state (no clipped hat, antenna or hop) and keep their shading when recolored', () => {
+  for (const id of ['classic', 'fox', 'bot', 'slime', 'mage', 'aquatic']) {
+    for (const state of ['idle', 'success', 'error', 'coding', 'thinking']) {
+      for (const { pose } of animation(state, { character: id }).frames) {
+        // Effects (sparkles, bubbles) may leave the scene; the character itself must not.
+        const canvas = drawScene(id, { ...pose, fx: [], helpers: 0 })
+        assert.ok(!canvas.px.subarray(0, W).some(Boolean), `${id}/${state} touches the top edge of the scene`)
+        assert.ok(!canvas.px.subarray(W * (H - 1)).some(Boolean), `${id}/${state} touches the bottom edge of the scene`)
+      }
+    }
+    // A user color moves the body tones toward it without flattening them: lighter tones stay lighter.
+    const plain = buildPalette(id, {})
+    const tinted = buildPalette(id, { body: '#d83a3a', accent: '#2fa763' })
+    const lum = ([r, g, b]) => 0.3 * r + 0.59 * g + 0.11 * b
+    const slots = [...new Set(canvasSlots(id))]
+    const changed = slots.filter(slot => lum(plain[slot]) !== lum(tinted[slot]) || plain[slot].join() !== tinted[slot].join())
+    assert.ok(changed.length > 0, `${id} follows the body color`)
+    const ordered = changed.map(slot => [lum(plain[slot]), lum(tinted[slot])]).sort((a, b) => a[0] - b[0])
+    const distinct = new Set(ordered.map(([, after]) => Math.round(after))).size
+    assert.ok(distinct >= Math.min(4, ordered.length), `${id} keeps several tones after recoloring`)
+  }
+})
+
+test('a held prop sits under the face, not under the middle of the sprite', () => {
+  const frame = state => animation(state).frames[0].pose
+  for (const id of ['aquatic', 'mage']) {
+    const idle = mascotAnchors(id, frame('idle'))
+    const coding = mascotAnchors(id, frame('coding'))
+    assert.ok(coding.propCx !== undefined && Math.abs(coding.propCx - idle.cx) >= 1.5, `${id} lays the laptop under the face`)
+    assert.ok(coding.propBottom >= coding.bottom, `${id} never lifts the laptop above its feet`)
+  }
+})
+
+function canvasSlots(id) {
+  const canvas = drawScene(id, animation('idle').frames[0].pose)
+  return [...canvas.px].filter(role => role >= 43 && role < LEVEL)
+}
+
+function mascotAnchors(id, pose) {
+  return MASCOTS[id].draw(new Canvas(), pose)
+}
+
+test('every character renders every state, with a face', () => {
   for (const id of MASCOT_IDS) {
-    for (const style of STYLES) {
-      for (const state of ['idle', 'thinking', 'reading', 'coding', 'testing', 'success', 'error', 'permission', 'finished', 'disconnected']) {
-        for (const { pose } of animation(state, { helpers: 3 }).frames) {
-          const canvas = drawScene(id, pose, style)
-          const used = canvas.px.reduce((n, role) => n + (role ? 1 : 0), 0)
-          assert.ok(used > 600, `${id}/${style}/${state} has only ${used} pixels`)
-          assert.ok(canvas.px.includes(R.INK) || canvas.px.includes(R.CYAN) || canvas.px.includes(R.WHITE), `${id}/${style}/${state} has no eyes`)
-        }
+    for (const state of ['idle', 'thinking', 'reading', 'coding', 'testing', 'success', 'error', 'permission', 'finished', 'disconnected']) {
+      for (const { pose } of animation(state, { helpers: 3, character: id }).frames) {
+        const canvas = drawScene(id, pose)
+        const used = canvas.px.reduce((n, role) => n + (role ? 1 : 0), 0)
+        assert.ok(used > 600, `${id}/${state} has only ${used} pixels`)
+        assert.ok(canvas.px.includes(R.INK) || canvas.px.includes(R.CYAN) || canvas.px.includes(R.WHITE), `${id}/${state} has no eyes`)
       }
     }
   }
@@ -41,49 +81,25 @@ test('every character renders every state in both styles, with a face', () => {
 
 test('characters have real detail: many distinct tones and a large, smoothly shaded body', () => {
   for (const id of MASCOT_IDS) {
-    const canvas = drawScene(id, animation('idle').frames[0].pose, 'pixel')
+    const canvas = drawScene(id, animation('idle').frames[0].pose)
     const tones = new Set(canvas.px.filter(Boolean))
     assert.ok(tones.size >= 9, `${id} uses only ${tones.size} tones`)
     assert.ok(canvas.px.filter(Boolean).length > 900, `${id} is only ${canvas.px.filter(Boolean).length} pixels (a 16-bit sprite is about 300)`)
   }
 })
 
-test('3D is the same character extruded: lit tops and shaded sides, with the face still flat', () => {
+test('what a pet holds is drawn over it, in front', () => {
+  const pose = animation('coding').frames[0].pose
+  const canvas = drawScene('mage', pose)
+  assert.ok(canvas.px.includes(R.METAL), 'the laptop is on the scene')
+  assert.ok(canvas.px.includes(R.SCREEN) || canvas.px.includes(R.NAVY2))
+})
+
+test('SVG pictures of every character stay under the host limit', () => {
   for (const id of MASCOT_IDS) {
-    const pose = animation('idle').frames[0].pose
-    const flat = drawScene(id, pose, 'pixel')
-    const solid = drawScene(id, pose, '3d')
-    const tops = solid.px.filter(role => role >= TOP && role < SIDE).length
-    const sides = solid.px.filter(role => role >= SIDE).length
-    assert.ok(tops > 40 && sides > 40, `${id}: tops ${tops}, sides ${sides}`)
-    assert.equal(flat.px.filter(role => role >= TOP).length, 0, 'the pixel style has no 3D faces')
-    assert.ok(solid.px.includes(R.INK) || solid.px.includes(R.CYAN), 'eyes stay on the front')
-    assert.notDeepEqual([...flat.px], [...solid.px])
-  }
-})
-
-test('3D tones come from the same colors: top lighter than the front, side darker', () => {
-  const palette = buildPalette('fox', {})
-  const lum = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b
-  for (const role of [R.BASE, R.LIGHT, R.ABASE, R.CREAM, R.GOLD]) {
-    assert.ok(lum(palette[role + TOP]) > lum(palette[role]), `top of role ${role}`)
-    assert.ok(lum(palette[role + SIDE]) < lum(palette[role]), `side of role ${role}`)
-  }
-})
-
-test('the 3D style recolors like the pixel style', () => {
-  const custom = petSvg({ character: 'slime', state: 'idle', colors: { body: '#ff3344' }, reduced: true, style: '3d' })
-  assert.ok(custom.includes('<path'))
-  assert.notEqual(custom, petSvg({ character: 'slime', state: 'idle', reduced: true, style: '3d' }))
-})
-
-test('SVG pictures of every character stay under the host limit, in both styles', () => {
-  for (const id of MASCOT_IDS) {
-    for (const style of STYLES) {
-      for (const [state, helpers] of [['idle', 0], ['coding', 0], ['success', 3], ['delegating', 3], ['permission', 0]]) {
-        const svg = petSvg({ character: id, state, helpers, style })
-        assert.ok(svg.length < 125_000, `${id}/${style}/${state}: ${svg.length} characters (limit 131072)`)
-      }
+    for (const [state, helpers] of [['idle', 0], ['coding', 0], ['success', 3], ['delegating', 3], ['permission', 0]]) {
+      const svg = petSvg({ character: id, state, helpers })
+      assert.ok(svg.length < 125_000, `${id}/${state}: ${svg.length} characters (limit 131072)`)
     }
   }
 })
@@ -98,16 +114,41 @@ test('a hi-res pet shrinks to fit a narrow terminal pane and shows full detail i
   assert.ok(short.rows <= 8, 'the row budget is respected too')
 })
 
-test('the compact band uses the head only, in both styles', () => {
-  const height = svg => Number(/viewBox="0 0 \d+ (\d+)"/.exec(svg)[1])
-  for (const style of STYLES) {
-    const head = petSvg({ character: 'bot', state: 'idle', crop: 'head', scale: 1, reduced: true, style })
-    const full = petSvg({ character: 'bot', state: 'idle', scale: 1, reduced: true, style })
-    assert.ok(height(head) < height(full), 'the head crop is shorter than the whole pet')
+test('every character, state and frame fits one shared frame, and all of them stand on the same line', () => {
+  const box = stageBounds('alpha')
+  for (const id of MASCOT_IDS) {
+    assert.deepEqual(stageBounds(id), box, 'one frame for everyone')
+    for (const state of [...STATES, ...REACTIONS]) {
+      for (const helpers of [0, 3]) {
+        for (const { pose } of animation(state, { helpers, character: id }).frames) {
+          const canvas = drawScene(id, pose)
+          for (let y = 0; y < canvas.h; y++) for (let x = 0; x < canvas.w; x++) {
+            if (!canvas.px[y * canvas.w + x]) continue
+            assert.ok(x >= box.x && x < box.x + box.w && y >= box.y && y < box.y + box.h, `${id}/${state} draws outside the frame at ${x},${y}`)
+          }
+        }
+      }
+    }
+  }
+  // The feet rest on the shared line (the lowest row of the body at rest, before the shadow).
+  const feet = id => { const c = drawScene(id, animation('idle', { character: id }).frames[0].pose); let last = 0; for (let y = 0; y < c.h; y++) for (let x = 0; x < c.w; x++) { const r = c.px[y * c.w + x]; if (r && r !== R.SHADOW) last = Math.max(last, y) } return last }
+  for (const id of MASCOT_IDS) assert.ok(Math.abs(feet(id) - (STAND - 1)) <= 6, `${id} stands near the shared line (${feet(id)})`)
+})
+
+test('the band crops tight, so the pet fills the band: the picture is shown at a fixed height and is scaled up to it', () => {
+  const stage = stageBounds()
+  for (const id of MASCOT_IDS) {
+    const box = bandBox(id)
+    assert.ok(box.h <= stage.h && box.w <= stage.w && box.x >= 0 && box.y >= 0, `${id} is inside the frame`)
+    const svg = petSvg({ character: id, state: 'idle', crop: 'band', height: 68, reduced: true })
+    const h = Number(/viewBox="-?[0-9.]+ -?[0-9.]+ [0-9.]+ ([0-9.]+)"/.exec(svg)[1])
+    assert.equal(h, box.h)
+    assert.ok(Math.abs(Number(/height="([0-9.]+)"/.exec(svg)[1]) - 68) < 0.5, 'drawn 68 pixels tall whatever the character')
+    assert.ok(68 / box.h >= 1.0, `${id} is drawn at least as big as the whole frame would be (${(68 / box.h).toFixed(2)})`)
   }
 })
 
-test('a pet saved by version 1 (the single "puff") is migrated to Puff Alpha, keeping its identity and look', () => {
+test('a pet saved by version 1 (the single "puff") is migrated to Alpha, keeping its identity and look', () => {
   const { dir, done } = tempDir()
   try {
     writeFileSync(join(dir, 'pet.json'), JSON.stringify({ v: 1, id: 'abcdef0123456789', createdAt: T0, name: 'Biscuit', character: 'puff', colors: { body: '#ff8800', accent: null }, prefs: { motion: 'reduced', scope: 'session', line: true } }))
@@ -119,25 +160,51 @@ test('a pet saved by version 1 (the single "puff") is migrated to Puff Alpha, ke
     assert.equal(pet.createdAt, T0)
     assert.equal(pet.colors.body, '#ff8800')
     assert.equal(pet.prefs.motion, 'reduced')
-    assert.equal(pet.prefs.style, 'pixel', 'new preferences get defaults')
     assert.equal(pet.prefs.band, true)
     assert.equal(pet.prefs.line, true)
   } finally { done() }
 })
 
-test('style and band preferences are validated and survive a restore of the default appearance', () => {
+test('the band preference is validated and survives a restore of the default appearance; a style left by the 3D days is dropped', () => {
   const { dir, done } = tempDir()
   try {
     const store = openStore(dir)
     store.writePet({ ...store.ensurePet(T0), prefs: { motion: 'auto', scope: 'session', line: false, band: false, style: '3d' } })
-    assert.equal(store.ensurePet().prefs.style, '3d')
     assert.equal(store.ensurePet().prefs.band, false)
-    store.writePet({ ...store.ensurePet(), prefs: { ...store.ensurePet().prefs, style: 'holographic' } })
-    assert.equal(store.ensurePet().prefs.style, 'pixel', 'an unknown style falls back')
-    store.writePet({ ...store.ensurePet(), character: 'fox', prefs: { ...store.ensurePet().prefs, style: '3d' } })
+    assert.ok(!('style' in store.ensurePet().prefs), 'the old style preference is gone')
+    store.writePet({ ...store.ensurePet(), character: 'fox' })
     const restored = store.resetAppearance()
     assert.equal(restored.character, 'alpha')
-    assert.equal(restored.prefs.style, 'pixel')
     assert.equal(restored.createdAt, T0)
   } finally { done() }
+})
+
+test('the picture is pixel art with crisp edges and no 3D leftovers', () => {
+  for (const id of MASCOT_IDS) {
+    const svg = petSvg({ character: id, state: 'coding', scale: 2 })
+    assert.ok(svg.includes('crispEdges') && !svg.includes('<filter') && !svg.includes('<use'), id)
+  }
+})
+
+test('a picture drawn for the pointer hops under it; without the option it carries no hover style', () => {
+  const plain = petSvg({ character: 'fox', state: 'idle', scale: 2 })
+  const hover = petSvg({ character: 'fox', state: 'idle', scale: 2, hover: true })
+  assert.ok(!plain.includes(':hover'))
+  assert.ok(hover.includes('svg:hover .hv') && hover.includes('class="hv"'))
+  assert.ok(!petSvg({ character: 'fox', state: 'idle', scale: 2, hover: true, reduced: true }).includes(':hover'), 'reduced motion keeps it still')
+  assert.ok(hover.length < 131072)
+})
+
+test('every character idles in its own manner, and every idle loop is well formed', () => {
+  const seen = new Set()
+  for (const id of MASCOT_IDS) {
+    const anim = animation('idle', { character: id })
+    assert.ok(anim.frames.length >= 8, id + ' has a loop of its own')
+    for (const item of anim.frames) assert.ok(item.d >= 70, id + ' never flickers')
+    const signature = JSON.stringify(anim.frames.map(f => [f.d, f.pose.lookX, f.pose.dy, f.pose.sx, f.pose.sy, f.pose.eyes, f.pose.mouth, f.pose.led, f.pose.hands]))
+    assert.ok(!seen.has(signature), id + ' differs from the others')
+    seen.add(signature)
+    assert.notEqual(anim, animation('idle'), 'not the shared loop')
+  }
+  assert.equal(animation('coding', { character: 'fox' }), animation('coding'), 'working states are shared by all')
 })

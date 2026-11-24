@@ -240,6 +240,23 @@ test('pat is a visual reaction only: no counters change and a permission wait st
   assert.equal(ctl.model().me.state, 'permission')
 })
 
+test('patting again and again escalates: a pat, a giggle, then overjoyed; a pause starts over', async () => {
+  const { io, clock } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  ctl.pat()
+  assert.equal(ctl.model().me.state, 'petted')
+  clock.at += 300; ctl.pat(); clock.at += 300; ctl.pat()
+  assert.equal(ctl.model().me.state, 'giggle')
+  clock.at += 300; ctl.pat(); clock.at += 300; ctl.pat()
+  assert.equal(ctl.model().me.state, 'delighted')
+  assert.equal(ctl.model().me.label, 'Overjoyed!')
+  clock.at += 5000
+  assert.equal(ctl.model().me.state, 'idle', 'the reaction ends by itself')
+  ctl.pat()
+  assert.equal(ctl.model().me.state, 'petted', 'after a pause the count starts again')
+})
+
 test('observing never throws into the host, even for malformed events', async () => {
   const ctl = createController(fakeHost().io)
   await ctl.init({ sid: 'a', cwd: '/w' })
@@ -280,4 +297,45 @@ test('the model is plain JSON, small, and the same for the same inputs', async (
   const a = JSON.stringify(ctl.model())
   assert.equal(a, JSON.stringify(ctl.model()))
   assert.ok(a.length < 6000)
+})
+
+test('the pet looks tired when the plan is nearly used up, and only while it has nothing else to do', async () => {
+  const { io, clock } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  assert.equal(ctl.model().tired, null, 'no usage figures: rested')
+  ctl.setUsage({ rateLimits: [{ kind: 'five_hour', percentUsed: 42 }, { kind: 'seven_day', percentUsed: 30 }] })
+  assert.equal(ctl.model().me.state, 'idle', 'under the threshold: rested')
+  ctl.setUsage({ rateLimits: [{ kind: 'five_hour', percentUsed: 86.4, resetsAt: new Date(clock.at + 3_600_000).toISOString() }, { kind: 'seven_day', percentUsed: 30 }] })
+  const m = ctl.model()
+  assert.equal(m.me.state, 'tired')
+  assert.equal(m.me.label, 'Tired · 86% of the 5-hour limit used')
+  assert.equal(m.tired.window, '5-hour limit')
+  assert.equal(m.tired.exhausted, false)
+  // Work still shows as work.
+  ctl.observe('UserPromptSubmit', payload())
+  ctl.observe('PreToolUse', payload(tool('a', 'Bash', { command: 'npm test' })))
+  assert.equal(ctl.model().me.state, 'testing')
+  // A window that has already reset no longer tires it; spending limits (credits) count too.
+  ctl.setUsage({ rateLimits: [{ kind: 'five_hour', percentUsed: 99, resetsAt: new Date(clock.at - 1000).toISOString() }, { kind: 'spend_limit', percentUsed: 97 }] })
+  assert.equal(ctl.model().tired.window, 'spending limit')
+  assert.equal(ctl.model().tired.exhausted, true)
+  ctl.setUsage(null)
+  assert.equal(ctl.model().tired, null)
+})
+
+test('the model reports how tasks went, as the agent said: successes and failures of tool calls', async () => {
+  const { io, clock } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  assert.deepEqual(ctl.model().outcome, { ok: 0, failed: 0 })
+  ctl.observe('UserPromptSubmit', payload())
+  for (const [id, name, input] of [['1', 'Read', { file_path: '/w/a.js' }], ['2', 'Read', { file_path: '/w/b.js' }], ['3', 'Grep', { pattern: 'x' }]]) {
+    ctl.observe('PreToolUse', payload(tool(id, name, input)))
+    clock.at += 50
+    ctl.observe('PostToolUse', payload({ ...tool(id, name, input), tool_response: {} }))
+  }
+  ctl.observe('PreToolUse', payload(tool('4', 'Bash', { command: 'node broken.js' })))
+  ctl.observe('PostToolUseFailure', payload({ ...tool('4', 'Bash', { command: 'node broken.js' }), error: 'Exit code 1' }))
+  assert.deepEqual(ctl.model().outcome, { ok: 3, failed: 1 })
 })

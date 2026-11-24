@@ -7,27 +7,27 @@ what was checked, where, and what was not.
 
 | Area | How | Result |
 | --- | --- | --- |
-| Engine, statistics, pet states, storage, CLI, installer | `npm test`: 143 tests, no dependencies | pass |
-| Eight characters, pixel and 3D, hi-res | Tests render every character in both styles through 10 states with all subagent helpers, check detail (tones, pixel counts), 3D faces, recoloring, SVG size under the host's limit, narrow-terminal fitting; and contact sheets were looked at | pass |
+| Engine, statistics, pet states, storage, CLI, installer | `npm test`: 153 tests, no dependencies | pass |
+| Eight characters, hi-res pixel art | Tests render every character through 10 states with all subagent helpers, check detail (tones, pixel counts), faces, recoloring, SVG size under the host's limit, narrow-terminal fitting; and contact sheets were looked at | pass |
 | Concurrent writers | 6 OS processes x 40 events on one session; 4 processes across sessions and agents | no lost update, no temp files left |
 | Date logic | fixed-offset zones, a simulated DST change, midnight crossing, leap day, streak survival after reload | pass |
 | Corruption and migration | damaged session / pet files, hand-edited and future-version records, hostile backups, path-like ids; a version-1 pet (the single "puff") migrates to Puff Alpha keeping its identity | quarantined, repaired or migrated |
 | Privacy | prompts, commands, tokens, file paths and errors never reach a record or the error log (tested with sentinel strings) | pass |
 | **Claude Code (static)** | `claude plugin validate .` on Claude Code 2.1.330 | pass |
-| **Claude Code (engine)** | `claude plugin test .` on 2.1.330: the mod raises the host's real `classic.*` events, persists through a fake host file system, mounts the pane **and the compact band above the prompt** on the terminal and desktop surfaces, presses tabs/buttons (including *Hide*), submits the name field | 4 of 4 pass |
+| **Claude Code (engine)** | `claude plugin test .` on 2.1.330: the mod raises the host's real `classic.*` events, persists through a fake host file system, mounts the pane **and the compact band above the prompt** on the terminal and desktop surfaces, presses tabs/buttons, submits the name field | 4 of 4 pass |
 | **Claude Code (live session)** | An earlier build of the mod, copied into this desktop session's dev-mods folder, was loaded by the host (2.1.330) and wrote `pet.json` and this session's record in `~/.codepuff` (session id, project, a prompt, a running turn, a tool in flight, the **local** calendar day) | live hook events, `$.env`, `$.fs`, `$.session.id()` and the sandbox's time zone work |
 | **Codex (real host)** | One real `codex exec` (Codex CLI 0.171.0-alpha.13), ephemeral, temp project, hooks injected for that run only | the host delivered `SessionStart`, `UserPromptSubmit`, `PreModelRequest`, `PostModelRequest`, `SessionEnd`; payload fields matched the documented schema; CodePuff's command ran in Codex's environment and recorded a session; **`async: true` hooks were accepted and run** |
 | Codex model failure | In that run the model request failed (the account's usage limit): the pet shows *The model request failed*; the error text is not stored | pass |
 | Codex plugin hook command | The exact command in `codex/hooks.json` run through `cmd.exe`, PowerShell and a POSIX shell with only `PLUGIN_ROOT` set; also with a missing folder (answers `{}`, exit 0) | pass |
 | Codex installer | Merge/uninstall against temp `hooks.json` files: keeps the user's hooks, backs up, idempotent, refuses invalid JSON, uninstall restores the original | pass |
-| Terminal app | The rewritten app (four views, hi-res pet shrunk to the pane) was started in a real terminal (Windows PowerShell, the app's Terminal panel) and drew the 3D Puff Mage with its label, numbers and key help. The earlier version reacted live to real hook payloads (*No agent connected*, *Working on a response*, *Running tests*) | renders; live reaction seen on the earlier version |
+| Terminal app | The rewritten app (four views, hi-res pet shrunk to the pane) was started in a real terminal (Windows PowerShell, the app's Terminal panel) and drew the Puff Mage with its label, numbers and key help. The earlier version reacted live to real hook payloads (*No agent connected*, *Working on a response*, *Running tests*) | renders; live reaction seen on the earlier version |
 | Overhead | `scripts/bench.mjs` | see [PERFORMANCE.md](PERFORMANCE.md) |
 
 ## Not verified
 
 * **How the pane and the compact band look in a live Claude Code window.** The engine tests mount the same drawings on
   both surfaces, but nobody has yet looked at the drawn band above the prompt or the widget in the desktop window, in
-  either style. The live check above was of an earlier build of the mod.
+  the Svg hover hop included. The live check above was of an earlier build of the mod.
 * **Keyboard use of the new terminal app** (Customize arrows, name entry, import, confirmations): the key handling was
   not driven by a real keyboard in this build's checks; only its first screen was read.
 * **Codex tool events in a live Codex run** (`PreToolUse`, `PostToolUse`, `Stop`, `PermissionRequest`, subagents):
@@ -40,10 +40,14 @@ what was checked, where, and what was not.
 * `codepuff install claude` through the `claude` CLI.
 * macOS and Linux (CI is configured but has not run). Windows 11 with Node 26 is the only tested environment.
 * Terminals without truecolor or half-block characters, and a screen reader.
-* The art against your reference sheets is a faithful *interpretation* in code, judged by eye on contact sheets; some
-  details (for example the fox's tail and scarf, the mage's book, the aquatic fish's fins) are simpler than the sheets.
+* The six sprite characters are the reference sheets' artwork shrunk to pixel art and checked by eye on close-ups and
+  contact sheets (several states); the faces are redrawn by the engine (so every expression exists), so
+  they are simpler than the sheets' own faces, and the sprites have no separate hands. Alpha and Claude are drawn in
+  code. The hover hop is plain CSS in an interactive `Svg`; it was checked in Chrome only, not in the Claude Code window.
 
 ## Known limitations
+
+* **Plan usage (the tired state)** reads `$.session.usage()`; it is covered by controller tests with made-up figures, and has not been seen with a real account's figures. Off a subscription the host reports no limits and the pet is never tired.
 
 * **Claude Code's Mods API is early access** and moves between releases; the mod is pinned to what 2.1.330 declares.
 * **The Claude mod cannot append, rename, lock or delete files** (it only reads, lists and overwrites), so "reset

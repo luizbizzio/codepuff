@@ -55,7 +55,7 @@ says which agent and project it is. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE
 
 | Surface | Claude Code | Codex |
 | --- | --- | --- |
-| **Compact band above the prompt**: the whole pet at the left edge, what it is doing right now, and at the right edge a pie chart of how this session's tasks went (successes and failures as the agent reported them) with the counts under it; the pet and the pie are the same height, and the band comes in three sizes (small, medium, large) | yes (`/codepuff band on|off|small|medium|large`, or the *Compact band* settings in Customize) | not possible: Codex has no plugin UI |
+| **Compact band above the prompt**: the whole pet at the left edge; next to it the streak, this session's prompts and the hearts, a status block whose dot and outline take the color of what is going on (green well, amber needs you or worn out, red failed, blue working), and bars for the plan's 5-hour and weekly limits once they are half used (with the time to reset); at the right edge a ring of how this session's tasks went (success rate in the middle, counts under it, a tooltip with the numbers). Three sizes: small, medium, large | yes (`/codepuff band on|off|small|medium|large`, or the *Compact band* settings in Customize) | not possible: Codex has no plugin UI |
 | **Pane / widget**: the animated pet beside the chat, statistics, customization (Statistics and Customize tabs); click the activity in the compact band to pet it (pat again and again: a pat, a giggle, then overjoyed); the pet hops when the pointer is over it, and pausing on the pet or the pie chart shows a tooltip; a new state arrives with a small pop | yes (desktop widget, docked pane) | not possible |
 | **Terminal app** `codepuff pet`: pet, statistics, customization, data | yes | yes (the way to see your pet next to Codex) |
 | One-line status under the prompt | yes (`/codepuff line on`) | - |
@@ -125,7 +125,7 @@ there is room). Reduced motion (`codepuff set motion reduced`) stops all animati
 
 The pet has one to five hearts for you, shown in the compact band and the pane. They are kept with the pet, so they last
 between sessions. If you are abusive to the assistant (insults aimed at it, in English or Portuguese; swearing at a bug does
-not count) they drop, the pet flinches (*That hurt…*), and with two hearts or fewer it is sad whenever it has nothing else to
+not count) they drop; harsh criticism ("your code is garbage") only makes it flinch for a moment and costs nothing. When they drop, the pet flinches (*That hurt…*), and with two hearts or fewer it is sad whenever it has nothing else to
 do. Thanks bring a heart back, and each day without unkindness heals a little. The text of a prompt is only looked at in
 memory to decide this: it is never stored, logged or sent anywhere, only the number is kept. It applies to your Codex
 prompts too (the pet is one), and you can turn it off with the *Hearts react to my messages* switch in Customize,

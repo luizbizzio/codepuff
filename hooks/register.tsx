@@ -16,6 +16,8 @@ import type { Register } from 'claude-code'
 // @ts-ignore
 import { createController } from '../src/claude/controller.js'
 // @ts-ignore
+import { createSoundQueue } from '../src/claude/soundqueue.js'
+// @ts-ignore
 import { base64, petSvg, terminalFrame } from '../src/core/render/raster.js'
 import { renderBand, renderCustomize, renderHead, renderStats, renderTabs, sizeOf } from './views.js'
 
@@ -98,6 +100,23 @@ export const register: Register = on => {
 
   on('session.start', async ($, e, next) => {
     try {
+      // The host's own player only exists on macOS; on Windows the clip goes through the system's sound player. Resolves when the clip
+      // has finished (or could not play), which is what lets the queue play them one at a time.
+      const playOnce = ({ sound, volume }: { sound: string; volume: string }): Promise<unknown> => {
+        const root = String($.plugin.root)
+        const file = `${root.replace(/[\\/]+$/, '')}/assets/sounds/${sound}-${volume}.wav`
+        const log = (text: string) => { try { $.ui.log('CodePuff sound: ' + text, { to: 'debug' }) } catch { /* only a note */ } }
+        const hostPlayer = () => Promise.resolve($.audio.play({ asset: `assets/sounds/${sound}-${volume}.wav` })).catch((error: unknown) => log('the host could not play ' + sound + ': ' + String((error as Error)?.message ?? error)))
+        if (/^[A-Za-z]:|^\\\\/.test(root)) {
+          // Windows: PowerShell's SoundPlayer; the host's player is the fallback.
+          const script = `(New-Object System.Media.SoundPlayer '${file.replace(/\//g, '\\').replace(/'/g, "''")}').PlaySync()`
+          return Promise.resolve($.process.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', script], { timeoutMs: 8000 }))
+            .then((result: any) => { if (result && result.exitCode) { log('PowerShell exited with ' + result.exitCode + ' ' + String(result.stderr ?? '').slice(0, 200)); return hostPlayer() } })
+            .catch((error: unknown) => { log('could not run PowerShell: ' + String((error as Error)?.message ?? error)); return hostPlayer() })
+        }
+        return hostPlayer()
+      }
+      const queue = createSoundQueue(playOnce)
       bridge = {
         later: (name, ms, fn) => {
           timers[name]?.cancel()
@@ -111,20 +130,8 @@ export const register: Register = on => {
         blit: args => $.ui.blit(args as any),
         usage: () => $.session.usage(),
         toast: (text: string) => { try { $.ui.toast(text) } catch { /* a toast is only a nicety */ } },
-        // The host's own player only exists on macOS; on Windows the clip goes through the system's sound player.
-        play: (sound: string, volume: string) => {
-          const root = String($.plugin.root)
-          const file = `${root.replace(/[\\/]+$/, '')}/assets/sounds/${sound}-${volume}.wav`
-          const log = (text: string) => { try { $.ui.log('CodePuff sound: ' + text, { to: 'debug' }) } catch { /* only a note */ } }
-          const hostPlayer = () => Promise.resolve($.audio.play({ asset: `assets/sounds/${sound}-${volume}.wav` })).catch((error: unknown) => log('the host could not play ' + sound + ': ' + String((error as Error)?.message ?? error)))
-          if (/^[A-Za-z]:|^\\\\/.test(root)) {
-            // Windows: the system's own sound player, through PowerShell; the host's player is the fallback.
-            const script = `(New-Object System.Media.SoundPlayer '${file.replace(/\//g, '\\').replace(/'/g, "''")}').PlaySync()`
-            Promise.resolve($.process.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', script], { timeoutMs: 8000 }))
-              .then((result: any) => { if (result && result.exitCode) { log('PowerShell exited with ' + result.exitCode + ' ' + String(result.stderr ?? '').slice(0, 200)); return hostPlayer() } })
-              .catch((error: unknown) => { log('could not run PowerShell: ' + String((error as Error)?.message ?? error)); return hostPlayer() })
-          } else void hostPlayer()
-        },
+        // Sounds play one at a time (see soundqueue.js).
+        play: (sound: string, volume: string) => { queue({ sound, volume }) },
       }
       const io = {
         dataDir: async () => {

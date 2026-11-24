@@ -5,9 +5,9 @@
 // @ts-ignore
 import { PRESETS } from '../src/core/color.js'
 // @ts-ignore
-import { AGENT_LABELS } from '../src/core/format.js'
+import { AGENT_LABELS, duration } from '../src/core/format.js'
 // @ts-ignore
-import { pieSvg } from '../src/core/render/pie.js'
+import { ringSvg } from '../src/core/render/pie.js'
 // @ts-ignore
 import { activitySvg } from '../src/core/render/charts.js'
 // @ts-ignore
@@ -20,7 +20,6 @@ import { MASCOTS, MASCOT_IDS } from '../src/core/art/registry.js'
 /** The size a picture asks for (its own width and height attributes), so the host draws it at exactly that size.
  *  (Only a picture has a size in pixels: a Box's width and height are in terminal cells, so none is given one.) */
 export const sizeOf = (svg: string) => ({ width: Math.round(Number(/ width="([0-9.]+)"/.exec(svg)?.[1] ?? 0)) || undefined, height: Math.round(Number(/ height="([0-9.]+)"/.exec(svg)?.[1] ?? 0)) || undefined })
-const LINE = 20 // the height of one line of text, in pixels
 
 export const COLORS: Record<string, string> = { success: '#3fb950', error: '#f85149', permission: '#d29922', investigating: '#d29922', finished: '#3fb950', disconnected: '#8b949e' }
 const GLYPH: Record<string, string> = { success: '^_^', finished: '^_^', error: '>_<', permission: 'O_O', investigating: 'o_O', disconnected: '-_-', waiting: '^_^', idle: 'o_o', thinking: 'o.o', sad: 'T_T', hurt: '>_<', petted: '^_^', giggle: '^o^', delighted: '^o^' }
@@ -44,15 +43,43 @@ export const heartsRow = ({ Box, Text }: Els, n: number) => (
   </Box>
 )
 
-/** The compact band: the pet at the left edge and the pie chart at the right edge, both as tall as the band; between them the
- *  streak and this session's prompts, what the pet is doing in a rounded block, and the hearts. */
+/** The color of the dot and the outline of the status block: green when things went well, amber when it needs you or is worn out,
+ *  red when something failed, blue while it works, grey when there is nothing going on. */
+function toneOf(state: string): string {
+  if (['success', 'finished', 'waiting'].includes(state)) return '#3fb950'
+  if (['error', 'hurt'].includes(state)) return '#f85149'
+  if (['permission', 'investigating', 'tired'].includes(state)) return '#d29922'
+  if (['petted', 'giggle', 'delighted'].includes(state)) return '#f778ba'
+  if (['idle', 'sad', 'disconnected'].includes(state)) return '#8b949e'
+  return '#58a6ff'
+}
+
+/** The plan's windows worth showing (half used or more) as small bars: how much is used, and when it resets. */
+function renderPlan({ Box, Text }: Els, plan: any[]) {
+  return plan.filter(w => w.percent >= 50).map(w => {
+    const filled = Math.max(1, Math.round(w.percent / 10))
+    const tone = w.percent >= 90 ? '#f85149' : w.percent >= 70 ? '#d29922' : '#3fb950'
+    return (
+      <Box key={'plan-' + w.id} flexDirection="row" gap={1}>
+        <Text dimColor>{w.label.padEnd(5)}</Text>
+        <Box flexDirection="row">
+          <Text color={tone}>{'█'.repeat(filled)}</Text>
+          <Text dimColor>{'░'.repeat(10 - filled)}</Text>
+        </Box>
+        <Text color={tone}>{w.percent + '%'}</Text>
+        {w.resetsInMs > 0 ? <Text dimColor>{'resets in ' + duration(w.resetsInMs)}</Text> : null}
+      </Box>
+    )
+  })
+}
+
+/** The compact band: the pet at the left edge, then (hugging it) the streak, the prompts and the hearts, the status block with
+ *  the color of what is going on, and the plan's bars when it is getting used up; and at the right edge a ring of how the tasks went. */
 export function renderBand(els: Els, m: any, surface: string, onPat: () => void) {
   const { Box, Text, Button, Svg } = els
   const reduced = m.pet.motion === 'reduced'
-  // The pet is as tall as the band (the picture is cropped tight, so it fills it); the pie column is as tall too: a line of text
-  // above the pie, the pie, and a line of text below it.
   const size: number = m.pet.bandHeight
-  const pieSize = size - 2 * LINE
+  const ringSize = Math.round(size * 0.6)
   const drawn = surface !== 'terminal' && Svg
   const petPicture = drawn ? petSvg({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers: m.me.helpers, height: size, reduced, crop: 'band', hover: true, title: `${m.pet.name}: ${m.me.label}` }) : ''
   const face = drawn
@@ -60,24 +87,29 @@ export function renderBand(els: Els, m: any, surface: string, onPat: () => void)
     : <Text color={COLORS[m.me.state] ?? undefined}>{GLYPH[m.me.state] ?? 'o_o'}</Text>
   const { ok, failed } = m.outcome
   const total = ok + failed
-  const pie = drawn
-    ? <Svg source={pieSvg({ ok, failed, size: pieSize, title: total ? `${ok} of ${total} tasks succeeded (${Math.round((ok / total) * 100)}%), ${failed} failed, as Claude reported them` : 'No tasks yet in this session' })} width={pieSize} height={pieSize} isInteractive alt={total ? `${ok} of ${total} tasks succeeded, ${failed} failed` : 'No tasks yet'} />
+  const tip = total ? `${ok} of ${total} tasks succeeded (${Math.floor((ok / total) * 100)}%), ${failed} failed, as Claude reported them` : 'No tasks yet in this session'
+  const ring = drawn
+    ? <Svg source={ringSvg({ ok, failed, size: ringSize, title: tip })} width={ringSize} height={ringSize} isInteractive alt={tip} />
     : null
   const days = m.life.current
-  const facts = `Streak: ${days} day${days === 1 ? '' : 's'} · ${m.sessionPrompts} prompt${m.sessionPrompts === 1 ? '' : 's'} this session`
+  const tone = toneOf(m.me.state)
   return (
-    <Box flexDirection="row" gap={1} alignItems="center">
+    <Box flexDirection="row" gap={2} alignItems="center">
       {face}
-      <Box flexGrow={1} flexDirection="column" justifyContent="center" alignItems="center" gap={1}>
-        <Text dimColor>{facts}</Text>
-        <Box borderStyle="round" borderColor="#484f58" paddingX={2}>
+      <Box flexDirection="column" alignItems="flex-start" gap={1}>
+        <Box flexDirection="row" gap={2}>
+          <Text dimColor>{`🔥 ${days} day${days === 1 ? '' : 's'}  ·  💬 ${m.sessionPrompts} prompt${m.sessionPrompts === 1 ? '' : 's'}`}</Text>
+          {m.pet.mood ? heartsRow(els, m.pet.hearts) : null}
+        </Box>
+        <Box borderStyle="round" borderColor={tone} paddingX={1} flexDirection="row" gap={1}>
+          <Text color={tone}>●</Text>
           <Button plain key="pet-it" onPress={onPat}>{m.me.label}</Button>
         </Box>
-        {m.pet.mood ? heartsRow(els, m.pet.hearts) : null}
+        {renderPlan(els, m.plan ?? [])}
       </Box>
+      <Box flexGrow={1} />
       <Box flexDirection="column" alignItems="center" justifyContent="center">
-        <Text dimColor>Tasks</Text>
-        {pie}
+        {ring}
         <Box flexDirection="row" gap={1} justifyContent="center">
           <Text color="#3fb950">{'✔ ' + ok}</Text>
           <Text color="#f85149">{'✖ ' + failed}</Text>

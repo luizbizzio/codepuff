@@ -2,16 +2,19 @@
 // not swearing at a bug) and rises with thanks and with time. The text of a prompt is only looked at, in memory, to decide
 // between "insult", "kind" and neither; it is never stored, logged or sent anywhere. Only the number is kept.
 
-/** Words that are insults when aimed at someone (accents and case are removed first). */
+/** Insults aimed at a person (accents and case are removed first): when aimed at the assistant they cost hearts. */
 const STRONG = new Set([
-  'idiot', 'moron', 'imbecile', 'stupid', 'dumb', 'dumbass', 'retard', 'retarded', 'asshole', 'bitch', 'bastard', 'trash', 'garbage',
-  'useless', 'worthless', 'pathetic', 'incompetent', 'loser', 'scum', 'jackass',
-  'idiota', 'burro', 'burra', 'imbecil', 'estupido', 'estupida', 'otario', 'otaria', 'babaca', 'inutil', 'lixo', 'incompetente',
-  'retardado', 'retardada', 'trouxa', 'tapado', 'tapada', 'anta', 'besta', 'ridiculo', 'ridicula', 'patetico', 'patetica',
-  'nojento', 'nojenta', 'desgraca', 'porcaria', 'merda', 'burrice', 'idiotice', 'cretino', 'cretina', 'lerdo', 'lerda',
+  'idiot', 'moron', 'imbecile', 'stupid', 'dumb', 'dumbass', 'retard', 'retarded', 'asshole', 'bitch', 'bastard', 'loser', 'scum', 'jackass',
+  'idiota', 'burro', 'burra', 'imbecil', 'estupido', 'estupida', 'otario', 'otaria', 'babaca', 'retardado', 'retardada', 'trouxa',
+  'tapado', 'tapada', 'anta', 'besta', 'nojento', 'nojenta', 'desgraca', 'cretino', 'cretina', 'lerdo', 'lerda',
 ])
-/** Words that are only rude as criticism of the assistant itself, so they count when aimed at it. */
-const MILD = new Set(['awful', 'terrible', 'horrible', 'worst', 'horrivel', 'pessimo', 'pessima', 'ruim', 'fraco', 'fraca'])
+/** Harsh criticism of the work or of the assistant ("your code is garbage"): it stings for a moment but costs no hearts, because
+ *  being critical of what was delivered is not being unkind to someone. */
+const MILD = new Set([
+  'awful', 'terrible', 'horrible', 'worst', 'trash', 'garbage', 'useless', 'worthless', 'pathetic', 'incompetent',
+  'horrivel', 'pessimo', 'pessima', 'ruim', 'fraco', 'fraca', 'lixo', 'inutil', 'incompetente', 'ridiculo', 'ridicula',
+  'patetico', 'patetica', 'porcaria', 'merda', 'burrice', 'idiotice',
+])
 /** Phrases that are always aimed at the listener. */
 const PHRASES = [
   'shut up', 'fuck you', 'fuck off', 'screw you', 'go to hell', 'piece of shit', 'son of a bitch',
@@ -74,7 +77,8 @@ export function judge(prompt) {
 }
 
 export const MAX_AFFECTION = 100
-export const HURT = { 1: 6, 2: 15 }
+/** What a message costs (in the score out of 100): abuse takes 15, harsh criticism nothing (it only stings). */
+export const HURT = { 1: 0, 2: 15 }
 export const THANKS = 4
 /** What a day of not being insulted heals. */
 export const DAILY_HEAL = 10

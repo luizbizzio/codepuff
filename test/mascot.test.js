@@ -220,15 +220,19 @@ test('disconnected is visibly inactive: desaturated and with closed eyes', () =>
   assert.equal(animation('disconnected').frames[0].pose.eyes, 'sleep')
 })
 
-test('the pie chart is vector art with a slice for what worked and one for what failed', async () => {
-  const { pieSvg } = await import('../src/core/render/pie.js')
-  const some = pieSvg({ ok: 3, failed: 1 })
+test('the task ring is vector art: green for what worked, red for what failed, the success rate in the middle', async () => {
+  const { ringSvg } = await import('../src/core/render/pie.js')
+  const some = ringSvg({ ok: 3, failed: 1 })
   assert.match(some, /<svg[^>]*viewBox/)
   assert.ok(some.includes('#3fb950') && some.includes('#f85149'))
-  assert.ok(!pieSvg({ ok: 4, failed: 0 }).includes('#f85149'), 'all succeeded: one color')
-  assert.ok(!pieSvg({ ok: 0, failed: 2 }).includes('#3fb950'), 'all failed: one color')
-  const none = pieSvg({ ok: 0, failed: 0 })
-  assert.ok(!none.includes('#3fb950') && !none.includes('#f85149') && none.includes('<circle'), 'no tasks yet: an empty ring')
+  assert.ok(some.includes('>75%<'), 'the rate in the middle')
+  assert.ok(ringSvg({ ok: 804, failed: 37 }).includes('>95%<'), 'rounded down, never up to a rate that is not true')
+  const all = ringSvg({ ok: 4, failed: 0 })
+  assert.ok(!all.includes('#f85149') && all.includes('>100%<'), 'all succeeded: one color')
+  assert.ok(!ringSvg({ ok: 0, failed: 2 }).includes('#3fb950') && ringSvg({ ok: 0, failed: 2 }).includes('>0%<'), 'all failed: one color')
+  const none = ringSvg({ ok: 0, failed: 0 })
+  assert.ok(!none.includes('#3fb950') && !none.includes('#f85149') && none.includes('<circle') && none.includes('>–<'), 'no tasks yet: an empty ring and a dash')
+  assert.ok(ringSvg({ ok: 1, failed: 0, title: 'a<b' }).includes('<title>a&lt;b</title>'), 'the tooltip is escaped')
 })
 
 test('the activity chart is a vector bar chart with a tooltip on every bar and today in green', async () => {

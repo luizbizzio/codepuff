@@ -21,7 +21,7 @@ import { createAffection } from './affection.js'
 import { runCommand } from './commands.js'
 import { AGENT_FILTERS, BLOCKS, PERIODS, PAT_COMBO_MS, REACTION_LABEL, REACTION_LENGTH, SAD_AT, SCOPES, reactionLevel } from './constants.js'
 import { createMoments } from './moments.js'
-import { RESET_TEXT, TIRED_AT, resetsBetween, tiredOf } from './usage.js'
+import { RESET_TEXT, TIRED_AT, planWindows, resetsBetween, tiredOf } from './usage.js'
 
 export { AGENT_FILTERS, SCOPES, TIRED_AT }
 
@@ -251,6 +251,7 @@ export function createController(io, { host = 'claude' } = {}) {
         me: mine,
         outcome: { ok: session.ok, failed: session.failed },
         tired,
+        plan: planWindows(s.usage, at),
         others: others.current.agent ? [others.current, ...others.others].slice(0, 3) : [],
         otherCount: others.current.agent ? 1 + others.others.length : 0,
         today: { prompts: todayStats.prompts, tools: todayStats.tools.total, tests: todayStats.tests.run, passed: todayStats.tests.passed, commits: todayStats.git.commits },

@@ -437,11 +437,15 @@ test('affection: unkind messages lower the hearts and hurt, thanks raise them, t
   // Swearing at a bug is not aimed at the assistant.
   ctl.observe('UserPromptSubmit', payload({ prompt: 'this stupid bug, fuck this, fix the login' }))
   assert.equal(ctl.model().pet.hearts, 5)
+  // Harsh criticism of the work stings for a moment, but costs no hearts.
+  ctl.observe('UserPromptSubmit', payload({ prompt: 'your code is garbage' }))
+  assert.equal(ctl.model().me.state, 'hurt')
+  assert.equal(ctl.model().pet.hearts, 5)
   ctl.observe('UserPromptSubmit', payload({ prompt: 'você é um idiota' }))
   assert.equal(ctl.model().me.state, 'hurt')
   assert.equal(ctl.model().me.label, 'That hurt…')
   assert.equal(ctl.model().pet.hearts, 5 - 0, 'one insult is 15 points: 85 is still five hearts')
-  for (const rude of ['cala a boca', 'you are useless', 'vai se foder', 'burro']) ctl.observe('UserPromptSubmit', payload({ prompt: rude }))
+  for (const rude of ['cala a boca', 'you are stupid', 'vai se foder', 'burro']) ctl.observe('UserPromptSubmit', payload({ prompt: rude }))
   assert.ok(ctl.model().pet.hearts <= 2, 'after several insults the hearts are few (' + ctl.model().pet.hearts + ')')
   ctl.observe('Stop', payload())
   clock.at += 3000
@@ -557,4 +561,21 @@ test('the statistics come as a few tiles, tool bars and a chart, with the long l
   assert.equal(m.ui.details, false, 'the long list is hidden until asked for')
   ctl.setUi({ details: true })
   assert.equal(ctl.model().ui.details, true)
+})
+
+test('the plan windows reach the model for the bars: used share and time to reset, and a window that already reset is left out', async () => {
+  const { io, clock } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  assert.deepEqual(ctl.model().plan, [], 'no usage figures: no bars')
+  const iso = ms => new Date(ms).toISOString()
+  ctl.setUsage({ rateLimits: [
+    { kind: 'five_hour', percentUsed: 93.4, resetsAt: iso(clock.at + 72 * 60_000) },
+    { kind: 'seven_day', percentUsed: 41, resetsAt: iso(clock.at + 3 * 86_400_000) },
+    { kind: 'seven_day_opus', percentUsed: 5, resetsAt: iso(clock.at + 86_400_000) },
+    { kind: 'spend_limit', percentUsed: 12, resetsAt: iso(clock.at - 1000) },
+  ], cost: null })
+  const plan = ctl.model().plan
+  assert.deepEqual(plan.map(w => [w.label, w.percent]), [['5h', 93], ['week', 41]], 'known windows only, and not the one that reset')
+  assert.equal(plan[0].resetsInMs, 72 * 60_000)
 })

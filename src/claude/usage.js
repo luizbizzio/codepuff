@@ -28,6 +28,20 @@ export function resetsBetween(before, after, at) {
   return out
 }
 
+const PLAN_LABEL = { five_hour: '5h', seven_day: 'week', spend_limit: 'spend' }
+
+/**
+ * The plan's windows for drawing as bars: how much of each is used and how long until it resets. A window that has already reset
+ * is left out (its figure is old).
+ * @returns {{ id: string, label: string, percent: number, resetsInMs: number }[]}
+ */
+export function planWindows(usage, at) {
+  if (!usage) return []
+  return usage.limits
+    .filter(limit => PLAN_LABEL[limit?.kind] && typeof limit.percentUsed === 'number' && !(limit.resetsAt && Date.parse(limit.resetsAt) < at))
+    .map(limit => ({ id: limit.kind, label: PLAN_LABEL[limit.kind], percent: Math.max(0, Math.min(100, Math.round(limit.percentUsed))), resetsInMs: limit.resetsAt ? Math.max(0, Date.parse(limit.resetsAt) - at) : 0 }))
+}
+
 export function tiredOf(usage, at) {
   if (!usage) return null
   let worst = null

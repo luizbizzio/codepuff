@@ -6,11 +6,12 @@ import { sanitizePet, defaultPet } from '../src/core/settings.js'
 import { T0 } from './helpers.js'
 
 test('abuse aimed at the assistant is told apart from swearing at a bug, in English and Portuguese', () => {
-  for (const rude of ['you are stupid', 'você é um idiota', 'vai se foder', 'burro', 'cala a boca', 'shut up', 'your code is garbage', 'idiota!!', 'fuck you', 'vc é inútil'])
+  for (const rude of ['you are stupid', 'você é um idiota', 'vai se foder', 'burro', 'cala a boca', 'shut up', 'idiota!!', 'fuck you', 'você é burro'])
     assert.equal(judge(rude).insult, 2, rude)
   for (const fine of ['this stupid bug', 'fuck this bug', 'essa merda de erro', 'deu merda no deploy', 'you are not stupid', 'você não é burro', 'fix the login', '```idiota``` fix it', 'the trash can component', ''])
     assert.equal(judge(fine).insult, 0, fine)
-  assert.equal(judge('that was a terrible answer from you').insult, 1, 'harsh criticism is milder')
+  for (const harsh of ['that was a terrible answer from you', 'your code is garbage', 'vc é inútil', 'you are useless'])
+    assert.equal(judge(harsh).insult, 1, harsh + ': harsh criticism, not abuse')
 })
 
 test('thanks are noticed, but not from someone who also insults', () => {
@@ -23,6 +24,7 @@ test('thanks are noticed, but not from someone who also insults', () => {
 test('hearts: one to five from a score; insults cost, thanks and days give back, and the score stays in range', () => {
   assert.deepEqual([1, 20, 21, 40, 60, 80, 81, 100].map(heartsOf), [1, 1, 2, 2, 3, 4, 5, 5])
   assert.equal(afterMessage(100, { insult: 2, kind: false }), 85)
+  assert.equal(afterMessage(100, { insult: 1, kind: false }), 100, 'harsh criticism costs nothing')
   assert.equal(afterMessage(100, { insult: 0, kind: true }), 100, 'never above the top')
   assert.equal(afterMessage(5, { insult: 2, kind: false }), 1, 'never below the bottom: one heart is always left')
   assert.equal(heartsOf(afterMessage(1, { insult: 2, kind: false })), 1)
@@ -53,4 +55,29 @@ test('feeling down and hurt look sad: worried brows and a frown, with a tear', (
     assert.ok(frames.some(f => f.pose.brows === 'worry' && ['frown', 'o'].includes(f.pose.mouth)), name)
     assert.ok(frames.some(f => f.pose.fx.some(item => item.id === 'sweat')), name + ' has a tear')
   }
+})
+
+test('sounds play one at a time, and a third that arrives while two are waiting is dropped', async () => {
+  const { createSoundQueue } = await import('../src/claude/soundqueue.js')
+  const log = []
+  let running = 0
+  let most = 0
+  const play = createSoundQueue(async name => {
+    running++; most = Math.max(most, running)
+    log.push('start ' + name)
+    await new Promise(resolve => setTimeout(resolve, 20))
+    log.push('end ' + name)
+    running--
+  })
+  assert.equal(play('a'), true)
+  assert.equal(play('b'), true)
+  assert.equal(play('c'), false, 'a third is dropped')
+  await new Promise(resolve => setTimeout(resolve, 120))
+  assert.deepEqual(log, ['start a', 'end a', 'start b', 'end b'])
+  assert.equal(most, 1, 'never two at once')
+  assert.equal(play('d'), true, 'room again once they are done')
+  const broken = createSoundQueue(() => { throw new Error('no player') })
+  assert.equal(broken('x'), true)
+  await new Promise(resolve => setTimeout(resolve, 10))
+  assert.equal(broken('y'), true, 'a failing player does not jam the queue')
 })

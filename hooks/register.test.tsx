@@ -148,8 +148,8 @@ test('the compact band shows the pet and what it is doing; pressing the activity
     expect(shown.length).toBeGreaterThan(0)
     // No name; the activity, with the streak and this session's prompts under it.
     expect(shown.some((t: string) => String(t).includes('Alpha'))).toBe(false)
-    expect(shown.some((t: string) => /Streak: [0-9]+ days? · 1 prompt this session/.test(String(t)))).toBe(true)
-    // On the right: how the session's tasks went (a pie on the desktop, counts everywhere).
+    expect(shown.some((t: string) => /🔥 [0-9]+ days?\s+·\s+💬 1 prompt/.test(String(t)))).toBe(true)
+    // On the right: how the session's tasks went (a ring on the desktop, counts everywhere).
     expect(shown.some((x: string) => String(x).includes('✔ 1'))).toBe(true)
     expect(shown.some((x: string) => String(x).includes('✖ 0'))).toBe(true)
     // The hearts: how much the pet likes the user.

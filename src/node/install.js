@@ -82,9 +82,20 @@ export function installCodex({ home, cliPath, dryRun = false, remove = false }) 
   return { file, unchanged, text, backedUp: read.exists && !dryRun && !unchanged }
 }
 
-/** Whether CodePuff is installed and enabled as a Codex plugin (config.toml has an enabled [plugins."codepuff@..."] entry). */
+/**
+ * Whether CodePuff is installed and enabled as a Codex plugin: config.toml has a [plugins."codepuff@..."] table with enabled = true.
+ * Read line by line (a table runs until the next [header]), so no pattern can backtrack.
+ */
 export function codexPluginEnabled(home) {
-  try { return /\[plugins\."codepuff@[^"]*"\]\s*\n(?:[^\[]*\n)*?\s*enabled\s*=\s*true/.test(readFileSync(join(home, 'config.toml'), 'utf8')) } catch { return false }
+  let text
+  try { text = readFileSync(join(home, 'config.toml'), 'utf8') } catch { return false }
+  let inPlugin = false
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (line.startsWith('[')) inPlugin = /^\[plugins\."codepuff@[^"]*"\]/.test(line)
+    else if (inPlugin && /^enabled\s*=\s*true\b/.test(line)) return true
+  }
+  return false
 }
 
 /**
@@ -93,8 +104,13 @@ export function codexPluginEnabled(home) {
  */
 export function runClaude(args, options = {}) {
   if (process.platform !== 'win32') return spawnSync('claude', args, options)
-  const quote = text => (/[\s&|<>^"%]/.test(text) ? '"' + text.replace(/"/g, '\\"') + '"' : text)
-  return spawnSync(['claude', ...args].map(quote).join(' '), { ...options, shell: true })
+  return spawnSync(['claude', ...args].map(quoteWindowsArg).join(' '), { ...options, shell: true })
+}
+
+/** Quotes one argument the way Windows programs read their command line: a backslash only matters before a quote or at the end. */
+export function quoteWindowsArg(text) {
+  if (!/[\s&|<>^"%]/.test(text)) return text
+  return '"' + text.replace(/(\\*)"/g, (_, slashes) => slashes + slashes + '\\"').replace(/(\\+)$/, slashes => slashes + slashes) + '"'
 }
 
 export function installCommand(target, flags, root) {

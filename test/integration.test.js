@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { openStore } from '../src/node/store.js'
-import { PLUGIN_HOOK_COMMAND, pluginHooksDocument } from '../src/node/install.js'
+import { PLUGIN_HOOK_COMMAND, codexPluginEnabled, pluginHooksDocument, quoteWindowsArg } from '../src/node/install.js'
 import { aggregate } from '../src/core/aggregate.js'
 import { normalizeHook } from '../src/core/normalize.js'
 import { tempDir } from './helpers.js'
@@ -169,4 +169,29 @@ test('doctor and install do not trigger Node deprecation warnings (claude is sta
     assert.equal(r.status, 0)
     assert.ok(!/DeprecationWarning/.test(r.stderr), r.stderr)
   } finally { done() }
+})
+
+test('the Codex plugin check reads config.toml by table, and a hostile file cannot make it slow', () => {
+  const { dir, done } = tempDir()
+  try {
+    const check = text => { writeFileSync(join(dir, 'config.toml'), text); return codexPluginEnabled(dir) }
+    assert.equal(check('[plugins."codepuff@codepuff"]\nenabled = true\n'), true)
+    assert.equal(check('[plugins."codepuff@codepuff"]\r\nenabled=true\r\n'), true)
+    assert.equal(check('[plugins."codepuff@codepuff"]\nenabled = false\n'), false)
+    assert.equal(check('[plugins."codepuff@codepuff"]\nname = "x"\n\n[other]\nenabled = true\n'), false, 'another table is not this one')
+    assert.equal(check('[plugins."other@x"]\nenabled = true\n'), false)
+    assert.equal(check('[plugins."codepuff@codepuff"]\nname = "x"\nenabled = true\n'), true)
+    const started = Date.now()
+    assert.equal(check('[plugins."codepuff@codepuff"]\n' + 'a = 1\n'.repeat(200000)), false)
+    assert.ok(Date.now() - started < 1500, 'linear time')
+  } finally { done() }
+})
+
+test('arguments are quoted for the Windows command line: spaces, quotes and trailing backslashes', () => {
+  const bs = '\\'
+  assert.equal(quoteWindowsArg('plain'), 'plain')
+  assert.equal(quoteWindowsArg('C:' + bs + 'my dir' + bs + 'x'), '"C:' + bs + 'my dir' + bs + 'x"')
+  assert.equal(quoteWindowsArg('C:' + bs + 'my dir' + bs), '"C:' + bs + 'my dir' + bs + bs + '"', 'a trailing backslash is doubled so it cannot escape the closing quote')
+  assert.equal(quoteWindowsArg('say "hi"'), '"say ' + bs + '"hi' + bs + '""')
+  assert.equal(quoteWindowsArg('a' + bs + '"b'), '"a' + bs + bs + bs + '"b"', 'a backslash before a quote is doubled')
 })

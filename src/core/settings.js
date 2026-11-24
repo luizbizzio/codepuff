@@ -3,6 +3,7 @@
 
 import { isHex } from './color.js'
 import { CHARACTER_IDS, CHARACTER_NAMES } from './art/defaults.js'
+import { LANGUAGE_CODES } from './i18n/index.js'
 
 const PET_SCHEMA = 2
 export const NAME_MAX = 16
@@ -51,7 +52,7 @@ export function defaultPet(now = Date.now()) {
     name: '',
     character: DEFAULT_CHARACTER,
     colors: { body: null, accent: null },
-    prefs: { motion: 'calm', line: true, band: true, bandSize: 'large', sounds: { ...DEFAULT_SOUNDS }, volume: 'low', mood: true },
+    prefs: { motion: 'calm', line: true, band: true, bandSize: 'large', sounds: { ...DEFAULT_SOUNDS }, volume: 'low', mood: true, language: 'auto' },
     seen: [], // one-time notices already shown
     affection: { score: 100, day: '', at: 0 }, // how much the pet likes the user (1 to 100, shown as one to five hearts); see mood.js
     milestones: null, // the milestones already celebrated; null until the first look at the statistics (what was reached before is not celebrated)
@@ -95,6 +96,8 @@ export function sanitizePet(raw, now = Date.now()) {
       band: migrated.prefs?.band !== false,
       bandSize: Object.hasOwn(BAND_SIZES, migrated.prefs?.bandSize) ? migrated.prefs.bandSize : 'large',
       mood: migrated.prefs?.mood !== false,
+      // "auto" follows the system's language; otherwise one of the supported codes (see i18n/).
+      language: LANGUAGE_CODES.includes(migrated.prefs?.language) ? migrated.prefs.language : 'auto',
       volume: VOLUMES.includes(migrated.prefs?.volume) ? migrated.prefs.volume : 'low',
       sounds: Object.fromEntries(SOUND_MOMENTS.map(moment => [moment, SOUNDS.includes(migrated.prefs?.sounds?.[moment]) ? migrated.prefs.sounds[moment] : DEFAULT_SOUNDS[moment]])),
     },

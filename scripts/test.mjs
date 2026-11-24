@@ -6,5 +6,5 @@ import { join } from 'node:path'
 
 const dir = join(import.meta.dirname, '..', 'test')
 const files = readdirSync(dir).filter(name => name.endsWith('.test.js')).sort().map(name => join(dir, name))
-const result = spawnSync(process.execPath, ['--test', ...files], { stdio: 'inherit' })
+const result = spawnSync(process.execPath, ['--test', ...files], { stdio: 'inherit', env: { ...process.env, CODEPUFF_LANG: 'en' } })
 process.exit(result.status ?? 1)

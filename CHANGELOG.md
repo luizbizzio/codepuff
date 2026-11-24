@@ -6,6 +6,9 @@ All notable changes. The format follows [Keep a Changelog](https://keepachangelo
 
 The first stable version: everything from the 0.1.0 preview, plus the changes below. [docs/STATUS.md](docs/STATUS.md) says exactly what was verified where.
 
+### Added
+- **Languages.** Everything CodePuff says is translated into 14 languages (English, Portuguese (Brazil), Spanish, French, German, Italian, Dutch, Polish, Turkish, Russian, Japanese, Korean, Simplified and Traditional Chinese) and the language of the computer is picked automatically. Change it in Customize, with `/codepuff language <code>` or `codepuff set language <code>`; it is saved with the pet and shared by Claude Code and Codex. Numbers, dates, durations and plural forms follow each language, and the terminal app counts text in terminal cells so Japanese, Korean and Chinese line up.
+
 ### Changed
 - First-run defaults: Classic, large compact band, status line on, quiet sounds (pop, tada, chime, chime) at low volume, calm motion.
 - The long waits no longer repeat one short loop: `thinking` is a ten-second loop (ideas up-right and up-left, a blink, a look down, an "aha") with a quirk of its own for each character, and the work states (typing, running, searching, testing, git, MCP, web, delegating, planning) play three rounds with a blink, a glance and a pleased smile.

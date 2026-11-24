@@ -12,10 +12,10 @@ const PANE = {
 // The small pet shown beside the chat: its picture, its name and what it is doing.
 const WIDGET = { ...PANE, props: { ...PANE.props, placement: 'widget' } } as const
 
-function world(on: any) {
+function world(on: any, lang = 'en_US.UTF-8') {
   const files = new Map<string, string>()
   const clock = mock.clock(on, { now: 1_800_000_000_000 })
-  mock.env(on, { CODEPUFF_HOME: '/data/codepuff' })
+  mock.env(on, { CODEPUFF_HOME: '/data/codepuff', LANG: lang })
   on('session.id', () => ({ value: 'chat-1' }))
   on('command.register', () => ({ value: { command: 'codepuff' } }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
@@ -219,5 +219,29 @@ test('another agent\'s activity shows up once the pane is looked at, even if nob
   await clock.advance(12_000)
   const shown = (await ui.findAll({ type: 'Text' })).map((x: any) => x.text)
   expect(shown).toContain('7')
+  await ui.unmount()
+})
+
+test('the pane speaks the language of the system, and the Language buttons switch it and save the choice', async ($: any, on: any) => {
+  const { files, clock } = world(on, 'pt_BR.UTF-8')
+  on('ui.toast', () => ({ value: undefined }))
+  await $.session.start({ cwd: '/work/app', surface: 'desktop', isInteractive: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await clock.advance(400)
+  const texts = async () => (await ui.findAll({ type: 'Text' })).map((x: any) => x.text)
+  expect(await texts()).toEqual(expect.arrayContaining(['Plataforma', 'Período', 'Últimos 14 dias']))
+  expect(await ui.find({ type: 'Button', text: 'Esta sessão' })).toBeTruthy()
+  await ui.press({ plugin: 'codepuff', key: 'tab-look' })
+  await clock.advance(400)
+  expect(await texts()).toEqual(expect.arrayContaining(['Idioma', 'Configurações', 'Personagem']))
+  expect(await ui.find({ type: 'Button', text: 'Faixa compacta: ligada' })).toBeTruthy()
+  expect(await ui.find({ type: 'Button', text: 'Automático' })).toBeTruthy()
+  await ui.press({ plugin: 'codepuff', key: 'lang-ja' })
+  await clock.advance(400)
+  expect(await texts()).toContain('言語')
+  expect(JSON.parse(String(files.get('/data/codepuff/pet.json'))).prefs.language).toBe('ja')
+  await ui.press({ plugin: 'codepuff', key: 'lang-auto' })
+  await clock.advance(400)
+  expect(await texts()).toContain('Idioma')
   await ui.unmount()
 })

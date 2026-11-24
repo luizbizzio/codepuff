@@ -8,7 +8,7 @@ No GitHub release or tag has been created.
 
 | Area | How | Result |
 | --- | --- | --- |
-| Engine, statistics, pet states, storage, CLI, installer | `npm test`: 200 tests, no dependencies (the mod has 7 more, run by `claude plugin test`) | pass |
+| Engine, statistics, pet states, storage, CLI, installer | `npm test`: 214 tests, no dependencies (the mod has 8 more, run by `claude plugin test`) | pass |
 | Eight characters, hi-res pixel art | Tests render every character through 10 states with all subagent helpers, check detail (tones, pixel counts), faces, recoloring, SVG size under the host's limit, narrow-terminal fitting; and contact sheets were looked at | pass |
 | Robustness | `npm run fuzz` (scripts/fuzz.mjs): 30,000 random hook payloads, 30,000 random prompts through the insult judge (plus a corpus of 54 realistic prompts, checked by hand), 20,000 random saved files, a 20,000-step stream of events, commands and settings through the controller, and 3,000 odd picture requests; and all 632 pictures the pet can draw parsed as strict XML in Chrome (scripts are in the scratch notes, not the repository) | no failures after the fixes |
 | Concurrent writers | 6 OS processes x 40 events on one session; 4 processes across sessions and agents | no lost update, no temp files left |
@@ -49,6 +49,11 @@ No GitHub release or tag has been created.
   contact sheets (several states); the faces are redrawn by the engine (so every expression exists), so
   they are simpler than the sheets' own faces, and the sprites have no separate hands. Alpha and Claude are drawn in
   code. The hover hop is plain CSS in an interactive `Svg`; it was checked in Chrome only, not in the Claude Code window.
+
+## Languages
+
+* **14 languages** (English, Portuguese (Brazil), Spanish, French, German, Italian, Dutch, Polish, Turkish, Russian, Japanese, Korean, Simplified and Traditional Chinese): the catalogs have identical keys, placeholders and plural forms (tested), every label of every state, statistic and command is rendered in every language in the tests, the mod's pane was mounted in Portuguese and switched to Japanese in the Claude Code test kit, and the command line and terminal app follow `CODEPUFF_LANG`.
+* **Not verified**: that the translations read naturally to native speakers (they were written by the project; Portuguese is the one the owner can review), and how the wide characters of Japanese, Korean and Chinese look in the live Claude Code window (the width of text is counted in terminal cells, but only in tests). The computer's language is found from the environment, the system's interface language on Windows and the runtime's locale; which of those the Claude Code mod's sandbox offers was not checked in a live window (the owner's computer is English, so the live window cannot show a translation unless the language is chosen in Customize).
 
 ## Known limitations
 

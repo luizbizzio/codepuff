@@ -6,6 +6,7 @@
 // know what the model is "thinking": `thinking` only means "a turn is running and no tool call is in
 // flight", and its label says exactly that.
 
+import { t } from './i18n/index.js'
 import { newLive } from './session.js'
 
 export const WINDOWS = Object.freeze({
@@ -35,31 +36,19 @@ const RANK = Object.freeze({
   success: 4, finished: 3, waiting: 2, tired: 1, sad: 1, idle: 1, disconnected: 0,
 })
 
-const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's')
+const TIRED_KINDS = ['five_hour', 'seven_day', 'spend_limit']
 
 export function labelFor(state, detail = {}) {
   switch (state) {
-    case 'thinking': return 'Working on a response'
-    case 'reading': return 'Reading files'
-    case 'searching': return 'Searching the project'
-    case 'coding': return 'Editing code'
-    case 'running': return 'Running a command'
-    case 'tired': return `Tired · ${detail.percent ?? '?'}% of the ${detail.window ?? 'plan limit'} used`
-    case 'sad': return 'Feeling down'
-    case 'git': return 'Using git'
-    case 'mcp': return 'Using a connected tool'
-    case 'testing': return 'Running tests'
-    case 'web': return 'Looking things up online'
-    case 'delegating': return detail.helpers ? 'Working with ' + plural(detail.helpers, 'subagent') : 'Starting a subagent'
-    case 'planning': return 'Updating its plan'
-    case 'success': return detail.kind === 'commit' ? 'Commit made' : 'Tests passed'
-    case 'error': return detail.act === 'model' ? 'The model request failed' : detail.act === 'test' ? 'Tests failed' : 'A tool failed'
-    case 'investigating': return 'Looking into the failure'
-    case 'waiting': return 'Waiting for your next prompt'
-    case 'permission': return detail.kind === 'ask' ? 'Waiting for your answer' : 'Waiting for permission'
-    case 'finished': return 'Finished'
-    case 'disconnected': return detail.ended ? 'Session ended' : 'No agent connected'
-    default: return 'Resting'
+    case 'thinking': case 'reading': case 'searching': case 'coding': case 'running': case 'sad': case 'git': case 'mcp': case 'testing': case 'web': case 'planning': case 'investigating': case 'waiting': case 'finished':
+      return t('state.' + state)
+    case 'tired': return t('state.tired.' + (TIRED_KINDS.includes(detail.kind) ? detail.kind : 'plan'), { percent: detail.percent ?? '?' })
+    case 'delegating': return detail.helpers ? t('state.delegating.helpers', { n: detail.helpers }) : t('state.delegating')
+    case 'success': return t(detail.kind === 'commit' ? 'state.success.commit' : 'state.success.tests')
+    case 'error': return t(detail.act === 'model' ? 'state.error.model' : detail.act === 'test' ? 'state.error.tests' : 'state.error.tool')
+    case 'permission': return t(detail.kind === 'ask' ? 'state.permission.ask' : 'state.permission.perm')
+    case 'disconnected': return t(detail.ended ? 'state.disconnected.ended' : 'state.disconnected.none')
+    default: return t('state.idle')
   }
 }
 

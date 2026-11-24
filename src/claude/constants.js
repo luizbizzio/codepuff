@@ -9,7 +9,6 @@ export const BLOCKS = '▁▂▃▄▅▆▇█'
 /** Pats closer together than this build up: a few make the pet giggle, many make it overjoyed. */
 export const PAT_COMBO_MS = 2500
 export const reactionLevel = count => (count >= 5 ? 'delighted' : count >= 3 ? 'giggle' : 'petted')
-export const REACTION_LABEL = { petted: 'Happy to see you', giggle: 'Giggling', delighted: 'Overjoyed!', hurt: 'That hurt…' }
 export const REACTION_LENGTH = { petted: 1000, giggle: 1300, delighted: 1700, hurt: 2000 }
 /** At this many hearts or fewer the pet is sad whenever it has nothing else to do. */
 export const SAD_AT = 2

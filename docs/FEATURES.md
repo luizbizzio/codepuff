@@ -71,6 +71,7 @@ only do anything in Claude Code (the band, the sounds), because that is where th
 | Hearts react to my messages | **on** | Customize · `/codepuff mood off` | both |
 | Sounds | asks you something: **pop**; finishes: **tada**; 5-hour limit resets: **chime**; weekly limit resets: **chime** (each can be off) | Customize · `/codepuff sound finish off` | Claude Code desktop |
 | Sound volume | **low** (low, medium, high) | Customize · `/codepuff volume low` | Claude Code desktop |
+| Language | **Automatic** (the computer's language; English when it is not one of the 14) | Customize · `/codepuff language pt-BR` · `codepuff set language pt-BR` | both |
 | Hearts | 5 of 5 | they move with how you treat the assistant | both |
 | Statistics page | platform: **the one you are in**; period: **this session** | the buttons on the page (not saved) | both |
 
@@ -80,6 +81,31 @@ pane, Codex has the terminal app.
 
 Two things happen once, on the first run in Claude Code: a toast says that sounds exist and where to change them, and the milestones already
 reached (if you have history) are recorded without a celebration.
+
+## Languages
+
+Everything CodePuff says is translated, and it **picks the language of your computer by itself**: the band, the pane, the statistics,
+the toasts, the answers of `/codepuff`, the terminal app and the statistics of `codepuff stats`. Anything else falls back to English.
+
+| | | | |
+| --- | --- | --- | --- |
+| English (`en`) | Português do Brasil (`pt-BR`) | Español (`es`) | Français (`fr`) |
+| Deutsch (`de`) | Italiano (`it`) | Nederlands (`nl`) | Polski (`pl`) |
+| Türkçe (`tr`) | Русский (`ru`) | 日本語 (`ja`) | 한국어 (`ko`) |
+| 简体中文 (`zh-CN`) | 繁體中文 (`zh-TW`) | | |
+
+To choose another one, use the **Language** buttons in Customize (`Automatic` follows the computer), `/codepuff language de`, or
+`codepuff set language de`. The choice is saved with the pet, so Claude Code and Codex show the same language. How "automatic" finds
+the language: `CODEPUFF_LANG` if set (useful to force one: `CODEPUFF_LANG=ja codepuff pet`), then the system's interface language
+(on Windows) or `LC_ALL` / `LC_MESSAGES` / `LANGUAGE` / `LANG` (elsewhere), then the browser-style locale of the runtime.
+
+What stays in English on purpose: the names of the characters, the words of the commands (`/codepuff band large` is the same in every language, so
+the documentation is true in all of them), `Claude Code` and `Codex`, the word `DELETE` typed to confirm deleting your data, and the
+output of `codepuff doctor`, `install` and `help`. Numbers, dates and durations follow the language (1.234 in German, 1 234 in
+French, 11月24日 in Japanese), and the plural forms follow its grammar (Russian and Polish have three).
+
+The translations were written by the project, not by native speakers of every language, so some phrasing will not be perfect: please
+tell us, or fix it (see [CONTRIBUTING.md](../CONTRIBUTING.md)).
 
 ## Hearts
 

@@ -18,10 +18,33 @@ import { createController } from '../src/claude/controller.js'
 // @ts-ignore
 import { createSoundQueue } from '../src/claude/soundqueue.js'
 // @ts-ignore
+import { detectLanguage, t } from '../src/core/i18n/index.js'
+// @ts-ignore
 import { base64, petSvg, terminalFrame } from '../src/core/render/raster.js'
 import { renderBand, renderCustomize, renderHead, renderStats, renderTabs, sizeOf } from './views.js'
 
 const PANE = 'codepuff'
+
+/**
+ * The system's language as one of CodePuff's (undefined when it is not one of them). On Windows the interface language is asked from the
+ * system itself (LANG is usually unset there, or set by a Unix shell to something the user never chose); elsewhere the environment
+ * comes first. Each source is best effort: the host's sandbox may offer any of them or none.
+ */
+async function systemLanguage($: any): Promise<string | undefined> {
+  const fromEnv = async () => detectLanguage([await $.env.get('LC_ALL'), await $.env.get('LC_MESSAGES'), await $.env.get('LANGUAGE'), await $.env.get('LANG')])
+  const fromIntl = () => { try { return detectLanguage([Intl.DateTimeFormat().resolvedOptions().locale]) } catch { return undefined } }
+  const fromWindows = async () => {
+    try {
+      const out: any = await $.process.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', '(Get-UICulture).Name'], { timeoutMs: 4000 })
+      return out && !out.exitCode ? detectLanguage([String(out.stdout ?? '').trim()]) : undefined
+    } catch { return undefined }
+  }
+  try {
+    const windows = (await $.env.get('OS')) === 'Windows_NT'
+    if (windows) return (await fromWindows()) ?? fromIntl() ?? (await fromEnv())
+    return (await fromEnv()) ?? fromIntl()
+  } catch { return undefined }
+}
 const rev = atom({ plugin: 'codepuff', key: 'rev' } as const, 0)
 
 /** The few host calls the long-lived parts need, as closures made inside a hook (the host's `$` is never stored). */
@@ -151,11 +174,11 @@ export const register: Register = on => {
         now: () => Date.now(),
         run: (argv: string[], cwd?: string) => $.process.run(argv, { cwd, timeoutMs: 4000 }) as any,
       }
-      ctl = createController(io)
+      ctl = createController(io, { locale: (await systemLanguage($)) ?? 'en' })
       ctl.onChange(() => { bridge?.redraw(); flushSoon(); tick(); applyStatusLine(); for (const cue of ctl!.takeCues()) bridge?.play(cue.sound, cue.volume); for (const text of ctl!.takeToasts()) bridge?.toast('🎉 ' + text) })
       await ctl.init({ sid: await $.session.id(), cwd: e.cwd })
       watchUsage()
-      await $.command.register({ name: 'codepuff', description: 'Open your CodePuff pet; /codepuff help lists the options' })
+      await $.command.register({ name: 'codepuff', description: t('cmd.description') })
       void $.ui.open({ id: PANE, title: 'CodePuff', placement: 'widget' }).catch(() => {})
       refreshSoon()
       tick()
@@ -172,7 +195,7 @@ export const register: Register = on => {
   })
 
   on('command.run', { command: 'codepuff' }, async ($, e) => {
-    if (!ctl) return { text: 'CodePuff is not ready yet.' }
+    if (!ctl) return { text: t('cmd.notReady') }
     const out = await ctl.command((e as any).args ?? '')
     if (out.open) { await ctl.refreshOthers(); void $.ui.open({ id: PANE, title: 'CodePuff' }).catch(() => {}) }
     return { text: out.text }

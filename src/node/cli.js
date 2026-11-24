@@ -10,6 +10,8 @@ import { addDays, dayKey } from '../core/days.js'
 import { AGENT_LABELS, ago, statRows } from '../core/format.js'
 import { focus } from '../core/petstate.js'
 import { PRESETS, isHex } from '../core/color.js'
+import { LANGUAGE_CODES, chooseLanguage, setLanguage, t } from '../core/i18n/index.js'
+import { systemLanguage } from './locale.js'
 import { BAND_SIZES, CHARACTERS, MOTIONS, SOUNDS, SOUND_MOMENTS, VOLUMES, cleanName, displayName, NAME_MAX } from '../core/settings.js'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -48,6 +50,7 @@ Usage: codepuff <command>
   set body <#rrggbb|default>  set accent <#rrggbb|default>
   set palette <id>           one of: ${PRESETS.map(p => p.id).join(', ')}
   set motion <full|calm|reduced>   how much the pet moves (calm is the default)
+  set language <auto|en|pt-BR|...>   the language of the pet's words (auto follows the computer's; see docs/FEATURES.md)
   set restore                restore the default appearance
   data where | export [file] | import <file> [--replace] [--pet]
   data reset stats|pet|appearance --yes | data delete --yes
@@ -95,7 +98,11 @@ function header(store, records, now) {
   }
 }
 
+/** The words of the statistics follow the pet's language (or the computer's, for "auto"). The rest of what this command prints stays English. */
+const useLanguage = store => setLanguage(chooseLanguage(store.ensurePet().prefs.language, systemLanguage()))
+
 function status(store) {
+  useLanguage(store)
   const now = Date.now()
   const records = store.listRecords()
   const h = header(store, records, now)
@@ -108,6 +115,7 @@ function status(store) {
 }
 
 function stats(store, flags) {
+  useLanguage(store)
   const now = Date.now()
   const today = dayKey(now)
   const records = store.listRecords()
@@ -126,9 +134,9 @@ function stats(store, flags) {
     columns = [{ name: 'This session', stats: aggregate(records, { session: { agent: latest.agent, sid: latest.sid }, now }) }]
   } else {
     const since = range ? addDays(today, -(Number(range[1]) - 1)) : undefined
-    title = range ? `Last ${range[1]} days` : 'All time'
+    title = range ? t('ui.scope.days', { n: Number(range[1]), agent: AGENT_LABELS[agent] }) : t('ui.scope.all', { agent: AGENT_LABELS[agent] })
     const make = which => aggregate(records, { agent: which, since, now })
-    columns = agent === 'all' ? [{ name: 'Combined', stats: make('all') }, { name: 'Claude Code', stats: make('claude') }, { name: 'Codex', stats: make('codex') }] : [{ name: AGENT_LABELS[agent], stats: make(agent) }]
+    columns = agent === 'all' ? [{ name: AGENT_LABELS.all, stats: make('all') }, { name: 'Claude Code', stats: make('claude') }, { name: 'Codex', stats: make('codex') }] : [{ name: AGENT_LABELS[agent], stats: make(agent) }]
   }
   if (flags.json) return out(JSON.stringify({ pet: h.pet, scope: title, life: { current: h.life.current, longest: h.life.longest, last: h.life.last, activeDays: h.life.total }, columns: columns.map(c => ({ name: c.name, stats: c.stats })) }, null, 2))
   out(h.line)
@@ -192,8 +200,14 @@ function set(store, [key, ...values]) {
         if (!MOTIONS.includes(level)) return fail('Motion: full, calm or reduced.')
         pet.prefs.motion = level }
       break
+    case 'language': {
+      const code = value.toLowerCase() === 'auto' ? 'auto' : LANGUAGE_CODES.find(item => item.toLowerCase() === value.toLowerCase())
+      if (!code) return fail('Usage: codepuff set language <auto|' + LANGUAGE_CODES.join('|') + '>')
+      pet.prefs.language = code
+      break
+    }
     case 'restore': store.resetAppearance(); return out('Appearance restored. Your pet keeps its birthday and statistics.')
-    default: return fail('Usage: codepuff set name|character|sound|volume|mood|band|body|accent|palette|motion <value>, or: codepuff set restore')
+    default: return fail('Usage: codepuff set name|character|sound|volume|mood|band|body|accent|palette|motion|language <value>, or: codepuff set restore')
   }
   store.writePet(pet)
   const saved = store.ensurePet()

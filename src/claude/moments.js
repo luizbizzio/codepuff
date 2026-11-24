@@ -4,6 +4,7 @@
 import { activity, aggregate } from '../core/aggregate.js'
 import { dayKey } from '../core/days.js'
 import { MILESTONES, reachedMilestones } from '../core/milestones.js'
+import { t } from '../core/i18n/index.js'
 import { defaultPet } from '../core/settings.js'
 
 /** @param {{ s: any, now: () => number, records: () => any[], writePet: () => Promise<void> }} deps */
@@ -33,7 +34,7 @@ export function createMoments({ s, now, records, writePet }) {
     if (fresh.length) {
       // The biggest one is announced; the pet celebrates.
       const last = MILESTONES.filter(m => fresh.includes(m.id)).at(-1)
-      if (last) s.toasts.push(last.text)
+      if (last) s.toasts.push(t(last.key, { n: last.n }))
       s.react = at; s.reaction = 'delighted'
     }
   }
@@ -42,7 +43,7 @@ export function createMoments({ s, now, records, writePet }) {
   function welcome() {
     if (s.pet.seen.includes('sounds')) return false
     const { sounds } = s.pet.prefs
-    if (sounds.question !== 'off' || sounds.finish !== 'off') s.toasts.push('CodePuff plays short sounds when Claude asks you something and when it finishes. Change or turn them off in the pane, under Customize.')
+    if (sounds.question !== 'off' || sounds.finish !== 'off') s.toasts.push(t('toast.sounds'))
     s.pet = { ...s.pet, seen: [...s.pet.seen, 'sounds'] }
     return true
   }

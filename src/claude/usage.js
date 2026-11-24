@@ -1,3 +1,5 @@
+import { t } from '../core/i18n/index.js'
+
 // The plan's usage, as the host reports it, turned into "is the pet tired": the worst rate-limit window that has not reset yet.
 
 /** The pet looks tired from this share of a plan window (or spending limit) being used. */
@@ -6,7 +8,8 @@ const WINDOW_NAMES = { five_hour: '5-hour limit', seven_day: 'weekly limit', spe
 
 /** The sound moment of each plan window that matters. */
 const RESET_MOMENT = { five_hour: 'reset5h', seven_day: 'resetWeek' }
-export const RESET_TEXT = { reset5h: 'Your 5-hour limit has reset.', resetWeek: 'Your weekly limit has reset.' }
+/** The toast for a window that reset (the sound moment names the catalog key). */
+export const resetText = moment => t('toast.' + moment)
 
 /**
  * The windows that reset between two readings of the usage: its time ran out and a fresh window began (the reset time moved
@@ -28,7 +31,7 @@ export function resetsBetween(before, after, at) {
   return out
 }
 
-const PLAN_LABEL = { five_hour: '5h', seven_day: 'week', spend_limit: 'spend' }
+const PLAN_KINDS = ['five_hour', 'seven_day', 'spend_limit']
 
 /**
  * The plan's windows for drawing as bars: how much of each is used and how long until it resets. A window that has already reset
@@ -38,8 +41,8 @@ const PLAN_LABEL = { five_hour: '5h', seven_day: 'week', spend_limit: 'spend' }
 export function planWindows(usage, at) {
   if (!usage) return []
   return usage.limits
-    .filter(limit => PLAN_LABEL[limit?.kind] && Number.isFinite(limit.percentUsed) && !(limit.resetsAt && Date.parse(limit.resetsAt) < at))
-    .map(limit => ({ id: limit.kind, label: PLAN_LABEL[limit.kind], percent: Math.max(0, Math.min(100, Math.round(limit.percentUsed))), resetsInMs: limit.resetsAt ? Math.max(0, Date.parse(limit.resetsAt) - at) : 0 }))
+    .filter(limit => PLAN_KINDS.includes(limit?.kind) && Number.isFinite(limit.percentUsed) && !(limit.resetsAt && Date.parse(limit.resetsAt) < at))
+    .map(limit => ({ id: limit.kind, label: t('plan.' + limit.kind), percent: Math.max(0, Math.min(100, Math.round(limit.percentUsed))), resetsInMs: limit.resetsAt ? Math.max(0, Date.parse(limit.resetsAt) - at) : 0 }))
 }
 
 export function tiredOf(usage, at) {

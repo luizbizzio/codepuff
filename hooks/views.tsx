@@ -16,6 +16,8 @@ import { SOUNDS, VOLUMES } from '../src/core/settings.js'
 import { petSvg } from '../src/core/render/raster.js'
 // @ts-ignore
 import { MASCOTS, MASCOT_IDS } from '../src/core/art/registry.js'
+// @ts-ignore
+import { LANGUAGES, padCells, t } from '../src/core/i18n/index.js'
 
 /** The size a picture asks for (its own width and height attributes), so the host draws it at exactly that size.
  *  (Only a picture has a size in pixels: a Box's width and height are in terminal cells, so none is given one.) */
@@ -24,23 +26,17 @@ export const sizeOf = (svg: string) => ({ width: Math.round(Number(/ width="([0-
 export const COLORS: Record<string, string> = { success: '#3fb950', error: '#f85149', permission: '#d29922', investigating: '#d29922', finished: '#3fb950', disconnected: '#8b949e' }
 const GLYPH: Record<string, string> = { success: '^_^', finished: '^_^', error: '>_<', permission: 'O_O', investigating: 'o_O', disconnected: '-_-', waiting: '^_^', idle: 'o_o', thinking: 'o.o', sad: 'T_T', hurt: '>_<', petted: '^_^', giggle: '^o^', delighted: '^o^' }
 
-/** The moments that can make a sound: its key in the preferences, the prefix of its buttons, and what to call it. */
-const MOMENTS: [string, string, string][] = [
-  ['question', 'q', 'Sound when Claude asks you something'],
-  ['finish', 'f', 'Sound when Claude finishes'],
-  ['reset5h', 'r5', 'Sound when the 5-hour limit resets'],
-  ['resetWeek', 'rw', 'Sound when the weekly limit resets'],
-]
+/** The moments that can make a sound: its key in the preferences and the prefix of its buttons (its name is `ui.sound.<moment>`). */
+const MOMENTS: [string, string][] = [['question', 'q'], ['finish', 'f'], ['reset5h', 'r5'], ['resetWeek', 'rw']]
 
 type Els = { Box: any; Text: any; Button?: any; Svg?: any; Input?: any }
-const cap = (word: string) => word.charAt(0).toUpperCase() + word.slice(1)
 
 /** One to five hearts: how much the pet likes the user (filled ones red, the rest outlined). Where the window draws pictures the
  *  hearts say what they mean when the pointer rests on them; in a terminal they are characters. */
 export function heartsRow({ Box, Text, Svg }: Els, m: any, surface: string, tooltip = true) {
   const n: number = m.pet.hearts
-  const note = `${n} of 5 hearts (${m.pet.heartScore} out of 100). Abuse aimed at the assistant costs 15, thanks give back 4, and each day without it heals 10. Harsh criticism of the work costs nothing. Your messages are judged and never stored.`
-  if (tooltip && surface !== 'terminal' && Svg) return <Svg source={heartsSvg(n, { title: note })} width={84} height={15} isInteractive alt={`${n} of 5 hearts`} />
+  const note = t('ui.hearts.note', { n, score: m.pet.heartScore })
+  if (tooltip && surface !== 'terminal' && Svg) return <Svg source={heartsSvg(n, { title: note })} width={84} height={15} isInteractive alt={t('ui.hearts.alt', { n })} />
   return (
     <Box flexDirection="row">
       <Text color="#f85149">{'♥'.repeat(n)}</Text>
@@ -67,13 +63,13 @@ function renderPlan({ Box, Text }: Els, plan: any[]) {
     const tone = w.percent >= 90 ? '#f85149' : w.percent >= 70 ? '#d29922' : '#3fb950'
     return (
       <Box key={'plan-' + w.id} flexDirection="row" gap={1}>
-        <Text dimColor>{w.label.padEnd(5)}</Text>
+        <Text dimColor>{padCells(w.label, 5)}</Text>
         <Box flexDirection="row">
           <Text color={tone}>{'█'.repeat(filled)}</Text>
           <Text dimColor>{'░'.repeat(10 - filled)}</Text>
         </Box>
         <Text color={tone}>{w.percent + '%'}</Text>
-        {w.resetsInMs > 0 ? <Text dimColor>{'resets in ' + duration(w.resetsInMs)}</Text> : null}
+        {w.resetsInMs > 0 ? <Text dimColor>{t('plan.resets', { time: duration(w.resetsInMs) })}</Text> : null}
       </Box>
     )
   })
@@ -93,7 +89,7 @@ export function renderBand(els: Els, m: any, surface: string, onPat: () => void)
     : <Text color={COLORS[m.me.state] ?? undefined}>{GLYPH[m.me.state] ?? 'o_o'}</Text>
   const { ok, failed } = m.outcome
   const total = ok + failed
-  const tip = total ? `${ok} of ${total} tasks succeeded (${Math.floor((ok / total) * 100)}%), ${failed} failed, as Claude reported them` : 'No tasks yet in this session'
+  const tip = total ? t('ui.tasksTip', { ok, total, pct: Math.floor((ok / total) * 100), failed }) : t('ui.noTasks')
   const ring = drawn
     ? <Svg source={ringSvg({ ok, failed, size: ringSize, title: tip })} width={ringSize} height={ringSize} isInteractive alt={tip} />
     : null
@@ -108,7 +104,7 @@ export function renderBand(els: Els, m: any, surface: string, onPat: () => void)
       <Box flexGrow={1} />
       <Box flexDirection="column" alignItems="center" gap={1}>
         <Box flexDirection="row" gap={2} justifyContent="center">
-          <Text dimColor>{`🔥 ${days} day${days === 1 ? '' : 's'}  ·  💬 ${m.sessionPrompts} prompt${m.sessionPrompts === 1 ? '' : 's'}`}</Text>
+          <Text dimColor>{`🔥 ${t('unit.day', { n: days })}  ·  💬 ${t('unit.prompt', { n: m.sessionPrompts })}`}</Text>
           {m.pet.mood ? heartsRow(els, m, surface, false) : null}
         </Box>
         <Box borderStyle="round" borderColor={tone} paddingX={2} minWidth={34} flexDirection="row" gap={1} justifyContent="center">
@@ -141,7 +137,7 @@ export function renderHead(els: Els, m: any, isWidget: boolean, surface: string)
       {!isWidget && <Text dimColor>{who}</Text>}
       {!isWidget && m.otherCount > 0 && (
         <Text dimColor wrap="truncate-end">
-          Also: {m.others.map((o: any) => `${AGENT_LABELS[o.agent as 'claude' | 'codex']}${o.project ? ' · ' + o.project : ''} (${o.label.toLowerCase()})`).slice(0, 2).join('; ')}{m.otherCount > 2 ? ` +${m.otherCount - 2}` : ''}
+          {t('ui.also', { list: m.others.map((o: any) => `${AGENT_LABELS[o.agent as 'claude' | 'codex']}${o.project ? ' · ' + o.project : ''} (${o.label.toLowerCase()})`).slice(0, 2).join('; ') + (m.otherCount > 2 ? ` +${m.otherCount - 2}` : '') })}
         </Text>
       )}
     </Box>
@@ -154,14 +150,12 @@ export function renderTabs({ Box, Button }: Els, m: any, ctl: any) {
     <Box gap={1} flexWrap="wrap">
       {(['stats', 'look'] as const).map(tab => (
         <Button key={'tab-' + tab} variant={m.ui.tab === tab ? 'primary' : 'secondary'} onPress={() => ctl.setUi({ tab })}>
-          {tab === 'stats' ? 'Statistics' : 'Customize'}
+          {t(tab === 'stats' ? 'ui.tab.stats' : 'ui.tab.look')}
         </Button>
       ))}
     </Box>
   )
 }
-
-const PERIOD_LABEL: Record<string, string> = { session: 'This session', '7d': '7 days', '30d': '30 days', all: 'All time' }
 
 /** The Statistics tab: the platform, the period, the few numbers that matter as tiles, how the work went, what it was made of,
  *  and (only when asked for) the long list of every number. */
@@ -175,19 +169,19 @@ export function renderStats(els: Els, m: any, ctl: any, tabs: any, surface: stri
   return (
     <Box flexDirection="column" gap={1}>
       {tabs}
-      <Text weight="bold">Platform</Text>
+      <Text weight="bold">{t('ui.platform')}</Text>
       <Box gap={1} flexWrap="wrap">
         {m.platforms.map((agent: string) => (
           <Button key={'agent-' + agent} variant={m.ui.agent === agent ? 'primary' : 'secondary'} onPress={() => ctl.setUi({ agent })}>
-            {agent === 'all' ? 'Combined' : AGENT_LABELS[agent as 'claude' | 'codex']}
+            {agent === 'all' ? t('agent.all') : AGENT_LABELS[agent as 'claude' | 'codex']}
           </Button>
         ))}
       </Box>
-      <Text weight="bold">Period</Text>
+      <Text weight="bold">{t('ui.period')}</Text>
       <Box gap={1} flexWrap="wrap">
         {m.periods.map((scope: string) => (
           <Button key={'scope-' + scope} variant={m.period === scope ? 'primary' : 'secondary'} onPress={() => ctl.setUi({ scope })}>
-            {PERIOD_LABEL[scope]}
+            {t('ui.period.' + scope)}
           </Button>
         ))}
       </Box>
@@ -203,19 +197,19 @@ export function renderStats(els: Els, m: any, ctl: any, tabs: any, surface: stri
       </Box>
       {settled > 0 && (
         <Box flexDirection="row" gap={1}>
-          <Box minWidth={9}><Text dimColor>Success</Text></Box>
+          <Box minWidth={9}><Text dimColor>{t('ui.success')}</Text></Box>
           <Text color="#3fb950">{'█'.repeat(green)}</Text>
           <Text color="#f85149">{'█'.repeat(Math.max(failed ? 1 : 0, 24 - green))}</Text>
           <Text dimColor>{Math.round((ok / settled) * 100)}%</Text>
         </Box>
       )}
-      <Text weight="bold">Last 14 days</Text>
+      <Text weight="bold">{t('ui.last14')}</Text>
       {surface !== 'terminal' && Svg
-        ? <Svg source={chart} {...chartSize} isInteractive alt={'Tool calls per day over the last 14 days'} />
+        ? <Svg source={chart} {...chartSize} isInteractive alt={t('ui.chartAlt')} />
         : <Text color="#58a6ff">{m.spark}</Text>}
       {m.stats.bars.length > 0 && (
         <Box flexDirection="column">
-          <Text weight="bold">What it did</Text>
+          <Text weight="bold">{t('ui.whatItDid')}</Text>
           {m.stats.bars.map((bar: any) => (
             <Box key={'bar-' + bar.id} flexDirection="row" gap={1}>
               <Box minWidth={9}><Text dimColor>{bar.label}</Text></Box>
@@ -225,7 +219,7 @@ export function renderStats(els: Els, m: any, ctl: any, tabs: any, surface: stri
           ))}
         </Box>
       )}
-      <Button key="details" onPress={() => ctl.setUi({ details: !m.ui.details })}>{m.ui.details ? 'Hide all numbers' : 'Show all numbers'}</Button>
+      <Button key="details" onPress={() => ctl.setUi({ details: !m.ui.details })}>{t(m.ui.details ? 'ui.hideAll' : 'ui.showAll')}</Button>
       {m.ui.details && (
         <Box flexDirection="column">
           {m.stats.rows.map((row: any) => (
@@ -240,7 +234,7 @@ export function renderStats(els: Els, m: any, ctl: any, tabs: any, surface: stri
         </Box>
       )}
       <Text dimColor>
-        {m.pet.name} is {m.age.days} day{m.age.days === 1 ? '' : 's'} old · streak {m.life.current} (best {m.life.longest}) · {m.life.days} active day{m.life.days === 1 ? '' : 's'} · last {m.life.last ?? 'never'}
+        {t('ui.footer', { name: m.pet.name, age: t('unit.day', { n: m.age.days }), streak: m.life.current, best: m.life.longest, active: t('unit.activeDay', { n: m.life.days }), last: m.life.last ?? t('ago.never') })}
       </Text>
     </Box>
   )
@@ -254,40 +248,45 @@ export function renderCustomize({ Box, Text, Button, Input }: Els, m: any, ctl: 
     <Box flexDirection="column" gap={1}>
       {tabs}
       {picture}
-      <Input key="name" label="Name" placeholder={`up to 16 characters (${m.pet.name})`} value={m.pet.isCustom ? m.pet.name : ''} submitLabel="save" onSubmit={(value: string) => set({ name: value })} />
-      <Text dimColor>Character</Text>
+      <Input key="name" label={t('ui.name')} placeholder={t('ui.name.placeholder', { max: 16, name: m.pet.name })} value={m.pet.isCustom ? m.pet.name : ''} submitLabel={t('ui.save')} onSubmit={(value: string) => set({ name: value })} />
+      <Text dimColor>{t('ui.character')}</Text>
       <Box gap={1} flexWrap="wrap">
         {MASCOT_IDS.map((c: string) => choice('char-' + c, MASCOTS[c].name, m.pet.character === c, () => set({ character: c })))}
       </Box>
-      <Text dimColor>Colors</Text>
+      <Text dimColor>{t('ui.colors')}</Text>
       <Box gap={1} flexWrap="wrap">
-        {PRESETS.map((p: any) => choice('pal-' + p.id, p.name, (p.body ?? null) === (m.pet.colors.body ?? null) && (p.accent ?? null) === (m.pet.colors.accent ?? null), () => set({ colors: { body: p.body, accent: p.accent } })))}
+        {PRESETS.map((p: any) => choice('pal-' + p.id, t('palette.' + p.id), (p.body ?? null) === (m.pet.colors.body ?? null) && (p.accent ?? null) === (m.pet.colors.accent ?? null), () => set({ colors: { body: p.body, accent: p.accent } })))}
       </Box>
-      <Text dimColor>Settings</Text>
+      <Text dimColor>{t('ui.settings')}</Text>
       <Box gap={1} flexWrap="wrap">
-        <Button key="band" onPress={() => set({ prefs: { band: !m.pet.band } })}>{m.pet.band ? 'Compact band: on' : 'Compact band: off'}</Button>
-        <Button key="mood" onPress={() => set({ prefs: { mood: !m.pet.mood } })}>{m.pet.mood ? 'Hearts react to my messages: on' : 'Hearts react to my messages: off'}</Button>
-        <Button key="line" onPress={() => set({ prefs: { line: !m.pet.line } })}>{m.pet.line ? 'Status line: on' : 'Status line: off'}</Button>
+        <Button key="band" onPress={() => set({ prefs: { band: !m.pet.band } })}>{t(m.pet.band ? 'ui.set.band.on' : 'ui.set.band.off')}</Button>
+        <Button key="mood" onPress={() => set({ prefs: { mood: !m.pet.mood } })}>{t(m.pet.mood ? 'ui.set.mood.on' : 'ui.set.mood.off')}</Button>
+        <Button key="line" onPress={() => set({ prefs: { line: !m.pet.line } })}>{t(m.pet.line ? 'ui.set.line.on' : 'ui.set.line.off')}</Button>
       </Box>
-      {MOMENTS.map(([moment, key, label]) => (
+      {MOMENTS.map(([moment, key]) => (
         <Box key={'sounds-' + moment} flexDirection="column" gap={1}>
-          <Text dimColor>{label}</Text>
+          <Text dimColor>{t('ui.sound.' + moment)}</Text>
           <Box gap={1} flexWrap="wrap">
-            {SOUNDS.map((sound: string) => choice(key + '-' + sound, cap(sound), m.pet.sounds[moment] === sound, () => { set({ prefs: { sounds: { [moment]: sound } } }); play(sound, m.pet.volume) }))}
+            {SOUNDS.map((sound: string) => choice(key + '-' + sound, t('sound.' + sound), m.pet.sounds[moment] === sound, () => { set({ prefs: { sounds: { [moment]: sound } } }); play(sound, m.pet.volume) }))}
           </Box>
         </Box>
       ))}
-      <Text dimColor>Motion</Text>
+      <Text dimColor>{t('ui.motion')}</Text>
       <Box gap={1}>
-        {([['full', 'Full'], ['calm', 'Calm'], ['reduced', 'Still']] as const).map(([level, label]) => choice('motion-' + level, label, m.pet.motion === level, () => set({ prefs: { motion: level } })))}
+        {(['full', 'calm', 'reduced'] as const).map(level => choice('motion-' + level, t('ui.motion.' + level), m.pet.motion === level, () => set({ prefs: { motion: level } })))}
       </Box>
-      <Text dimColor>Sound volume</Text>
+      <Text dimColor>{t('ui.volume')}</Text>
       <Box gap={1}>
-        {VOLUMES.map((volume: string) => choice('v-' + volume, cap(volume), m.pet.volume === volume, () => { set({ prefs: { volume } }); play(m.pet.sounds.finish === 'off' ? 'chime' : m.pet.sounds.finish, volume) }))}
+        {VOLUMES.map((volume: string) => choice('v-' + volume, t('ui.volume.' + volume), m.pet.volume === volume, () => { set({ prefs: { volume } }); play(m.pet.sounds.finish === 'off' ? 'chime' : m.pet.sounds.finish, volume) }))}
       </Box>
-      <Text dimColor>Compact band size</Text>
+      <Text dimColor>{t('ui.bandSize')}</Text>
       <Box gap={1}>
-        {(['small', 'medium', 'large'] as const).map(size => choice('band-' + size, cap(size), m.pet.bandSize === size, () => set({ prefs: { bandSize: size } })))}
+        {(['small', 'medium', 'large'] as const).map(size => choice('band-' + size, t('ui.size.' + size), m.pet.bandSize === size, () => set({ prefs: { bandSize: size } })))}
+      </Box>
+      <Text dimColor>{t('ui.language')}</Text>
+      <Box gap={1} flexWrap="wrap">
+        {choice('lang-auto', t('ui.language.auto'), m.pet.language === 'auto', () => set({ prefs: { language: 'auto' } }))}
+        {LANGUAGES.map((language: any) => choice('lang-' + language.code, language.name, m.pet.language === language.code, () => set({ prefs: { language: language.code } })))}
       </Box>
     </Box>
   )

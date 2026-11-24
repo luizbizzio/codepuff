@@ -169,6 +169,35 @@ export function installCommand(target, flags, root) {
   throw new Error('Usage: codepuff install codex|claude [--dry-run]')
 }
 
+/**
+ * The command that starts `claude` or `codex`, or undefined when it cannot be found. It is tried on PATH first; apps do not always put
+ * their command line there (the Codex desktop app on Windows lives inside a protected folder, Claude Code installs to ~/.local/bin), so the
+ * usual places are tried too. Returns the name itself when PATH has it, otherwise the full path of the program.
+ */
+export function findTool(name, env = process.env) {
+  if (runTool(name, ['--version'], { encoding: 'utf8' }).status === 0) return name
+  if (env.CODEPUFF_PATH_ONLY) return undefined // (tests, and anyone who wants only what is on PATH)
+  const home = homedir()
+  const win = process.platform === 'win32'
+  const places = [join(home, '.local', 'bin', win ? name + '.exe' : name), join(home, '.' + name, 'local', name)]
+  if (win) {
+    if (env.APPDATA) places.push(join(env.APPDATA, 'npm', name + '.cmd'))
+    if (name === 'codex') {
+      // The Codex desktop app is an installed package; the system knows where it is.
+      const where = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "(Get-AppxPackage -Name 'OpenAI.Codex' | Select-Object -First 1).InstallLocation"], { encoding: 'utf8' })
+      const base = String(where.stdout ?? '').trim()
+      if (base) places.push(join(base, 'app', 'resources', 'codex.exe'), join(base, 'codex.exe'))
+    }
+  } else {
+    places.push('/usr/local/bin/' + name, '/opt/homebrew/bin/' + name, join(home, 'bin', name))
+    if (name === 'codex') places.push('/Applications/Codex.app/Contents/Resources/codex', '/Applications/ChatGPT.app/Contents/Resources/codex')
+  }
+  for (const place of places) {
+    if (existsSync(place) && runTool(place, ['--version'], { encoding: 'utf8' }).status === 0) return place
+  }
+  return undefined
+}
+
 /** Where CodePuff is installed from: the marketplace of its GitHub repository (never a local folder, which npx deletes). */
 export const REPOSITORY = 'luizbizzio/codepuff'
 
@@ -181,10 +210,11 @@ export function setupCommand(flags) {
   const dry = !!flags['dry-run']
   const only = ['claude', 'codex'].includes(flags.only) ? flags.only : undefined
   let failed = false
+  const found = {}
   const step = (tool, args) => {
     out('  $ ' + [tool, ...args].join(' '))
     if (dry) return true
-    const result = runTool(tool, args, { stdio: 'inherit' })
+    const result = runTool(found[tool] ?? tool, args, { stdio: 'inherit' })
     return result.status === 0
   }
 
@@ -192,14 +222,14 @@ export function setupCommand(flags) {
     out('Claude Code')
     const home = process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
     if (claudePluginEnabled(home)) out('  already installed')
-    else if (!dry && runTool('claude', ['--version'], { encoding: 'utf8' }).status !== 0) {
+    else if (!dry && !(found.claude = findTool('claude'))) {
       out('  the claude command was not found. In Claude Code, type:')
       out('    /plugin marketplace add ' + REPOSITORY)
       out('    /plugin install codepuff@codepuff')
     } else {
       // (A marketplace that is already added makes the first step complain; the install is still worth trying.)
       step('claude', ['plugin', 'marketplace', 'add', REPOSITORY])
-      if (step('claude', ['plugin', 'install', 'codepuff@codepuff'])) out('  installed: start a new Claude Code session, and the pet appears above the prompt')
+      if (step('claude', ['plugin', 'install', 'codepuff@codepuff'])) out(dry ? '  (dry run: nothing was changed)' : '  installed: start a new Claude Code session, and the pet appears above the prompt')
       else { failed = true; out('  could not install it from here: in Claude Code, type the two lines above (/plugin marketplace add ' + REPOSITORY + ', /plugin install codepuff@codepuff)') }
     }
     out('')
@@ -211,7 +241,7 @@ export function setupCommand(flags) {
     const hooks = existsSync(join(home, 'hooks.json')) && /codepuff/i.test(readFileSync(join(home, 'hooks.json'), 'utf8'))
     if (codexPluginEnabled(home)) out('  already installed')
     else if (hooks) out('  CodePuff is already in Codex as hooks (codepuff install codex): installing the plugin too would count every event twice, so nothing was changed')
-    else if (!dry && runTool('codex', ['--version'], { encoding: 'utf8' }).status !== 0) {
+    else if (!dry && !(found.codex = findTool('codex'))) {
       out('  the codex command was not found. In a terminal where Codex runs, type:')
       out('    codex plugin marketplace add ' + REPOSITORY)
       out('    codex plugin add codepuff@codepuff')

@@ -84,7 +84,7 @@ test('setup never adds the plugin next to Codex hooks (every event would be coun
     assert.match(failed.stdout, /\/plugin install codepuff@codepuff/)
     // No tools on PATH at all.
     const empty = join(dir, 'empty'); mkdirSync(empty, { recursive: true })
-    const none = spawnSync(process.execPath, [CLI, 'setup'], { encoding: 'utf8', env: { ...process.env, PATH: empty, Path: empty, CLAUDE_CONFIG_DIR: join(dir, 'c2'), CODEX_HOME: join(dir, 'x2'), CODEPUFF_HOME: join(dir, 'd2') } })
+    const none = spawnSync(process.execPath, [CLI, 'setup'], { encoding: 'utf8', env: { ...process.env, CODEPUFF_PATH_ONLY: '1', PATH: empty, Path: empty, CLAUDE_CONFIG_DIR: join(dir, 'c2'), CODEX_HOME: join(dir, 'x2'), CODEPUFF_HOME: join(dir, 'd2') } })
     assert.equal(none.status, 0)
     assert.match(none.stdout, /claude command was not found/)
     assert.match(none.stdout, /codex plugin marketplace add luizbizzio\/codepuff/)

@@ -87,12 +87,7 @@ reached (if you have history) are recorded without a celebration.
 Everything CodePuff says is translated, and it **picks the language of your computer by itself**: the band, the pane, the statistics,
 the toasts, the answers of `/codepuff`, the terminal app and the statistics of `codepuff stats`. Anything else falls back to English.
 
-| | | | |
-| --- | --- | --- | --- |
-| English (`en`) | Português do Brasil (`pt-BR`) | Español (`es`) | Français (`fr`) |
-| Deutsch (`de`) | Italiano (`it`) | Nederlands (`nl`) | Polski (`pl`) |
-| Türkçe (`tr`) | Русский (`ru`) | 日本語 (`ja`) | 한국어 (`ko`) |
-| 简体中文 (`zh-CN`) | 繁體中文 (`zh-TW`) | | |
+English (`en`), Português do Brasil (`pt-BR`), Español (`es`), Français (`fr`), Deutsch (`de`), Italiano (`it`), Nederlands (`nl`), Polski (`pl`), Türkçe (`tr`), Русский (`ru`), 日本語 (`ja`), 한국어 (`ko`), 简体中文 (`zh-CN`) and 繁體中文 (`zh-TW`).
 
 To choose another one, use the **Language** buttons in Customize (`Automatic` follows the computer), `/codepuff language de`, or
 `codepuff set language de`. The choice is saved with the pet, so Claude Code and Codex show the same language. How "automatic" finds

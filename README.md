@@ -31,13 +31,11 @@ both agents.
 
 ## Why CodePuff
 
-|  |  |
-| --- | --- |
-| **Honest** | Every animation comes from a real event. The success dance needs a test run that exited with code 0; the error face needs a tool that really failed. When CodePuff cannot know something, it says so instead of guessing. |
-| **Alive** | Thinking, reading, searching, editing, testing, delegating: each has its own scene, and long waits keep changing (a glance, a blink, a bright idea, and a quirk of each character), so it never looks frozen. |
-| **Yours** | Eight characters, ten palettes or your own colors, your own name, quiet sounds, three levels of motion, and 14 languages picked automatically from your computer. |
-| **Private** | One local folder. No account, no server, no telemetry, no model calls, no network code at all. Only counters are stored: never your prompts, code or paths. |
-| **Light** | Zero dependencies and nothing to build. Each hook is a tiny process that writes one small file. |
+- **Honest.** Every animation comes from a real event. The success dance needs a test run that exited with code 0; the error face needs a tool that really failed. When CodePuff cannot know something, it says so instead of guessing.
+- **Alive.** Thinking, reading, searching, editing, testing, delegating: each has its own scene, and long waits keep changing (a glance, a blink, a bright idea, and a quirk of each character), so it never looks frozen.
+- **Yours.** Eight characters, ten palettes or your own colors, your own name, quiet sounds, three levels of motion, and 14 languages picked automatically from your computer.
+- **Private.** One local folder. No account, no server, no telemetry, no model calls, no network code at all. Only counters are stored: never your prompts, code or paths.
+- **Light.** Zero dependencies and nothing to build. Each hook is a tiny process that writes one small file.
 
 ## Install
 
@@ -209,7 +207,7 @@ one way only (the plugin, or `codepuff install codex`), or every event is counte
 
 ## Documentation
 
-| | |
+| Page | What it covers |
 | --- | --- |
 | [Install](docs/INSTALL.md) | Other ways to install, updating, troubleshooting |
 | [Features](docs/FEATURES.md) | Every state, surface, setting (with its default), language and statistic, and the commands |
@@ -218,7 +216,7 @@ one way only (the plugin, or `codepuff install codex`), or every event is counte
 | [Status](docs/STATUS.md) | What was verified where, known limitations, what comes next |
 | [Performance](docs/PERFORMANCE.md) | Measured overhead, and how |
 | [Development](docs/DEVELOPMENT.md) | Tests, tools, CI, the art and sound pipelines |
-| [Changelog](CHANGELOG.md), [Contributing](CONTRIBUTING.md), [Security](SECURITY.md) | |
+| [Changelog](CHANGELOG.md), [Contributing](CONTRIBUTING.md), [Security](SECURITY.md) | Releases, how to help, reporting problems |
 
 ## About version 1.0
 

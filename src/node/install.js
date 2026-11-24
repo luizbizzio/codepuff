@@ -82,10 +82,31 @@ export function installCodex({ home, cliPath, dryRun = false, remove = false }) 
   return { file, unchanged, text, backedUp: read.exists && !dryRun && !unchanged }
 }
 
+/** Whether CodePuff is installed and enabled as a Codex plugin (config.toml has an enabled [plugins."codepuff@..."] entry). */
+export function codexPluginEnabled(home) {
+  try { return /\[plugins\."codepuff@[^"]*"\]\s*\n(?:[^\[]*\n)*?\s*enabled\s*=\s*true/.test(readFileSync(join(home, 'config.toml'), 'utf8')) } catch { return false }
+}
+
 export function installCommand(target, flags, root) {
   const cliPath = join(root, 'bin', 'codepuff.js')
   if (target === 'codex') {
     const home = codexHome(flags)
+    // The hooks written below point at this copy of CodePuff. A copy that npx unpacked into its temporary cache is deleted later, and
+    // then every hook would fail; and with the plugin installed too, every event would be counted twice. So: a clone, or the plugin.
+    if (!flags.force && /[\\/]_npx[\\/]/.test(root)) {
+      out('"codepuff install codex" needs a copy of CodePuff that stays where it is (a clone). This one was unpacked by npx into a temporary')
+      out('cache, and the hooks would stop working when it is cleaned up. Easier: install CodePuff as a Codex plugin instead:')
+      out('  codex plugin marketplace add luizbizzio/codepuff')
+      out('  codex plugin add codepuff@codepuff')
+      process.exitCode = 1
+      return
+    }
+    if (!flags.force && codexPluginEnabled(home)) {
+      out('CodePuff is already installed in Codex as a plugin. Adding its hooks too would count every event twice, so nothing was changed.')
+      out('(Use one or the other. To switch: codex plugin remove codepuff, then run this again. --force adds the hooks anyway.)')
+      process.exitCode = 1
+      return
+    }
     const done = installCodex({ home, cliPath, dryRun: !!flags['dry-run'] })
     if (flags['dry-run']) return out(`Would write ${done.file}:\n${done.text}`)
     out(done.unchanged ? `CodePuff hooks are already in ${done.file}.` : `Added CodePuff hooks to ${done.file}${done.backedUp ? ' (a backup was saved next to it as hooks.json.codepuff-backup)' : ''}.`)

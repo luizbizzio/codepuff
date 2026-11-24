@@ -176,7 +176,7 @@ test('the band preference is validated and survives a restore of the default app
     assert.ok(!('style' in store.ensurePet().prefs), 'the old style preference is gone')
     store.writePet({ ...store.ensurePet(), character: 'fox' })
     const restored = store.resetAppearance()
-    assert.equal(restored.character, 'alpha')
+    assert.equal(restored.character, 'classic')
     assert.equal(restored.createdAt, T0)
   } finally { done() }
 })

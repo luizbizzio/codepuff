@@ -28,49 +28,61 @@ More in [docs/FEATURES.md](docs/FEATURES.md).
 
 ## Install
 
+Nothing to build, nothing to configure. Pick the agent you use (or both: they share one pet).
+
 ### Claude Code
+
+Type these two lines in Claude Code:
 
 ```text
 /plugin marketplace add luizbizzio/codepuff
 /plugin install codepuff@codepuff
 ```
 
-In the desktop app: **+** next to the prompt → **Plugins** → **Add marketplace**. Then start a new session: the band appears above
-the prompt and the pet shows as a widget. `/codepuff` opens the pane and `/codepuff help` lists every option.
+(In the desktop app: **+** next to the prompt → **Plugins** → **Add marketplace**.) Then start a new session. The pet appears above the
+prompt, and `/codepuff` opens its pane.
 
 ### Codex
 
-You need **Node.js 20+**.
-
-```text
-git clone https://github.com/luizbizzio/codepuff
-node codepuff/bin/codepuff.js install codex
-node codepuff/bin/codepuff.js pet
-```
-
-The first command adds CodePuff's hooks to your user `hooks.json` (after saving a backup and keeping your own hooks). **Codex
-will not run new hooks until you trust them**: in the CLI run `/hooks`; in the desktop app use *Review hooks*. CodePuff never
-edits trust state itself. The last command opens the terminal app (run it in a split or a second tab).
-
-Or through Codex's plugin marketplace (the hooks still need your trust):
+Run these two lines in a terminal:
 
 ```text
 codex plugin marketplace add luizbizzio/codepuff
 codex plugin add codepuff@codepuff
 ```
 
-Codex has no way for a plugin to draw inside Codex, so Codex users get the terminal app. In the Codex build checked
-(0.171) the host does not report when a tool finishes, so CodePuff counts the calls but cannot say how each one went
-([details](docs/STATUS.md)).
+Then let Codex trust the hooks (it never runs new hooks without asking): in the CLI type `/hooks`; in the desktop app use *Review hooks*.
+
+Codex cannot draw a pet inside itself, so to watch yours open the terminal app next to Codex (needs [Node.js](https://nodejs.org) 20 or newer;
+it runs straight from GitHub, nothing is installed or built):
+
+```text
+npx github:luizbizzio/codepuff pet
+```
+
+### Check that it works
+
+```text
+npx github:luizbizzio/codepuff doctor
+```
+
+It says whether CodePuff is installed in Claude Code and in Codex, and what to do if not. More ways to install (from a clone, for developers),
+updating, and troubleshooting: [docs/INSTALL.md](docs/INSTALL.md).
+
+### First run
+
+It works with no setup. You start with **Classic**, calm motion, the large compact band, the status line, quiet sounds (low volume), and hearts on. Change anything
+in the pane (`/codepuff`, then **Customize**). **Claude Code and Codex share one pet and one set of settings** (one small file in `~/.codepuff`),
+so what you change in one shows up in the other: [defaults and what is shared](docs/FEATURES.md#settings-the-defaults-and-what-is-shared).
 
 ### Uninstall
 
 ```text
-codepuff uninstall codex          # removes only CodePuff's hooks
-/plugin uninstall codepuff@codepuff
+/plugin uninstall codepuff@codepuff          (Claude Code)
+codex plugin remove codepuff                 (Codex)
 ```
 
-Uninstalling never deletes your statistics; `codepuff data delete --yes` does, separately.
+Uninstalling never deletes your statistics; `npx github:luizbizzio/codepuff data delete --yes` does, separately.
 
 ## Privacy
 
@@ -83,7 +95,8 @@ off (*Hearts react to my messages* in Customize, or `/codepuff mood off`).
 
 | | |
 | --- | --- |
-| [Features](docs/FEATURES.md) | Every state, surface, setting and statistic, and the commands |
+| [Install](docs/INSTALL.md) | Other ways to install, updating, troubleshooting |
+| [Features](docs/FEATURES.md) | Every state, surface, setting (with its default) and statistic, and the commands |
 | [Architecture](docs/ARCHITECTURE.md) | How it is built, the data model, concurrency, adding a character |
 | [Platforms](docs/PLATFORMS.md) | What Claude Code and Codex expose, and what only one of them can do |
 | [Status](docs/STATUS.md) | What was verified where, known limitations, what comes next |

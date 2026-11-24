@@ -54,7 +54,7 @@ test('the pet follows real agent events and draws on every surface', async ($: a
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...WIDGET, surface })
     const shown = (await ui.findAll({ type: 'Text' })).map((t: any) => t.text)
-    expect(shown.includes('Alpha')).toBe(true)
+    expect(shown.includes('Classic')).toBe(true)
     expect(shown.some((t: string) => /Tests passed|Working on a response|Editing code/.test(t))).toBe(true)
     await ui.unmount()
   }
@@ -109,7 +109,7 @@ test('the statistics tab shows the current session, and the pane can be customiz
   const customize = (await ui.findAll({ type: 'Text' })).map((x: any) => x.text)
   expect(customize).toContain('Settings')
   expect(await ui.find({ type: 'Button', text: 'Compact band: on' })).toBeTruthy()
-  expect(await ui.find({ type: 'Button', text: 'Status line: off' })).toBeTruthy()
+  expect(await ui.find({ type: 'Button', text: 'Status line: on' })).toBeTruthy()
   expect(await ui.find({ type: 'Button', text: 'Restore default appearance' })).toBeFalsy()
   expect(await ui.find({ type: 'Button', text: 'Pet' })).toBeFalsy()
   await ui.press({ plugin: 'codepuff', key: 'tab-stats' })
@@ -147,7 +147,7 @@ test('the compact band shows the pet and what it is doing; pressing the activity
     const shown = await texts()
     expect(shown.length).toBeGreaterThan(0)
     // No name; the activity, with the streak and this session's prompts under it.
-    expect(shown.some((t: string) => String(t).includes('Alpha'))).toBe(false)
+    expect(shown.some((t: string) => String(t).includes('Classic'))).toBe(false)
     expect(shown.some((t: string) => /🔥 [0-9]+ days?\s+·\s+💬 1 prompt/.test(String(t)))).toBe(true)
     // On the right: how the session's tasks went (a ring on the desktop, counts everywhere).
     expect(shown.some((x: string) => String(x).includes('✔ 1'))).toBe(true)
@@ -173,7 +173,7 @@ test('a sound is played when the agent asks something and when a turn ends well'
   await $.classic.UserPromptSubmit({ prompt: 'x' })
   await $.classic.PermissionRequest({ tool_name: 'Bash', tool_input: { command: 'ls' }, tool_use_id: 'p1' })
   await clock.advance(500)
-  expect(calls.some(c => c.includes('chime'))).toBe(true)
+  expect(calls.some(c => c.includes('pop'))).toBe(true)
   calls.length = 0
   await clock.advance(5000)
   await $.turn.complete({ answer: 'done', durationMs: 10, isAborted: false, turnId: 't1', reason: 'answer' })
@@ -202,5 +202,22 @@ test('Customize: the sound, volume, band size and mood buttons save what they sa
   expect(prefs.motion).toBe('reduced')
   expect(await ui.find({ type: 'Text', text: 'Motion' })).toBeTruthy()
   expect(await ui.find({ type: 'Button', text: 'Hearts react to my messages: off' })).toBeTruthy()
+  await ui.unmount()
+})
+
+test('another agent\'s activity shows up once the pane is looked at, even if nobody looked at the start', async ($: any, on: any) => {
+  const { files, clock } = world(on)
+  on('ui.toast', () => ({ value: undefined }))
+  await $.session.start({ cwd: '/work/app', surface: 'desktop', isInteractive: true })
+  await clock.advance(5 * 60_000) // the pane is not drawn: the refresh loop has stopped by now
+  const now = Date.now()
+  const day = new Date(now).toISOString().slice(0, 10)
+  files.set('/data/codepuff/sessions/codex/other.json', JSON.stringify({ v: 1, agent: 'codex', sid: 'other', started: now, last: now, ended: 0, resumes: 0, proj: [], pname: 'proj', days: { [day]: { pr: 7 } }, git: [], fset: { d: '', h: [] }, seen: [], live: {} }))
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await ui.press({ plugin: 'codepuff', key: 'agent-codex' })
+  await ui.press({ plugin: 'codepuff', key: 'scope-all' })
+  await clock.advance(12_000)
+  const shown = (await ui.findAll({ type: 'Text' })).map((x: any) => x.text)
+  expect(shown).toContain('7')
   await ui.unmount()
 })

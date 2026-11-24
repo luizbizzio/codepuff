@@ -39,6 +39,14 @@ test('test commands are recognized across ecosystems', () => {
   for (const command of no) assert.equal(analyzeCommand(command).test, false, command)
 })
 
+test('npx flags before the test runner are accepted, and a hostile run of dashes cannot make the matcher take exponential time', () => {
+  for (const command of ['npx -y vitest run', 'npx --yes jest', 'npx --no-install mocha', 'npx -y --max-workers jest']) assert.equal(analyzeCommand(command).test, true, command)
+  const started = Date.now()
+  assert.equal(analyzeCommand('npx ' + '- '.repeat(5000) + '!').test, false)
+  assert.equal(analyzeCommand('npx ' + '-- '.repeat(5000) + '!').test, false)
+  assert.ok(Date.now() - started < 1000, 'linear time')
+})
+
 test('git commits are recognized, dry runs and reads are not', () => {
   assert.equal(analyzeCommand('git commit -m "x"').commit, true)
   assert.equal(analyzeCommand('git add -A && git commit -m "x"').commit, true)

@@ -196,7 +196,7 @@ test('reset statistics keeps the pet; reset pet keeps the statistics; delete rem
 
     store.writePet({ ...store.ensurePet(), name: 'Mochi', character: 'claude', colors: { body: '#123456', accent: null } })
     const look = store.resetAppearance()
-    assert.deepEqual({ name: look.name, character: look.character, colors: look.colors }, { name: '', character: 'alpha', colors: { body: null, accent: null } })
+    assert.deepEqual({ name: look.name, character: look.character, colors: look.colors }, { name: '', character: 'classic', colors: { body: null, accent: null } })
     assert.equal(look.createdAt, store.ensurePet().createdAt)
 
     store.deleteAll()

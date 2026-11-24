@@ -7,7 +7,7 @@ import { CHARACTER_IDS, CHARACTER_NAMES } from './art/defaults.js'
 const PET_SCHEMA = 2
 export const NAME_MAX = 16
 export const CHARACTERS = CHARACTER_IDS
-const DEFAULT_CHARACTER = 'alpha'
+const DEFAULT_CHARACTER = 'classic'
 export const DEFAULT_NAMES = CHARACTER_NAMES
 /** The sounds the pet can play, and the moments it plays them at (each moment takes any of the sounds, or none). */
 export const SOUNDS = Object.freeze(['off', 'chime', 'bell', 'pop', 'ding', 'tada'])
@@ -17,7 +17,7 @@ export const VOLUMES = Object.freeze(['low', 'medium', 'high'])
 /** How much the pet moves: full (livelier sways), calm (the default), or reduced (still). */
 export const MOTIONS = Object.freeze(['full', 'calm', 'reduced'])
 export const SOUND_MOMENTS = Object.freeze(['question', 'finish', 'reset5h', 'resetWeek'])
-const DEFAULT_SOUNDS = Object.freeze({ question: 'chime', finish: 'tada', reset5h: 'ding', resetWeek: 'bell' })
+const DEFAULT_SOUNDS = Object.freeze({ question: 'pop', finish: 'tada', reset5h: 'chime', resetWeek: 'chime' })
 /** How tall the compact band is (its pet is drawn this tall, and the pie column beside it), in pixels, for each size the user can pick. */
 export const BAND_SIZES = Object.freeze({ small: 72, medium: 96, large: 128 })
 
@@ -51,7 +51,7 @@ export function defaultPet(now = Date.now()) {
     name: '',
     character: DEFAULT_CHARACTER,
     colors: { body: null, accent: null },
-    prefs: { motion: 'calm', scope: 'session', line: false, band: true, bandSize: 'medium', sounds: { ...DEFAULT_SOUNDS }, volume: 'medium', mood: true },
+    prefs: { motion: 'calm', line: true, band: true, bandSize: 'large', sounds: { ...DEFAULT_SOUNDS }, volume: 'low', mood: true },
     seen: [], // one-time notices already shown
     affection: { score: 100, day: '', at: 0 }, // how much the pet likes the user (1 to 100, shown as one to five hearts); see mood.js
     milestones: null, // the milestones already celebrated; null until the first look at the statistics (what was reached before is not celebrated)
@@ -91,12 +91,11 @@ export function sanitizePet(raw, now = Date.now()) {
     prefs: {
       // ("auto", the old default, is calm.)
       motion: MOTIONS.includes(migrated.prefs?.motion) ? migrated.prefs.motion : 'calm',
-      scope: migrated.prefs?.scope === 'all' ? 'all' : 'session',
-      line: migrated.prefs?.line === true,
+      line: migrated.prefs?.line !== false,
       band: migrated.prefs?.band !== false,
-      bandSize: Object.hasOwn(BAND_SIZES, migrated.prefs?.bandSize) ? migrated.prefs.bandSize : 'medium',
+      bandSize: Object.hasOwn(BAND_SIZES, migrated.prefs?.bandSize) ? migrated.prefs.bandSize : 'large',
       mood: migrated.prefs?.mood !== false,
-      volume: VOLUMES.includes(migrated.prefs?.volume) ? migrated.prefs.volume : 'medium',
+      volume: VOLUMES.includes(migrated.prefs?.volume) ? migrated.prefs.volume : 'low',
       sounds: Object.fromEntries(SOUND_MOMENTS.map(moment => [moment, SOUNDS.includes(migrated.prefs?.sounds?.[moment]) ? migrated.prefs.sounds[moment] : DEFAULT_SOUNDS[moment]])),
     },
   }

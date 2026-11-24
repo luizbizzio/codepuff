@@ -20,6 +20,7 @@ The first public preview. No release or tag has been created yet.
   bars, with every number one button away.
 - Hearts: the pet's affection for the user, shared by both agents and kept between sessions; it can be turned off.
 - Codex support: command hooks, an installer, and a keyboard-driven terminal app (`codepuff pet`).
+- `codepuff doctor` recognizes the Codex plugin, Codex hooks and the Claude Code plugin, and `install codex` refuses an npx cache copy and a second install next to the plugin (events would be counted twice).
 - One local history for both agents (`~/.codepuff`), with export, import and reset; counters only.
 
 ### Known

@@ -9,6 +9,8 @@ import { SPRITES } from './sprites.js'
 import { drawFace } from './faces.js'
 
 const HEADROOM = 10
+// Where a character's right eye sits next to dark artwork (Penny's curls), looking that way would hide it, so how far the face may turn right is limited.
+const MAX_LOOK_X = { aquatic: 0 }
 const ALPHABET ='0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 /** @param {string} id a key of SPRITES @param {{ ground?: number, depth?: number }} [options] ground is the feet row in design units */
@@ -51,7 +53,8 @@ export function defineSprite(id, { depth = 1.5 } = {}) {
     const [lx, ly] = at(...F.eyeL)
     const [rx, ry] = at(...F.eyeR)
     const [mx, my] = at(...F.mouth)
-    if (!pose.noFace) drawFace(canvas, pose, {
+    const gaze = id in MAX_LOOK_X && (pose.lookX ?? 0) > MAX_LOOK_X[id] ? { ...pose, lookX: MAX_LOOK_X[id] } : pose
+    if (!pose.noFace) drawFace(canvas, gaze, {
       set: F.set, eyeL: [lx, ly], eyeR: [rx, ry], mouth: [mx, my], defaultMouth: F.defaultMouth, defaultEyes: F.defaultEyes,
       eyeScale: F.eyeScale, mouthScale: F.mouthScale, ink: F.ink === 'cyan' ? R.CYAN : R.INK, mouthRole: F.ink === 'cyan' ? R.CYAN : undefined,
     })

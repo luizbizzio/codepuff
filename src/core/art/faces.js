@@ -44,6 +44,9 @@ function eye(c, set, kind, cx, cy, role, side, scale = 1) {
       for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) if (((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1 && y + 0.5 > cy - ry * 0.2) c.set(x, y, role)
       line(c, cx - rx * 1.05, cy - ry * 0.2, cx + rx * 1.05, cy - ry * 0.2, role, t)
       disc(c, cx - rx * 0.3, cy + ry * 0.15, rx * 0.26, rx * 0.26, R.WHITE)
+      // The shine is smaller than a pixel on a small eye and, depending on where the eye falls on the grid, can be missed entirely
+      // (Penny's right eye, on her dark curls): one pixel of it is always drawn.
+      c.set(Math.floor(cx - rx * 0.3), Math.floor(cy + ry * 0.15), R.WHITE)
       return
     }
     default: {

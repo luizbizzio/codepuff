@@ -45,12 +45,17 @@ export const register: Register = on => {
   let lastLine: string | undefined = undefined
 
   const flushSoon = () => bridge?.later('flush', 600, () => { void ctl?.flush() })
-  const refreshSoon = () => bridge?.later('refresh', 10_000, async () => {
-    // Other sessions are only read while the pane is actually on screen.
-    if (Date.now() - seenAt > 60_000) return
-    if (await ctl?.refreshOthers()) bridge?.redraw()
-    refreshSoon()
-  })
+  // The other sessions (Codex, other windows) are read every 10 seconds, but only while the pane is on screen: the loop stops when it has
+  // not been drawn for a minute, and the pane starts it again the next time it is drawn.
+  let refreshing = false
+  const refreshSoon = () => {
+    refreshing = true
+    bridge?.later('refresh', 10_000, async () => {
+      if (Date.now() - seenAt > 60_000) { refreshing = false; return }
+      if (await ctl?.refreshOthers()) bridge?.redraw()
+      refreshSoon()
+    })
+  }
   const tick = () => {
     const wait = ctl?.nextTick()
     if (wait !== undefined) bridge?.later('tick', wait + 20, () => { bridge?.redraw(); tick() })
@@ -227,6 +232,7 @@ export const register: Register = on => {
     const surface = (e as any).surface as string
     const columns: number = props.bodyColumns ?? 40
     seenAt = Date.now()
+    if (!refreshing) refreshSoon()
     const isWidget = props.placement === 'widget'
     const reduced = m.pet.motion === 'reduced'
     const helpers = m.me.helpers

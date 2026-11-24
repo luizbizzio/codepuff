@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { openStore } from '../src/node/store.js'
 import { PLUGIN_HOOK_COMMAND, pluginHooksDocument } from '../src/node/install.js'
@@ -83,7 +83,7 @@ test('doctor reports and changes nothing', () => {
     const r = spawnSync(process.execPath, [join(ROOT, 'bin', 'codepuff.js'), 'doctor'], { encoding: 'utf8', env: { ...process.env, CODEPUFF_HOME: dir, CODEX_HOME: join(dir, 'codex') } })
     assert.equal(r.status, 0)
     assert.match(r.stdout, /CodePuff doctor/)
-    assert.match(r.stdout, /Codex hooks\s+—\s+not installed/)
+    assert.match(r.stdout, /Codex\s+—\s+CodePuff is not installed in Codex/)
     assert.ok(!readFileSyncSafe(join(dir, 'pet.json')), 'doctor does not create the pet')
   } finally { done() }
 })
@@ -101,10 +101,51 @@ test('install and uninstall commands for Codex work through the CLI and leave da
     const installed = run('install', 'codex')
     assert.equal(installed.status, 0, installed.stderr)
     assert.match(installed.stdout, /\/hooks/)
-    assert.match(run('doctor').stdout, /Codex hooks\s+—\s+installed/)
+    assert.match(run('doctor').stdout, /Codex\s+—\s+hooks installed in/)
     const removed = run('uninstall', 'codex')
     assert.match(removed.stdout, /Removed CodePuff hooks/)
     assert.match(removed.stdout, /statistics were kept/)
     assert.equal(aggregate(store.listRecords(), {}).prompts, 1, 'uninstalling never deletes statistics')
+  } finally { done() }
+})
+
+test('doctor sees CodePuff as a Codex plugin, as Codex hooks, and as a Claude Code plugin, and says what to do when it is neither', () => {
+  const { dir, done } = tempDir()
+  try {
+    const codex = join(dir, 'codex'); const claude = join(dir, 'claude'); const data = join(dir, 'data')
+    mkdirSync(codex, { recursive: true }); mkdirSync(claude, { recursive: true })
+    const run = () => spawnSync(process.execPath, [join(import.meta.dirname, '..', 'bin', 'codepuff.js'), 'doctor'], { encoding: 'utf8', env: { ...process.env, CODEX_HOME: codex, CLAUDE_CONFIG_DIR: claude, CODEPUFF_HOME: data } }).stdout
+    let out = run()
+    assert.match(out, /warn\s+Codex\s+—\s+CodePuff is not installed in Codex: run "codex plugin marketplace add luizbizzio\/codepuff"/)
+    assert.match(out, /warn\s+Claude Code\s+—\s+the CodePuff plugin is not enabled/)
+    writeFileSync(join(codex, 'config.toml'), '[marketplaces.codepuff]\nsource_type = "git"\n\n[plugins."codepuff@codepuff"]\nenabled = true\n')
+    writeFileSync(join(claude, 'settings.json'), JSON.stringify({ enabledPlugins: { 'codepuff@codepuff': true } }))
+    out = run()
+    assert.match(out, /ok\s+Codex\s+—\s+the CodePuff plugin is installed and enabled/)
+    assert.match(out, /ok\s+Claude Code\s+—\s+the CodePuff plugin is installed and enabled/)
+    writeFileSync(join(codex, 'config.toml'), '[plugins."codepuff@codepuff"]\nenabled = false\n')
+    assert.match(run(), /warn\s+Codex/, 'a plugin that is switched off is not installed')
+  } finally { done() }
+})
+
+test('"install codex" refuses a copy that npx unpacked, and refuses to add hooks next to the plugin (events would be counted twice)', () => {
+  const { dir, done } = tempDir()
+  try {
+    const codex = join(dir, 'codex'); mkdirSync(codex, { recursive: true })
+    const env = { ...process.env, CODEX_HOME: codex, CODEPUFF_HOME: join(dir, 'data') }
+    const cli = join(import.meta.dirname, '..', 'bin', 'codepuff.js')
+    writeFileSync(join(codex, 'config.toml'), '[plugins."codepuff@codepuff"]\nenabled = true\n')
+    const refused = spawnSync(process.execPath, [cli, 'install', 'codex'], { encoding: 'utf8', env })
+    assert.equal(refused.status, 1)
+    assert.match(refused.stdout, /already installed in Codex as a plugin/)
+    assert.ok(!readFileSync(join(codex, 'config.toml'), 'utf8').includes('hooks'), 'nothing was written')
+    assert.equal(existsSync(join(codex, 'hooks.json')), false)
+    // Without the plugin it installs; with --force it also installs next to the plugin.
+    writeFileSync(join(codex, 'config.toml'), '')
+    assert.equal(spawnSync(process.execPath, [cli, 'install', 'codex'], { encoding: 'utf8', env }).status, 0)
+    assert.equal(existsSync(join(codex, 'hooks.json')), true)
+    // Both at once: the doctor says so.
+    writeFileSync(join(codex, 'config.toml'), '[plugins."codepuff@codepuff"]\nenabled = true\n')
+    assert.match(spawnSync(process.execPath, [cli, 'doctor'], { encoding: 'utf8', env }).stdout, /installed both as a plugin and as hooks.*counted twice/)
   } finally { done() }
 })

@@ -54,6 +54,33 @@ says which agent and project it is. See [ARCHITECTURE.md](ARCHITECTURE.md).
 | **Terminal app** `codepuff pet`: pet, statistics, customization, data | yes | yes (the way to see your pet next to Codex) |
 | One-line status under the prompt | yes (`/codepuff line on`) | - |
 
+## Settings: the defaults, and what is shared
+
+Everything starts with these values, with nothing to set up. All of it is saved in one file, `~/.codepuff/pet.json`, which **Claude Code and
+Codex both read and write**: change something in the Claude Code pane and the Codex terminal app shows it (and the other way round). Some settings
+only do anything in Claude Code (the band, the sounds), because that is where they are drawn; they are saved in the shared file anyway.
+
+| Setting | Default | Change it | Used in |
+| --- | --- | --- | --- |
+| Character | **Classic** | Customize · `/codepuff character fox` · `codepuff set character fox` | both |
+| Name | none (the character's own name is shown) | Customize · `/codepuff name Biscuit` | both |
+| Colors | the character's own | Customize · `/codepuff palette mint` | both |
+| Motion | **Calm** (Full, Calm, Still; `reduced` on the command line) | Customize · `/codepuff motion full` | Claude Code (the terminal app has its own reduced-motion switch) |
+| Compact band | **on**, size **large** (small, medium, large) | Customize · `/codepuff band large` | Claude Code |
+| Status line under the prompt | **on** | Customize · `/codepuff line on` | Claude Code |
+| Hearts react to my messages | **on** | Customize · `/codepuff mood off` | both |
+| Sounds | asks you something: **pop**; finishes: **tada**; 5-hour limit resets: **chime**; weekly limit resets: **chime** (each can be off) | Customize · `/codepuff sound finish off` | Claude Code desktop |
+| Sound volume | **low** (low, medium, high) | Customize · `/codepuff volume low` | Claude Code desktop |
+| Hearts | 5 of 5 | they move with how you treat the assistant | both |
+| Statistics page | platform: **the one you are in**; period: **this session** | the buttons on the page (not saved) | both |
+
+Shared too: the statistics. Each session of each agent has its own small file in `~/.codepuff/sessions/<agent>/`, and the statistics page adds
+them up, so *Combined* is simply both. What is **not** shared between the two is only what each host can show: Claude Code has the band and the
+pane, Codex has the terminal app.
+
+Two things happen once, on the first run in Claude Code: a toast says that sounds exist and where to change them, and the milestones already
+reached (if you have history) are recorded without a celebration.
+
 ## Hearts
 
 The pet has one to five hearts for you, shown in the compact band and the pane. They are kept with the pet, so they last

@@ -7,7 +7,7 @@ what was checked, where, and what was not.
 
 | Area | How | Result |
 | --- | --- | --- |
-| Engine, statistics, pet states, storage, CLI, installer | `npm test`: 153 tests, no dependencies | pass |
+| Engine, statistics, pet states, storage, CLI, installer | `npm test`: 155 tests, no dependencies | pass |
 | Eight characters, hi-res pixel art | Tests render every character through 10 states with all subagent helpers, check detail (tones, pixel counts), faces, recoloring, SVG size under the host's limit, narrow-terminal fitting; and contact sheets were looked at | pass |
 | Concurrent writers | 6 OS processes x 40 events on one session; 4 processes across sessions and agents | no lost update, no temp files left |
 | Date logic | fixed-offset zones, a simulated DST change, midnight crossing, leap day, streak survival after reload | pass |

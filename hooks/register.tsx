@@ -27,8 +27,6 @@ import { base64, petSvg, terminalFrame } from '../src/core/render/raster.js'
 import { MASCOTS, MASCOT_IDS } from '../src/core/art/registry.js'
 
 const PANE = 'codepuff'
-/** How tall the pet is drawn in the compact band (CSS pixels). The picture is cropped tight, so the pet fills it. */
-const BAND_HEIGHT = 68
 const rev = atom({ plugin: 'codepuff', key: 'rev' } as const, 0)
 
 const COLORS: Record<string, string> = { success: '#3fb950', error: '#f85149', permission: '#d29922', investigating: '#d29922', finished: '#3fb950', disconnected: '#8b949e' }
@@ -200,28 +198,34 @@ export const register: Register = on => {
     const surface = (e as any).surface as string
     const color = COLORS[m.me.state]
     const reduced = m.pet.motion === 'reduced'
+    // The pet and the pie chart are the same height, whatever size the user picked (the picture is cropped tight, so the pet fills it).
+    const size: number = m.pet.bandHeight
     const face = surface !== 'terminal' && Svg
-      ? <Svg source={petSvg({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers: m.me.helpers, height: BAND_HEIGHT, reduced, crop: 'band', hover: true })} alt={`${m.pet.name}: ${m.me.label}`} isInteractive />
+      ? <Svg source={petSvg({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers: m.me.helpers, height: size, reduced, crop: 'band', hover: true })} alt={`${m.pet.name}: ${m.me.label}`} isInteractive />
       : <Text color={color ?? undefined}>{GLYPH[m.me.state] ?? 'o_o'}</Text>
     const { ok, failed } = m.outcome
     const total = ok + failed
     const pie = surface !== 'terminal' && Svg
-      ? <Svg source={pieSvg({ ok, failed, size: 40 })} alt={total ? `${ok} of ${total} tasks succeeded, ${failed} failed` : 'No tasks yet'} />
+      ? <Svg source={pieSvg({ ok, failed, size })} alt={total ? `${ok} of ${total} tasks succeeded, ${failed} failed` : 'No tasks yet'} />
       : null
+    // The pet sits at the left edge and the pie chart at the right edge; what the pet is doing fills the space between.
+    // Under the pie: what it is, and the counts.
+    const counts = (
+      <Box flexDirection="row" gap={1} justifyContent="center">
+        <Text dimColor>Tasks</Text>
+        <Text color="#3fb950">{'✔ ' + ok}</Text>
+        <Text color="#f85149">{'✖ ' + failed}</Text>
+      </Box>
+    )
     return (
-      <Box flexDirection="row" gap={1} alignItems="center" justifyContent="space-between">
-        <Box flexDirection="row" gap={1} alignItems="center" justifyContent="flex-start">
-          {face}
-          <Box flexDirection="column" justifyContent="center" alignItems="flex-start">
-            <Button plain key="pet-it" onPress={() => ctl!.pat()}>{m.me.label}</Button>
-          </Box>
+      <Box flexDirection="row" gap={1} alignItems="center">
+        {face}
+        <Box flexGrow={1} flexDirection="column" justifyContent="center" alignItems="flex-start">
+          <Button plain key="pet-it" onPress={() => ctl!.pat()}>{m.me.label}</Button>
         </Box>
-        <Box flexDirection="row" gap={1} alignItems="center" justifyContent="flex-end">
-          <Box flexDirection="column" alignItems="flex-end">
-            <Text color="#3fb950">{'✔ ' + ok}</Text>
-            <Text color="#f85149">{'✖ ' + failed}</Text>
-          </Box>
+        <Box flexDirection="column" alignItems="center" justifyContent="center">
           {pie}
+          {counts}
         </Box>
       </Box>
     )
@@ -344,6 +348,12 @@ export const register: Register = on => {
         <Box gap={1} flexWrap="wrap">
           <Button key="band" onPress={() => { void ctl!.setPet({ prefs: { band: !m.pet.band } }) }}>{m.pet.band ? 'Compact band: on' : 'Compact band: off'}</Button>
           <Button key="line" onPress={() => { void ctl!.setPet({ prefs: { line: !m.pet.line } }) }}>{m.pet.line ? 'Status line: on' : 'Status line: off'}</Button>
+        </Box>
+        <Text dimColor>Compact band size</Text>
+        <Box gap={1}>
+          {(['small', 'medium', 'large'] as const).map(size => (
+            <Button key={'band-' + size} variant={m.pet.bandSize === size ? 'primary' : 'secondary'} onPress={() => { void ctl!.setPet({ prefs: { bandSize: size } }) }}>{size.charAt(0).toUpperCase() + size.slice(1)}</Button>
+          ))}
         </Box>
       </Box>
     )

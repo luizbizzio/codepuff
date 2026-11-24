@@ -7,7 +7,7 @@
 import { buildPalette, toHex } from '../art/palette.js'
 import { drawScene } from '../art/scene.js'
 import { REACTIONS, animation, frameAt } from '../art/anim.js'
-import { Canvas, R } from '../art/canvas.js'
+import { Canvas, K, R, W } from '../art/canvas.js'
 import { STAND } from '../art/scene.js'
 import { STATES } from '../petstate.js'
 
@@ -201,76 +201,93 @@ const rectsMarkup = (list, palette) => {
 }
 
 /**
- * The pet as an SVG document. Animation is pure CSS (`steps`), so the host animates it with no
- * scripting and no repaint cost on our side; reduced motion shows the still frame.
- * @param {{ character: string, colors?: { body?: string | null, accent?: string | null }, state: string, helpers?: number, scale?: number, reduced?: boolean, pose?: object }} options
+ * The pet as an SVG document. Animation is pure CSS, so the host animates it with no scripting and no repaint cost on our
+ * side; reduced motion shows the still frame. The pet is drawn at rest in every frame (only its face, what it holds and its
+ * effects change, swapped with step-end visibility), and its hop, squash and shake are one CSS transform that eases from
+ * pose to pose, so motion is smooth and the picture stays small.
+ * @param {{ character: string, colors?: { body?: string | null, accent?: string | null }, state: string, helpers?: number, scale?: number, reduced?: boolean, background?: string, crop?: 'band', height?: number, hover?: boolean }} options
  */
-function buildSvg({ character, colors = {}, state, helpers = 0, scale = 4, reduced = false, background, crop, height, hover = false }, still) {
+function buildSvg({ character, colors = {}, state, helpers = 0, scale = 4, reduced = false, background, crop, height, hover = false }) {
   const anim = animation(state, { helpers, character })
   const palette = buildPalette(character, colors, { gray: anim.gray ? 0.8 : 0 })
   const box = crop === 'band' ? bandBox(character, helpers > 0) : STAGE
   if (height) scale = height / box.h
+  const total = anim.total
+  const rest = pose => ({ ...pose, dy: 0, sx: 1, sy: 1, shake: 0 })
 
-  // Every distinct frame, once. What is the same in all of them (the body) is drawn once as a base layer; each frame then
-  // adds only what differs (a face, a prop, an effect, a squashed body). That keeps a detailed picture far under the host's limit.
-  const unique = []
-  const bySignature = new Map()
-  const spans = [] // [frame index, start ms, end ms]
-  let at = 0
-  for (const item of anim.frames) {
-    // `still` keeps the body where it is (no hop, squash or shake) so that frames differ only by face, props and effects.
-    const base0 = still ? { ...item.pose, dy: 0, sx: 1, sy: 1, shake: 0 } : item.pose
-    const canvas = drawScene(character, base0)
-    const signature = canvas.px.join(',')
-    let index = bySignature.get(signature)
-    if (index === undefined) { index = unique.length; bySignature.set(signature, index); unique.push(canvas) }
-    spans.push([index, at, at + item.d])
-    at += item.d
-  }
-  const animatedFrames = !reduced && unique.length > 1
-  let base
-  if (animatedFrames) {
-    base = new Canvas()
-    for (let i = 0; i < base.px.length; i++) { const role = unique[0].px[i]; if (role && unique.every(u => u.px[i] === role)) base.px[i] = role }
-  }
-  const layerOf = canvas => {
-    if (!base) return canvas
-    const layer = new Canvas()
-    for (let i = 0; i < layer.px.length; i++) if (canvas.px[i] && !base.px[i]) layer.px[i] = canvas.px[i]
-    return layer
-  }
-  const groups = unique.map(canvas => rectsMarkup(rects(layerOf(canvas), box), palette))
-  const baseMarkup = base ? rectsMarkup(rects(base, box), palette) : ''
-  const stillIndex = spans[Math.min(anim.still, spans.length - 1)][0]
-  const animated = !reduced && groups.length > 1
-  let css = ''
-  if (animated) {
-    const total = anim.total
-    css = '<style>.g{visibility:hidden}.s{visibility:visible}@media (prefers-reduced-motion:no-preference){' +
-      groups.map((_, i) => `.g${i}{animation:a${i} ${total}ms step-end infinite}`).join('') + '}' +
-      groups.map((_, i) => {
-        const points = spans.filter(span => span[0] === i).flatMap(([, s, e]) => [[s, 'visible'], [e, 'hidden']])
+  // The pictures of one layer: every distinct frame once, and when each shows. What is the same in all of them is drawn once.
+  const layer = (name, kind, shared) => {
+    const unique = []
+    const bySignature = new Map()
+    const spans = []
+    let at = 0
+    for (const item of anim.frames) {
+      const canvas = drawScene(character, rest(item.pose), kind)
+      const signature = canvas.px.join(',')
+      let index = bySignature.get(signature)
+      if (index === undefined) { index = unique.length; bySignature.set(signature, index); unique.push(canvas) }
+      spans.push([index, at, at + item.d])
+      at += item.d
+    }
+    const animated = !reduced && unique.length > 1
+    let base
+    if (animated && shared) {
+      base = new Canvas()
+      for (let k = 0; k < base.px.length; k++) { const role = unique[0].px[k]; if (role && unique.every(u => u.px[k] === role)) base.px[k] = role }
+    }
+    const own = canvas => {
+      if (!base) return canvas
+      const part = new Canvas()
+      for (let k = 0; k < part.px.length; k++) if (canvas.px[k] && !base.px[k]) part.px[k] = canvas.px[k]
+      return part
+    }
+    const groups = unique.map(canvas => rectsMarkup(rects(own(canvas), box), palette))
+    const stillIndex = spans[Math.min(anim.still, spans.length - 1)][0]
+    if (!animated) return { css: '', markup: `<g>${groups[stillIndex]}</g>` }
+    const css = `.g${name}{visibility:hidden}.s${name}{visibility:visible}@media (prefers-reduced-motion:no-preference){` +
+      groups.map((_, n) => `.g${name}${n}{animation:a${name}${n} ${total}ms step-end infinite}`).join('') + '}' +
+      groups.map((_, n) => {
+        const points = spans.filter(span => span[0] === n).flatMap(([, s, e]) => [[s, 'visible'], [e, 'hidden']])
         const merged = new Map()
         for (const [ms, value] of points) merged.set(ms, merged.get(ms) === 'visible' ? 'visible' : value)
         if (!merged.has(0)) merged.set(0, 'hidden')
         // A span that ends exactly where another of the same group starts keeps the group visible.
         const keyframes = [...merged].sort((a, b) => a[0] - b[0]).filter(([ms]) => ms < total)
-        return `@keyframes a${i}{${keyframes.map(([ms, value]) => `${((ms / total) * 100).toFixed(3)}%{visibility:${value}}`).join('')}}`
-      }).join('') + '</style>'
+        return `@keyframes a${name}${n}{${keyframes.map(([ms, value]) => `${((ms / total) * 100).toFixed(3)}%{visibility:${value}}`).join('')}}`
+      }).join('')
+    const markup = (base ? `<g>${rectsMarkup(rects(base, box), palette)}</g>` : '') +
+      groups.map((markup, n) => `<g class="g${name} g${name}${n}${n === stillIndex ? ' s' + name : ''}">${markup}</g>`).join('')
+    return { css, markup }
   }
-  const body = animated
-    ? `<g>${baseMarkup}</g>` + groups.map((markup, i) => `<g class="g g${i}${i === stillIndex ? ' s' : ''}">${markup}</g>`).join('')
-    : `<g>${groups[stillIndex]}</g>`
+  const under = layer('u', 'under', false)
+  const over = layer('o', 'over', true)
+
+  // The pet's own motion: where its feet are the picture squashes and stretches, and hops and shakes sideways.
+  const ox = f1(W / 2 - box.x)
+  const oy = f1(STAND - box.y)
+  const round = (n, p) => Math.round(n * p) / p
+  const at = pose => ({ x: round((pose.shake ?? 0) * K, 100), y: round((pose.dy ?? 0) * K, 100), sx: round(pose.sx ?? 1, 1000), sy: round(pose.sy ?? 1, 1000) })
+  const css3 = p => `translate(${p.x}px,${p.y}px) scale(${p.sx},${p.sy})`
+  const attr3 = p => (p.x || p.y || p.sx !== 1 || p.sy !== 1 ? ` transform="translate(${p.x} ${p.y}) translate(${ox} ${oy}) scale(${p.sx} ${p.sy}) translate(-${ox} -${oy})"` : '')
+  const moves = anim.frames.map(frame => at(frame.pose))
+  const moving = !reduced && moves.some(m => css3(m) !== css3(moves[0]))
+  let moveCss = ''
+  if (moving) {
+    let ms = 0
+    const steps = anim.frames.map((frame, n) => { const out = `${((ms / total) * 100).toFixed(3)}%{transform:${css3(moves[n])};animation-timing-function:ease-in-out}`; ms += frame.d; return out })
+    moveCss = `@media (prefers-reduced-motion:no-preference){.mv{transform-box:view-box;transform-origin:${ox}px ${oy}px;animation:mv ${total}ms linear infinite}}@keyframes mv{${steps.join('')}100%{transform:${css3(moves[0])}}}`
+  }
+  const stillMove = moves[Math.min(anim.still, moves.length - 1)]
+
   // Under the pointer (where the host draws the picture interactively) the pet hops, squashing and stretching on the way.
   const hop = hover && !reduced
-  const hopCss = hop ? `<style>@media (prefers-reduced-motion:no-preference){svg:hover .hv{transform-box:view-box;transform-origin:${f1(36 - box.x)}px ${f1(STAND - box.y)}px;animation:hv .55s ease-out}}@keyframes hv{0%{transform:none}22%{transform:translateY(-3px) scale(.96,1.07)}48%{transform:scale(1.05,.93)}72%{transform:translateY(-1px) scale(.99,1.02)}100%{transform:none}}</style>` : ''
+  const hopCss = hop ? `@media (prefers-reduced-motion:no-preference){svg:hover .hv{transform-box:view-box;transform-origin:${ox}px ${oy}px;animation:hv .55s ease-out}}@keyframes hv{0%{transform:none}22%{transform:translateY(-3px) scale(.96,1.07)}48%{transform:scale(1.05,.93)}72%{transform:translateY(-1px) scale(.99,1.02)}100%{transform:none}}` : ''
+  const css = under.css + over.css + moveCss + hopCss
+  const body = under.markup + `<g class="mv"${attr3(stillMove)}>${over.markup}</g>`
   const w = box.w * scale
   const h = box.h * scale
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${box.w} ${box.h}" width="${w}" height="${h}" shape-rendering="crispEdges">${css}${hopCss}${background ? `<rect x="0" y="0" width="${box.w}" height="${box.h}" fill="${background}"/>` : ''}${hop ? `<g class="hv">${body}</g>` : body}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${box.w} ${box.h}" width="${w}" height="${h}" shape-rendering="crispEdges">${css ? `<style>${css}</style>` : ''}${background ? `<rect x="0" y="0" width="${box.w}" height="${box.h}" fill="${background}"/>` : ''}${hop ? `<g class="hv">${body}</g>` : body}</svg>`
 }
-
-/** The SVG budget: the host takes at most 131072 characters, so a picture that would exceed this keeps its body still. */
-const SVG_BUDGET = 118_000
 
 const svgCache = new Map()
 
@@ -279,8 +296,7 @@ export function petSvg(options) {
   const key = JSON.stringify([options.character, options.colors?.body, options.colors?.accent, options.state, options.helpers, options.scale, options.reduced, options.background, options.crop, options.height, options.hover])
   const known = svgCache.get(key)
   if (known) return known
-  const full = buildSvg(options, false)
-  const svg = full.length <= SVG_BUDGET ? full : buildSvg(options, true)
+  const svg = buildSvg(options)
   if (svgCache.size > 60) svgCache.delete(svgCache.keys().next().value)
   svgCache.set(key, svg)
   return svg

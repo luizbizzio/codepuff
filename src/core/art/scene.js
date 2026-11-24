@@ -201,22 +201,27 @@ export const SHADOWED = new Set(['slime', 'mage', 'aquatic'])
  * Draws one frame to a fresh canvas.
  * @param {string} character
  * @param {object} pose
-
+ * @param {'all' | 'under' | 'over'} [layer] 'under' is what stays on the ground (the shadow, the helpers), 'over' is the pet
+ *   itself with what it holds and its effects; the SVG moves 'over' with a CSS transform so motion is smooth
  */
-export function drawScene(character, pose) {
+export function drawScene(character, pose, layer = 'all') {
   const who = mascot(character)
   const lift = Math.max(0, -(pose.dy ?? 0))
   const shadowW = Math.max(3, 8.5 - lift / 2)
 
   const shadow = new Canvas()
-  if (SHADOWED.has(character)) {
+  const under = layer !== 'over'
+  const over = layer !== 'under'
+  if (under && SHADOWED.has(character)) {
     const shadowY = who.shadow ?? 25.5
     disc(shadow, 18 * K, shadowY * K, shadowW * K, 0.9 * K, R.SHADOW)
     disc(shadow, 18 * K, (shadowY + 0.1) * K, (shadowW - 2) * K, 1.25 * K, R.SHADOW)
   }
 
+  const ground = new Canvas()
+  if (under && pose.helpers) { const lo = new Canvas(W, H); helpers(lo, { bottom: who.ground }, pose.helpers, pose.f ?? 0); enlarge(ground, lo) }
+  if (!over) { shadow.stamp(ground); return standOnLine(shadow, Math.round(who.ground * K)) }
   const body = new Canvas()
-  if (pose.helpers) { const lo = new Canvas(W, H); helpers(lo, { bottom: who.ground }, pose.helpers, pose.f ?? 0); enlarge(body, lo) }
   const a = who.draw(body, pose)
 
   // What it holds, its hands, and the effects around it: drawn over the body.
@@ -237,7 +242,7 @@ export function drawScene(character, pose) {
     for (const item of pose.fx) if (HI_FX.has(item.id)) drawHiFx(effects, a, item)
   }
 
-  shadow.stamp(body); shadow.stamp(held); shadow.stamp(hands); shadow.stamp(effects)
+  shadow.stamp(ground); shadow.stamp(body); shadow.stamp(held); shadow.stamp(hands); shadow.stamp(effects)
   // Every character is moved onto the shared line.
   return standOnLine(shadow, Math.round(who.ground * K))
 }

@@ -16,17 +16,16 @@ import { normalizeHook } from '../core/normalize.js'
 import { WINDOWS, focus, labelFor, stateOf } from '../core/petstate.js'
 import { sanitizeRecord } from '../core/records.js'
 import { newRecord, reduce } from '../core/session.js'
-import { CHARACTERS, DEFAULT_NAMES, NAME_MAX, cleanName, defaultPet, displayName, restoreAppearance, sanitizePet } from '../core/settings.js'
+import { CHARACTERS, DEFAULT_NAMES, BAND_SIZES, NAME_MAX, cleanName, defaultPet, displayName, restoreAppearance, sanitizePet } from '../core/settings.js'
 
 const join = (...parts) => parts.join('/').replace(/\\/g, '/').replace(/([^:])\/{2,}/g, '$1/')
 const stamp = now => new Date(now).toISOString().replace(/[:.]/g, '-')
 const BLOCKS = '▁▂▃▄▅▆▇█'
-const REACTION_MS = 900
 /** Pats closer together than this build up: a few make the pet giggle, many make it overjoyed. */
 const PAT_COMBO_MS = 2500
 const reactionLevel = count => (count >= 5 ? 'delighted' : count >= 3 ? 'giggle' : 'petted')
 const REACTION_LABEL = { petted: 'Happy to see you', giggle: 'Giggling', delighted: 'Overjoyed!' }
-const REACTION_LENGTH = { petted: REACTION_MS, giggle: 1300, delighted: 1700 }
+const REACTION_LENGTH = { petted: 1000, giggle: 1300, delighted: 1700 }
 /** The pet looks tired from this share of a plan window (or spending limit) being used. */
 export const TIRED_AT = 80
 const WINDOW_NAMES = { five_hour: '5-hour limit', seven_day: 'weekly limit', spend_limit: 'spending limit' }
@@ -228,7 +227,7 @@ export function createController(io) {
       // How this session's tasks went, as the agent reported them (every tool call's success or failure).
       const session = s.rec ? aggregate([s.rec], { now: at }).tools : { ok: 0, failed: 0 }
       return {
-        pet: { name: displayName(pet), isCustom: !!pet.name, character: pet.character, colors: pet.colors, motion: pet.prefs.motion, line: pet.prefs.line, band: pet.prefs.band, createdAt: pet.createdAt },
+        pet: { name: displayName(pet), isCustom: !!pet.name, character: pet.character, colors: pet.colors, motion: pet.prefs.motion, line: pet.prefs.line, band: pet.prefs.band, bandSize: pet.prefs.bandSize, bandHeight: BAND_SIZES[pet.prefs.bandSize], createdAt: pet.createdAt },
         age, life: { current: life.current, longest: life.longest, last: life.last, days: life.total },
         me: mine,
         outcome: { ok: session.ok, failed: session.failed },
@@ -317,7 +316,7 @@ export function createController(io) {
           const m = api.model()
           return { text: `${m.pet.name}: ${m.me.label}. Streak ${m.life.current} day${m.life.current === 1 ? '' : 's'}, ${m.age.days} days old. Use /codepuff help for more.`, open: true }
         }
-        case 'help': return say('/codepuff [open] · stats [session|all|7d|30d] · name <name> · character <id> · characters · palette <id> · body <#hex> · accent <#hex> · motion <auto|reduced> · band <on|off> · line <on|off> · restore · export · import <file> · reset stats|pet confirm · palettes')
+        case 'help': return say('/codepuff [open] · stats [session|all|7d|30d] · name <name> · character <id> · characters · palette <id> · body <#hex> · accent <#hex> · motion <auto|reduced> · band <on|off|small|medium|large> · line <on|off> · restore · export · import <file> · reset stats|pet confirm · palettes')
         case 'palettes': return say('Palettes: ' + PRESETS.map(p => p.id).join(', '))
         case 'stats': {
           if (value && SCOPES.includes(value)) api.setUi({ scope: value })
@@ -331,7 +330,8 @@ export function createController(io) {
           await api.setPet({ character: value }); return say(`Switched to ${DEFAULT_NAMES[value]}. Statistics and progress are unchanged.`)
         }
         case 'band':
-          if (!['on', 'off'].includes(value)) return say('Usage: /codepuff band on|off')
+          if (Object.hasOwn(BAND_SIZES, value)) { await api.setPet({ prefs: { band: true, bandSize: value } }); return say(`Compact band: ${value}.`) }
+          if (!['on', 'off'].includes(value)) return say('Usage: /codepuff band on|off|small|medium|large')
           await api.setPet({ prefs: { band: value === 'on' } }); return say(`Compact band ${value}.`)
         case 'palette': {
           const preset = PRESETS.find(p => p.id === value)

@@ -147,8 +147,9 @@ every animation state, props and helpers work immediately.
 ### Drawing
 
 Every character is pixel art on one 72x72 canvas. The SVG output merges equal pixels into rectangles, draws the body once
-and each frame adds only what differs, so a picture is far under the host's 131072-character limit for `Svg` (the
-largest is about 110 KB, with three subagent helpers; a picture that would pass 118 KB keeps its body still). The terminal
+and each frame adds only what differs: the pet is drawn at rest in every frame, and its hop, squash and shake are one CSS
+transform that eases from pose to pose (the shadow and the helpers stay on the ground, in their own layer). So motion is
+smooth, and a picture is far under the host's 131072-character limit for `Svg` (the largest is about 50 KB, with three subagent helpers). The terminal
 output shrinks the same canvas to half-block cells. A frame takes a few milliseconds, and rendered frames and finished
 pictures are cached.
 

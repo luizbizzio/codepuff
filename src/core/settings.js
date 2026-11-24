@@ -9,6 +9,8 @@ export const NAME_MAX = 16
 export const CHARACTERS = CHARACTER_IDS
 export const DEFAULT_CHARACTER = 'alpha'
 export const DEFAULT_NAMES = CHARACTER_NAMES
+/** How tall the compact band's pet (and its pie chart) is drawn, in pixels, for each size the user can pick. */
+export const BAND_SIZES = Object.freeze({ small: 48, medium: 68, large: 96 })
 
 // Line breaks become spaces; control characters, zero-width and bidirectional marks and markup characters are dropped.
 const LINE_BREAKS = new RegExp('[\\r\\n\\t\\u2028\\u2029]', 'g')
@@ -39,7 +41,7 @@ export function defaultPet(now = Date.now()) {
     name: '',
     character: DEFAULT_CHARACTER,
     colors: { body: null, accent: null },
-    prefs: { motion: 'auto', scope: 'session', line: false, band: true },
+    prefs: { motion: 'auto', scope: 'session', line: false, band: true, bandSize: 'medium' },
   }
 }
 
@@ -71,6 +73,7 @@ export function sanitizePet(raw, now = Date.now()) {
       scope: migrated.prefs?.scope === 'all' ? 'all' : 'session',
       line: migrated.prefs?.line === true,
       band: migrated.prefs?.band !== false,
+      bandSize: Object.hasOwn(BAND_SIZES, migrated.prefs?.bandSize) ? migrated.prefs.bandSize : 'medium',
     },
   }
   const repaired = JSON.stringify(pet) !== JSON.stringify({ ...raw, v: PET_SCHEMA })

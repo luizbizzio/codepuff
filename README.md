@@ -54,7 +54,7 @@ says which agent and project it is. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE
 
 | Surface | Claude Code | Codex |
 | --- | --- | --- |
-| **Compact band above the prompt**: the whole pet, small, what it is doing right now, and on the right a pie chart of how this session's tasks went (successes and failures as the agent reported them) | yes (`/codepuff band on/off`, or the *Compact band* switch in Customize) | not possible: Codex has no plugin UI |
+| **Compact band above the prompt**: the whole pet at the left edge, what it is doing right now, and at the right edge a pie chart of how this session's tasks went (successes and failures as the agent reported them) with the counts under it; the pet and the pie are the same height, and the band comes in three sizes (small, medium, large) | yes (`/codepuff band on|off|small|medium|large`, or the *Compact band* settings in Customize) | not possible: Codex has no plugin UI |
 | **Pane / widget**: the animated pet beside the chat, statistics, customization (Statistics and Customize tabs); click the activity in the compact band to pet it (pat again and again: a pat, a giggle, then overjoyed); the pet hops when the pointer is over it | yes (desktop widget, docked pane) | not possible |
 | **Terminal app** `codepuff pet`: pet, statistics, customization, data | yes | yes (the way to see your pet next to Codex) |
 | One-line status under the prompt | yes (`/codepuff line on`) | - |

@@ -208,3 +208,21 @@ test('every character idles in its own manner, and every idle loop is well forme
   }
   assert.equal(animation('coding', { character: 'fox' }), animation('coding'), 'working states are shared by all')
 })
+
+test('motion is smooth: the pet moves by an eased CSS transform, the shadow stays on the ground, pictures stay small', () => {
+  const idle = petSvg({ character: 'slime', state: 'idle', scale: 2 })
+  assert.ok(idle.includes('class="mv"') && idle.includes('@keyframes mv') && idle.includes('ease-in-out'), 'the body is moved by an eased transform')
+  const reaction = petSvg({ character: 'slime', state: 'petted', scale: 2 })
+  assert.ok(reaction.includes('translate(0px,-5px)') || /translate\(0px,-[0-9.]+px\)/.test(reaction), 'a hop is a translation')
+  assert.ok(reaction.length < 40_000, 'a reaction is small (' + reaction.length + ')')
+  // The shadow is not part of what hops.
+  assert.ok(reaction.indexOf('fill-opacity') >= 0 && reaction.indexOf('fill-opacity') < reaction.indexOf('class="mv"'), 'the shadow is drawn before, outside the moving group')
+  assert.ok(!petSvg({ character: 'slime', state: 'petted', scale: 2, reduced: true }).includes('@keyframes'), 'reduced motion has no animation')
+  for (const state of REACTIONS) {
+    const frames = animation(state).frames
+    const first = frames[0].pose; const last = frames.at(-1).pose
+    assert.equal(first.eyes, 'open', state + ' starts from open eyes, so it grows out of the pose the pet was in')
+    assert.equal(last.eyes, 'open', state + ' ends with open eyes, so it settles back')
+    assert.equal(last.dy, 0)
+  }
+})

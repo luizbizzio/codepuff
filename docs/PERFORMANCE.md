@@ -30,7 +30,7 @@ Machine: Intel Core Ultra 9 285H (16 cores), 31 GB RAM, Windows 11, Node 26.9.0.
 | Codex hook: whole process wall time (spawn node, import, apply, answer `{}`) | **100 to 170 ms** median; a bare `node -e ""` was 65 to 106 ms in the same runs, so CodePuff adds about **35 to 60 ms** per hook event |
 | Codex hook: memory of the process | 47 MB RSS (a bare node process is 42 MB: +5 MB), 6 MB heap |
 | Read and add up 500 sessions (what the terminal app does each second) | 67 to 118 ms cold; **23 to 35 ms warm** (files unchanged: only `stat` calls); statistics 0.5 ms; priority rule 0.03 ms |
-| Hi-res pet picture as SVG (72x72 scene, 8 characters, 2 styles, 6 states measured) | about 7 ms median, 54 ms p95 (the first build of a picture is the slowest); 3.5 to 112 KB per animated picture, median 34 KB (the host's limit is 131 KB; the detailed sprites are the large ones, and past 118 KB the picture falls back to a still body); about 4 KB with reduced motion |
+| Hi-res pet picture as SVG (72x72 scene, 8 characters, 6 states measured) | about 1.4 ms mean, 20 ms for the first build of a picture (cached after); 13 to 52 KB per animated picture (the host's limit is 131 KB; the pet moves by one CSS transform, so frames differ only by face, props and effects); about 4 KB with reduced motion |
 | Terminal frame (hi-res, shrunk to fit) / ANSI | 0.5 to 0.7 ms / 0.5 to 0.7 ms per frame |
 | Storage | 419 bytes per session on average over 500 sessions (205 KB for 500); a session that ran 500 tool calls: 725 bytes |
 

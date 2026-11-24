@@ -199,22 +199,42 @@ const loops = {
     still: 2,
   }),
 
-  // One-shot reaction to a click or tap.
+  // One-shot reactions to a click or tap. Each starts and ends at rest (eyes open, standing) so it grows out of the pose the
+  // pet was in and settles back into it; the motion between poses is eased by the picture, so a few frames are enough.
+  // A pat: a small squat, a hop with a wave and a heart, a landing, a little bounce. (1000 ms)
   petted: () => ({
-    frames: Array.from({ length: 7 }, (_, f) => frame(130, { eyes: 'happy', mouth: 'smile', cheeks: 'bright', dy: f % 2 ? -2 : 0, hands: f % 2 ? 'wave' : 'rest', fx: [{ id: 'heart', f }] })),
+    frames: [
+      frame(100, { eyes: 'open', mouth: 'smile', sy: 0.95, sx: 1.03 }),
+      frame(160, { eyes: 'happy', mouth: 'smile', cheeks: 'bright', dy: -2.5, sy: 1.05, sx: 0.97, hands: 'wave', fx: [{ id: 'heart', f: 0 }] }),
+      frame(140, { eyes: 'happy', mouth: 'smile', cheeks: 'bright', dy: -1.2, hands: 'wave', fx: [{ id: 'heart', f: 1 }] }),
+      frame(160, { eyes: 'happy', mouth: 'smile', cheeks: 'bright', dy: 0, sy: 0.96, sx: 1.03, fx: [{ id: 'heart', f: 2 }] }),
+      frame(220, { eyes: 'happy', mouth: 'smile', cheeks: 'bright', dy: -1, sy: 1.02, fx: [{ id: 'heart', f: 3 }] }),
+      frame(220, { eyes: 'open', mouth: 'smile', cheeks: 'bright', fx: [{ id: 'heart', f: 4 }] }),
+    ],
     still: 2,
   }),
 
-  // Patted a few times in a row: a ticklish giggle, shaking side to side with sparkles.
+  // Patted a few times in a row: a ticklish giggle, shaking side to side with sparkles. (1300 ms)
   giggle: () => ({
-    frames: Array.from({ length: 12 }, (_, f) => frame(90, { eyes: 'happy', mouth: 'grin', cheeks: 'bright', shake: f % 2 ? 0.8 : -0.8, dy: f % 4 === 1 ? -1 : 0, sy: f % 2 ? 0.98 : 1.02, hands: f % 3 === 0 ? 'wave' : 'rest', fx: [{ id: 'sparkles', f: f % 4 }, ...(f % 3 === 1 ? [{ id: 'heart', f: f % 5 }] : [])] })),
+    frames: [
+      frame(100, { eyes: 'open', mouth: 'smile', sy: 0.97 }),
+      ...Array.from({ length: 11 }, (_, f) => frame(100, { eyes: 'happy', mouth: 'grin', cheeks: 'bright', shake: f % 2 ? 0.8 : -0.8, dy: f % 2 ? -0.8 : 0, sy: f % 2 ? 1.02 : 0.98, hands: f % 3 === 0 ? 'wave' : 'rest', fx: [{ id: 'sparkles', f: f % 4 }, ...(f % 3 === 1 ? [{ id: 'heart', f: f % 5 }] : [])] })),
+      frame(100, { eyes: 'open', mouth: 'smile', cheeks: 'bright' }),
+    ],
     still: 3,
   }),
 
-  // Patted a lot: overjoyed, hopping with both arms up in a shower of confetti and hearts.
+  // Patted a lot: overjoyed, hopping with both arms up in a shower of confetti and hearts. (1700 ms)
   delighted: () => ({
-    frames: Array.from({ length: 14 }, (_, f) => frame(110, { eyes: 'happy', mouth: 'grin', cheeks: 'bright', dy: f % 2 ? -3 : 0, sy: f % 2 ? 1.06 : 0.95, sx: f % 2 ? 0.96 : 1.04, hands: f % 2 ? 'up0' : 'up1', fx: [{ id: 'confetti', f: f % 4 }, { id: 'heart', f: f % 5 }] })),
-    still: 3,
+    frames: [
+      frame(120, { eyes: 'open', mouth: 'smile', sy: 0.94, sx: 1.04 }),
+      ...[0, 1, 2].flatMap(n => [
+        frame(200, { eyes: 'happy', mouth: 'grin', cheeks: 'bright', dy: -3.2, sy: 1.07, sx: 0.95, hands: 'up0', fx: [{ id: 'confetti', f: n * 2 }, { id: 'heart', f: n * 2 }] }),
+        frame(200, { eyes: 'happy', mouth: 'grin', cheeks: 'bright', dy: 0, sy: 0.93, sx: 1.06, hands: 'up1', fx: [{ id: 'confetti', f: n * 2 + 1 }, { id: 'heart', f: n * 2 + 1 }] }),
+      ]),
+      frame(380, { eyes: 'open', mouth: 'smile', cheeks: 'bright', fx: [{ id: 'heart', f: 6 }] }),
+    ],
+    still: 2,
   }),
 }
 

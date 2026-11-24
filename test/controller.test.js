@@ -339,3 +339,18 @@ test('the model reports how tasks went, as the agent said: successes and failure
   ctl.observe('PostToolUseFailure', payload({ ...tool('4', 'Bash', { command: 'node broken.js' }), error: 'Exit code 1' }))
   assert.deepEqual(ctl.model().outcome, { ok: 3, failed: 1 })
 })
+
+test('the compact band size is a preference: small, medium or large, medium by default', async () => {
+  const { io } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  assert.equal(ctl.model().pet.bandSize, 'medium')
+  assert.equal(ctl.model().pet.bandHeight, 68)
+  assert.match((await ctl.command('band large')).text, /large/)
+  assert.equal(ctl.model().pet.bandSize, 'large')
+  assert.ok(ctl.model().pet.bandHeight > 68)
+  await ctl.setPet({ prefs: { bandSize: 'huge' } })
+  assert.equal(ctl.model().pet.bandSize, 'medium', 'an unknown size falls back')
+  await ctl.command('band small')
+  assert.ok(ctl.model().pet.bandHeight < 68 && ctl.model().pet.band)
+})

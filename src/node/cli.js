@@ -10,7 +10,7 @@ import { addDays, dayKey } from '../core/days.js'
 import { AGENT_LABELS, ago, statRows } from '../core/format.js'
 import { focus } from '../core/petstate.js'
 import { PRESETS, isHex } from '../core/color.js'
-import { CHARACTERS, cleanName, displayName, NAME_MAX } from '../core/settings.js'
+import { BAND_SIZES, CHARACTERS, cleanName, displayName, NAME_MAX } from '../core/settings.js'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 export const VERSION = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8')).version
@@ -41,7 +41,7 @@ Usage: codepuff <command>
   pet                        the full terminal app: live pet, statistics, customization and data controls
   set name <name>            rename your pet (up to ${NAME_MAX} characters; "" for the default)
   set character <${CHARACTERS.join('|')}>
-  set band <on|off>          the compact band above the Claude Code prompt
+  set band <on|off|small|medium|large>   the compact band above the Claude Code prompt, and its size
   set body <#rrggbb|default>  set accent <#rrggbb|default>
   set palette <id>           one of: ${PRESETS.map(p => p.id).join(', ')}
   set motion <auto|reduced>
@@ -153,7 +153,8 @@ function set(store, [key, ...values]) {
       pet.character = value
       break
     case 'band':
-      if (!['on', 'off'].includes(value)) return fail('Usage: codepuff set band on|off')
+      if (Object.hasOwn(BAND_SIZES, value)) { pet.prefs.band = true; pet.prefs.bandSize = value; break }
+      if (!['on', 'off'].includes(value)) return fail('Usage: codepuff set band on|off|small|medium|large')
       pet.prefs.band = value === 'on'
       break
     case 'body':

@@ -74,7 +74,7 @@ function filesOf(tool, args) {
 
 const TEST_PATTERNS = [
   /^(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?(?:test|tests|t|test:[\w:.-]+|check|verify)(?:\s|$)/,
-  /^(?:npx|pnpx|bunx)\s+(?:--?[\w-]+\s+)*(?:jest|vitest|mocha|ava|tap|playwright\s+test|cypress\s+run|uvu)\b/,
+  /^(?:npx|pnpx|bunx)\s+(?:--?\w[\w-]*\s+)*(?:jest|vitest|mocha|ava|tap|playwright\s+test|cypress\s+run|uvu)\b/,
   /^yarn\s+dlx\s+(?:jest|vitest|mocha)\b/,
   /^(?:jest|vitest|mocha|ava|tap|uvu|pytest|py\.test|tox|nox|rspec|phpunit|ctest|busted|nosetests|behave)\b/,
   /^(?:playwright\s+test|cypress\s+run)\b/,

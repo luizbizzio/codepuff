@@ -17,6 +17,8 @@ what was checked, where, and what was not.
 | **Claude Code (static)** | `claude plugin validate .` on Claude Code 2.1.330 | pass |
 | **Claude Code (engine)** | `claude plugin test .` on 2.1.330: the mod raises the host's real `classic.*` events, persists through a fake host file system, mounts the pane **and the compact band above the prompt** on the terminal and desktop surfaces, presses tabs/buttons, submits the name field | 4 of 4 pass |
 | **Claude Code (live session)** | An earlier build of the mod, copied into this desktop session's dev-mods folder, was loaded by the host (2.1.330) and wrote `pet.json` and this session's record in `~/.codepuff` (session id, project, a prompt, a running turn, a tool in flight, the **local** calendar day) | live hook events, `$.env`, `$.fs`, `$.session.id()` and the sandbox's time zone work |
+| **Claude Code (marketplace install)** | In a throwaway config folder (`CLAUDE_CONFIG_DIR`, so the owner's own setup was not touched): `claude plugin marketplace add luizbizzio/codepuff`, then `claude plugin install codepuff@codepuff` from the public repository; then `claude plugin validate` and `claude plugin test` on the **installed copy** | installed (user scope, enabled); every file is there (hooks, views, sounds, sprites, icon); validation passes; the 6 mod tests pass on the installed copy |
+| **Codex (marketplace install)** | In a throwaway `CODEX_HOME`: `codex plugin marketplace add luizbizzio/codepuff`, then `codex plugin add codepuff@codepuff`; then the installed plugin's own hook command (from its `codex/hooks.json`) run the way Codex runs it, with `PLUGIN_ROOT` set | installed and enabled; the hook command answers `{}` and writes the record |
 | **Codex (real host)** | `node scripts/live-codex.mjs` against the real Codex (CLI 0.171.0-alpha.13.2, the desktop app's own binary), three runs, ephemeral, temp project, hooks injected for the run only; one run asked for `apply_patch` and a shell command, the others for two shell commands | the host delivered `SessionStart`, `UserPromptSubmit`, `PreModelRequest`, `PostModelRequest`, `PreToolUse` (with `tool_name: "Bash"`, `tool_input.command`, `tool_use_id`), `Stop`, `SessionEnd`; CodePuff recorded the prompt, the turn and the tool calls. **It never delivered `PostToolUse`**, for a shell command or for `apply_patch` (see below) |
 | Codex model failure | In an earlier run the model request failed (the account's usage limit): the pet shows *The model request failed*; the error text is not stored | pass |
 | Codex plugin hook command | The exact command in `codex/hooks.json` run through `cmd.exe`, PowerShell and a POSIX shell with only `PLUGIN_ROOT` set; also with a missing folder (answers `{}`, exit 0) | pass |
@@ -30,18 +32,15 @@ what was checked, where, and what was not.
 * **How the mod looks in a live Claude Code window.** The owner ran builds of the mod in the Claude Code desktop app through the
   dev-mods folder and sent screenshots of the compact band (pet, status block, ring, hearts) and of the Statistics page, and
   fixed what they showed; every later change to these was checked by tests and in Chrome, not seen again in the window. What
-  nobody has confirmed in the window: the hover hop, the tooltips, the toasts, and the sounds. Installing the mod through the
-  marketplace (`/plugin install codepuff@codepuff`) has not been tried: every live run was a copy in the dev-mods folder.
-* **Keyboard use of the new terminal app** (Customize arrows, name entry, import, confirmations): the key handling was
-  not driven by a real keyboard in this build's checks; only its first screen was read.
+  nobody has confirmed in the window: the hover hop, the tooltips and the toasts. A live session with the mod **installed from the
+  marketplace** (as opposed to the dev-mods copy) has not been run: the install was checked in a throwaway config (Verified, above).
+* **Keyboard use of the terminal app** (Customize arrows, name entry, import, confirmations): the key handling was not driven by a real
+  keyboard in this build's checks; only its first screen and the Statistics view were read.
 * **Codex tool completions.** In the real Codex checked (0.171.0-alpha.13.2), `PreToolUse` arrives for every tool call but `PostToolUse` never does, so
   CodePuff cannot know how a Codex tool call ended. It counts each call when the turn ends, with an *unknown* outcome (so tool calls, and the
   categories, are right; succeeded/failed, test results and commits are not available for Codex, and the pet shows the tool while it runs but
   has no success or failure to celebrate). If a later Codex sends `PostToolUse`, the real outcome is used and nothing is counted twice
   (tested). `PermissionRequest` and subagent events were not triggered in these runs.
-* **Installing the Codex plugin bundle through Codex** (`codex plugin marketplace add`): not run, because it edits the
-  user's Codex configuration. `codepuff install codex` (user `hooks.json`) is the checked path. Either way Codex asks
-  you to trust the hooks first; that step is manual by design.
 * `codepuff install claude` through the `claude` CLI.
 * macOS and Linux run only in CI (the test suite on Node 20 and 22, passing on all three systems); the mod itself was only ever run on Windows 11 (Node 26 locally). Nobody has run the mod or the sounds on macOS or Linux.
 * Terminals without truecolor or half-block characters, and a screen reader.
@@ -87,3 +86,4 @@ what was checked, where, and what was not.
 6. A Claude Code `classic` command-hook fallback for hosts without the Mods API (the Node hook already understands the payloads).
 7. Verified macOS and Linux CI; an accessibility audit; a static HTML report exported to a file (no server) for sharing statistics.
 8. Publish to npm and the Claude Code and Codex marketplaces once the checks above are complete (no release has been made).
+

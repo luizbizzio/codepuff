@@ -52,6 +52,13 @@ The first command adds CodePuff's hooks to your user `hooks.json` (after saving 
 will not run new hooks until you trust them**: in the CLI run `/hooks`; in the desktop app use *Review hooks*. CodePuff never
 edits trust state itself. The last command opens the terminal app (run it in a split or a second tab).
 
+Or through Codex's plugin marketplace (the hooks still need your trust):
+
+```text
+codex plugin marketplace add luizbizzio/codepuff
+codex plugin add codepuff@codepuff
+```
+
 Codex has no way for a plugin to draw inside Codex, so Codex users get the terminal app. In the Codex build checked
 (0.171) the host does not report when a tool finishes, so CodePuff counts the calls but cannot say how each one went
 ([details](docs/STATUS.md)).

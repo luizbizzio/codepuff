@@ -81,3 +81,35 @@ test('sounds play one at a time, and a third that arrives while two are waiting 
   await new Promise(resolve => setTimeout(resolve, 10))
   assert.equal(broken('y'), true, 'a failing player does not jam the queue')
 })
+
+test('odd data never breaks the drawing or the numbers: prototype names, non-finite usage, lists for names, empty day buckets', async () => {
+  const { petSvg } = await import('../src/core/render/raster.js')
+  const { animation } = await import('../src/core/art/anim.js')
+  const { aggregate } = await import('../src/core/aggregate.js')
+  const { cleanName } = await import('../src/core/settings.js')
+  const { planWindows, tiredOf, resetsBetween } = await import('../src/claude/usage.js')
+  for (const name of ['__proto__', 'constructor', 'toString', 'hasOwnProperty']) {
+    assert.doesNotThrow(() => petSvg({ character: name, state: name }), name + ' as a character and a state')
+    assert.ok(animation(name, { character: name }).frames.length > 0, name + ' falls back to the resting animation')
+  }
+  assert.doesNotThrow(() => petSvg({ character: 'fox', state: 'idle', colors: null }))
+  assert.equal(cleanName(['a', { b: 1 }]), '', 'a list is not a name')
+  assert.equal(cleanName({ toString: () => 'x' }), '', 'neither is an object')
+  assert.equal(cleanName('  Biscuit '), 'Biscuit')
+  const stats = aggregate([{ agent: 'claude', sid: 's', days: { '2026-11-01': null, '2026-11-02': 'x', '2026-11-03': { pr: 2 } } }], {})
+  assert.equal(stats.prompts, 2, 'a damaged day is skipped, the rest counts')
+  const bad = { limits: [{ kind: 'five_hour', percentUsed: NaN, resetsAt: 'soon' }, { kind: 'seven_day', percentUsed: Infinity }] }
+  assert.deepEqual(planWindows(bad, 0), [])
+  assert.equal(tiredOf(bad, 0), null)
+  assert.deepEqual(resetsBetween({ limits: [{ kind: 'five_hour', percentUsed: 50 }] }, bad, 0), [])
+})
+
+test('the judge does not take names, self-blame or talk about a bot for abuse', () => {
+  for (const fine of [
+    "you're right, I was dumb to not see that", 'you are right, that was stupid of me', 'eu sou burro, esqueci o ponto e vírgula', 'foi burrice minha, vc tem razão',
+    'rename idiot-proof to foolproof', 'idiot proof the CLI args', 'implementa um idiota-proof validator', 'burro: add a retry', 'delete the bitch.py file',
+    'fix: the bot is dumb about dates', 'o bot está burro com datas', 'fix the stupid lint rule', 'this piece of shit config again', 'que merda de erro é esse',
+  ]) assert.equal(judge(fine).insult === 2, false, fine)
+  for (const rude of ['you suck', 'you are a useless piece of shit', 'you dumb bot', 'idiot!', 'seu idiota'])
+    assert.equal(judge(rude).insult, 2, rude)
+})

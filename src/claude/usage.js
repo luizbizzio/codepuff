@@ -19,7 +19,7 @@ export function resetsBetween(before, after, at) {
   for (const limit of after.limits) {
     const moment = RESET_MOMENT[limit.kind]
     const was = before.limits.find(item => item.kind === limit.kind)
-    if (!moment || !was || typeof was.percentUsed !== 'number' || typeof limit.percentUsed !== 'number' || was.percentUsed < 1) continue
+    if (!moment || !was || !Number.isFinite(was.percentUsed) || !Number.isFinite(limit.percentUsed) || was.percentUsed < 1) continue
     const ended = was.resetsAt && Date.parse(was.resetsAt) <= at + 120_000
     const newer = limit.resetsAt && was.resetsAt && Date.parse(limit.resetsAt) > Date.parse(was.resetsAt) + 60_000
     const fell = limit.percentUsed + 10 <= was.percentUsed
@@ -38,7 +38,7 @@ const PLAN_LABEL = { five_hour: '5h', seven_day: 'week', spend_limit: 'spend' }
 export function planWindows(usage, at) {
   if (!usage) return []
   return usage.limits
-    .filter(limit => PLAN_LABEL[limit?.kind] && typeof limit.percentUsed === 'number' && !(limit.resetsAt && Date.parse(limit.resetsAt) < at))
+    .filter(limit => PLAN_LABEL[limit?.kind] && Number.isFinite(limit.percentUsed) && !(limit.resetsAt && Date.parse(limit.resetsAt) < at))
     .map(limit => ({ id: limit.kind, label: PLAN_LABEL[limit.kind], percent: Math.max(0, Math.min(100, Math.round(limit.percentUsed))), resetsInMs: limit.resetsAt ? Math.max(0, Date.parse(limit.resetsAt) - at) : 0 }))
 }
 
@@ -46,7 +46,7 @@ export function tiredOf(usage, at) {
   if (!usage) return null
   let worst = null
   for (const limit of usage.limits) {
-    if (typeof limit?.percentUsed !== 'number') continue
+    if (!Number.isFinite(limit?.percentUsed)) continue
     if (limit.resetsAt && Date.parse(limit.resetsAt) < at) continue // that window has already reset
     if (!worst || limit.percentUsed > worst.percentUsed) worst = limit
   }

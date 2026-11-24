@@ -47,7 +47,7 @@ export function createController(io, { host = 'claude' } = {}) {
   const s = {
     dir: '', sid: '', cwd: '', pet: null, rec: null,
     others: new Map(), // file -> { key, rec }
-    dirty: false, ui: { tab: 'stats', scope: 'session', agent: host, details: false }, react: 0, pats: [], reaction: 'petted', cues: [], cueAt: {}, toasts: [], milestoneAt: 0,
+    dirty: false, ui: { tab: 'stats', scope: 'session', agent: host, details: false }, react: 0, pats: [], reaction: 'petted', cues: [], cueAt: {}, toasts: [], milestoneAt: 0, petText: '', writes: Promise.resolve(),
     health: { storage: 'ok', git: 'ok' }, lastRefresh: 0, usage: null,
     listeners: new Set(),
   }
@@ -62,7 +62,7 @@ export function createController(io, { host = 'claude' } = {}) {
     let text
     try { text = await io.read(file('pet.json')) } catch { text = undefined }
     if (text !== undefined) {
-      try { s.pet = sanitizePet(JSON.parse(text), t).pet; return } catch {
+      try { s.pet = sanitizePet(JSON.parse(text), t).pet; s.petText = text; return } catch {
         try { await io.write(file('pet.json.corrupt-' + stamp(t)), text) } catch { /* keep going */ }
       }
     }
@@ -70,9 +70,35 @@ export function createController(io, { host = 'claude' } = {}) {
     await writePet()
   }
 
-  async function writePet() {
-    await affection.sync()
-    try { await io.write(file('pet.json'), JSON.stringify(s.pet, null, 2) + '\n') } catch { s.health.storage = 'error' }
+  /** Saves the pet. Saves are queued, so two never overlap and a look at the file (reloadPet) can wait for the ones under way. */
+  function writePet() {
+    const save = async () => {
+      await affection.sync()
+      const text = JSON.stringify(s.pet, null, 2) + '\n'
+      try { await io.write(file('pet.json'), text); s.petText = text } catch { s.health.storage = 'error' }
+    }
+    s.writes = s.writes.then(save, save)
+    return s.writes
+  }
+
+  /**
+   * Another window (a second Claude Code session) or the Codex hook may have saved the pet since this one last did. Their file is
+   * adopted, so a later save here does not put an old copy back over their change; the newer affection wins, and what has been
+   * celebrated or shown is the union of both. It waits for saves of our own that are under way. Returns whether anything changed.
+   */
+  async function reloadPet() {
+    await s.writes
+    let text
+    try { text = await io.read(file('pet.json')) } catch { return false }
+    if (text === s.petText) return false
+    try {
+      const found = sanitizePet(JSON.parse(text), now()).pet
+      const mine = s.pet
+      const union = (a, b) => (a === null ? b : b === null ? a : [...new Set([...a, ...b])])
+      s.pet = { ...found, affection: found.affection.at >= mine.affection.at ? found.affection : mine.affection, milestones: union(found.milestones, mine.milestones), seen: [...new Set([...found.seen, ...mine.seen])] }
+      s.petText = text
+      return true
+    } catch { return false }
   }
 
   async function loadOwn() {
@@ -86,7 +112,7 @@ export function createController(io, { host = 'claude' } = {}) {
   /** Reads the other sessions (both agents) whose files changed since the last look. Cheap: one listing per agent. */
   async function refreshOthers() {
     const seen = new Set()
-    let any = await affection.sync()
+    let any = await reloadPet()
     for (const agent of ['claude', 'codex']) {
       let entries = []
       try { entries = await io.list(file('sessions', agent)) } catch { continue }
@@ -177,6 +203,10 @@ export function createController(io, { host = 'claude' } = {}) {
     flush,
     refreshOthers,
     records,
+
+    /** Picks up what another window or the Codex hook saved to the pet. Cheap (one small file), so it is done before every prompt is
+     *  judged: the hearts the judgment starts from are then the latest, not ones from minutes ago. */
+    async syncPet() { if (await reloadPet()) changed() },
 
     /** A sound moment the host reports itself (a turn that ended well). */
     cue(moment) { moments.cue(moment); changed() },

@@ -17,13 +17,17 @@ const MILD = new Set([
 ])
 /** Phrases that are always aimed at the listener. */
 const PHRASES = [
-  'shut up', 'fuck you', 'fuck off', 'screw you', 'go to hell', 'piece of shit', 'son of a bitch',
+  'shut up', 'fuck you', 'fuck off', 'screw you', 'go to hell', 'son of a bitch', 'you suck', 'u suck',
   'cala a boca', 'cala boca', 'cale a boca', 'vai se foder', 'vai se fuder', 'vai tomar no cu', 'vai a merda', 'vai pra merda', 'filho da puta',
   'vsf', 'vtnc', 'fdp', 'nao serve pra nada',
 ]
+/** Phrases that are harsh criticism (of the work, or of the assistant) rather than abuse. */
+const MILD_PHRASES = ['piece of shit']
+/** Words that make an insult about the speaker themselves ("I was dumb", "stupid of me", "eu sou burro"): not aimed at anyone else. */
+const SELF = new Set(['i', 'im', 'ive', 'me', 'my', 'myself', 'eu', 'mim', 'minha', 'meu', 'sou', 'fui'])
 /** Words that point at the assistant. */
 const YOU = new Set([
-  'you', 'your', 'youre', 'yours', 'ur', 'u', 'claude', 'ai', 'bot', 'assistant', 'model', 'gpt',
+  'you', 'your', 'youre', 'yours', 'ur', 'u', 'claude', 'ai', 'assistant', 'gpt',
   'vc', 'voce', 'tu', 'seu', 'sua', 'teu', 'tua', 'ia',
 ])
 /** Insults that name a person: a short message made of one is aimed at the assistant even without "you". */
@@ -62,14 +66,18 @@ export function judge(prompt) {
   const words = text.split(' ')
   let insult = 0
   if (PHRASES.some(p => ` ${text} `.includes(` ${p} `))) insult = 2
+  else if (MILD_PHRASES.some(p => ` ${text} `.includes(` ${p} `))) insult = /\b(?:you are|youre|you re|ur|u r|voce e|vc e|seu)\b.{0,20}\bpiece of shit\b/.test(text) ? 2 : 1
   words.forEach((word, i) => {
     const strong = STRONG.has(word)
     if (!strong && !MILD.has(word)) return
     // "you are not stupid" is not an insult.
     if (words.slice(Math.max(0, i - 3), i).some(w => NEGATION.has(w))) return
+    // "I was dumb", "stupid of me": an insult at oneself. "idiot-proof": a word in a name, not an insult.
+    if (words.slice(Math.max(0, i - 3), i + 4).some(w => SELF.has(w))) return
+    if (/^proof/.test(words[i + 1] ?? '')) return
     const near = words.slice(Math.max(0, i - 4), i + 5).some(w => YOU.has(w))
     // A short message that is only an insult ("idiota!") is aimed at the assistant too.
-    const alone = PERSON.has(word) && words.length <= 5
+    const alone = PERSON.has(word) && words.length <= 3
     if (near || alone) insult = Math.max(insult, strong ? 2 : 1)
   })
   const kind = insult === 0 && (words.some(w => KIND.has(w)) || KIND_PHRASES.some(p => ` ${text} `.includes(` ${p} `)))

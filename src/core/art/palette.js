@@ -27,7 +27,7 @@ const toRgb = hex => { const n = parseInt(hex.slice(1), 16); return [(n >> 16) &
  * @returns {number[][]} `[r, g, b, a]` per role (index it with a role)
  */
 export function buildPalette(character, colors = {}, options = {}) {
-  const own = CHARACTER_DEFAULTS[character] ?? CHARACTER_DEFAULTS.alpha
+  const own = Object.hasOwn(CHARACTER_DEFAULTS, character) ? CHARACTER_DEFAULTS[character] : CHARACTER_DEFAULTS.alpha
   const body = isHex(colors.body) ? colors.body : own.body
   const accent = isHex(colors.accent) ? colors.accent : own.accent
   const b = ramp(body)
@@ -39,7 +39,7 @@ export function buildPalette(character, colors = {}, options = {}) {
   table[R.INK] = toRgb(ink(b.base))
   for (const [role, hex] of Object.entries(FIXED)) table[role] = toRgb(hex)
   table[R.SHADOW] = [0, 0, 0, 64]
-  const sprite = SPRITES[character]
+  const sprite = Object.hasOwn(SPRITES, character) ? SPRITES[character] : undefined
   if (sprite) {
     sprite.slots.forEach(([tone, kind], i) => {
       const target = kind === 'body' ? colors.body : kind === 'accent' ? colors.accent : null

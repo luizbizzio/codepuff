@@ -17,8 +17,8 @@ const PARTS = {
 
 /** The parts of a character in scene pixels (the same coordinates as the canvas), or an empty list. */
 export function partsOf(character) {
-  const S = SPRITES[character]
-  const list = PARTS[character]
+  const S = Object.hasOwn(SPRITES, character) ? SPRITES[character] : undefined
+  const list = Object.hasOwn(PARTS, character) ? PARTS[character] : undefined
   if (!S || !list) return []
   const ox = Math.round(W / 2 - S.w / 2)
   const oy = STAND - S.h

@@ -93,15 +93,19 @@ export function renderBand(els: Els, m: any, surface: string, onPat: () => void)
     : null
   const days = m.life.current
   const tone = toneOf(m.me.state)
+  // The pet at the left, the ring at the right (with a margin, not flush against the edge), and the information centered in the
+  // space between them: the streak, prompts and hearts above, the status block (a fixed minimum width, so it does not jump as the
+  // words change) in the middle, the plan's bars below.
   return (
-    <Box flexDirection="row" gap={2} alignItems="center">
+    <Box flexDirection="row" gap={2} alignItems="center" paddingRight={3}>
       {face}
-      <Box flexDirection="column" alignItems="flex-start" gap={1}>
-        <Box flexDirection="row" gap={2}>
+      <Box flexGrow={1} />
+      <Box flexDirection="column" alignItems="center" gap={1}>
+        <Box flexDirection="row" gap={2} justifyContent="center">
           <Text dimColor>{`🔥 ${days} day${days === 1 ? '' : 's'}  ·  💬 ${m.sessionPrompts} prompt${m.sessionPrompts === 1 ? '' : 's'}`}</Text>
           {m.pet.mood ? heartsRow(els, m.pet.hearts) : null}
         </Box>
-        <Box borderStyle="round" borderColor={tone} paddingX={1} flexDirection="row" gap={1}>
+        <Box borderStyle="round" borderColor={tone} paddingX={2} minWidth={34} flexDirection="row" gap={1} justifyContent="center">
           <Text color={tone}>●</Text>
           <Button plain key="pet-it" onPress={onPat}>{m.me.label}</Button>
         </Box>

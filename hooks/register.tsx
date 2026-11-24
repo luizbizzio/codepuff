@@ -175,7 +175,11 @@ export const register: Register = on => {
 
   // ---- observation: every hook records and returns the host's own answer untouched ---------------------------------
 
-  on('classic.UserPromptSubmit', ($, e, next) => { ctl?.observe('UserPromptSubmit', e); return next(e) })
+  on('classic.UserPromptSubmit', async ($, e, next) => {
+    try { await ctl?.syncPet() } catch { /* the pet file is only read for the latest hearts */ }
+    ctl?.observe('UserPromptSubmit', e)
+    return next(e)
+  })
   on('classic.PreToolUse', ($, e, next) => { ctl?.observe('PreToolUse', e); return next(e) })
   on('classic.PostToolUse', ($, e, next) => { ctl?.observe('PostToolUse', e); return next(e) })
   on('classic.PostToolUseFailure', ($, e, next) => { ctl?.observe('PostToolUseFailure', e); return next(e) })

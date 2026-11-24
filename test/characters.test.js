@@ -264,3 +264,28 @@ test('the art is what it was: every character in every state matches its fingerp
   const changed = Object.keys({ ...expected, ...now }).filter(key => expected[key] !== now[key])
   assert.deepEqual(changed, [], 'these changed: ' + changed.slice(0, 12).join(', '))
 })
+
+test('working states move the body too, not only the object and the face', () => {
+  for (const state of ['thinking', 'reading', 'searching', 'investigating', 'coding', 'running', 'git', 'mcp', 'testing', 'web', 'delegating', 'planning']) {
+    const poses = animation(state).frames.map(f => f.pose)
+    const moves = poses.some(p => p.dy || p.shake || p.sx !== 1 || p.sy !== 1)
+    assert.ok(moves, state + ' has body movement')
+    const spread = Math.max(...poses.map(p => Math.abs(p.dy ?? 0) + Math.abs(p.shake ?? 0) + Math.abs((p.sy ?? 1) - 1) * 10))
+    assert.ok(spread <= 3, state + ' stays subtle (' + spread.toFixed(2) + ')')
+  }
+})
+
+test('every character waits for you in its own way, and always with a happy face', () => {
+  const seen = new Set()
+  for (const id of MASCOT_IDS) {
+    const anim = animation('waiting', { character: id })
+    assert.notEqual(anim, animation('waiting'), id + ' has its own waiting loop')
+    for (const { pose, d } of anim.frames) {
+      assert.ok(d >= 70)
+      assert.ok(['smile', 'grin'].includes(pose.mouth) && ['open', 'blink', 'happy'].includes(pose.eyes) && pose.brows === 'none', id + ' waits happily')
+      assert.ok(!pose.fx.some(item => item.id === 'dots'))
+    }
+    seen.add(JSON.stringify(anim.frames.map(f => [f.d, f.pose.dy, f.pose.lookX, f.pose.sx, f.pose.sy, f.pose.hands, f.pose.led])))
+  }
+  assert.equal(seen.size, MASCOT_IDS.length, 'all different')
+})

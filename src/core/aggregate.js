@@ -49,6 +49,7 @@ export function aggregate(records, scope = {}) {
     for (const [day, b] of Object.entries(rec.days)) {
       if (since && day < since) continue
       if (until && day > until) continue
+      if (!b || typeof b !== 'object') continue
       touched = true
       stats.prompts += b.pr ?? 0
       stats.turns += b.tc ?? 0

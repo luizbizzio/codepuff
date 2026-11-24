@@ -207,7 +207,7 @@ const rectsMarkup = (list, palette) => {
  */
 function buildSvg({ character, colors = {}, state, helpers = 0, scale = 4, reduced = false, background, crop, height, hover = false, title }) {
   const anim = animation(state, { helpers, character })
-  const palette = buildPalette(character, colors, { gray: anim.gray ? 0.8 : 0 })
+  const palette = buildPalette(character, colors ?? {}, { gray: anim.gray ? 0.8 : 0 })
   const box = crop === 'band' ? bandBox(character, helpers > 0) : STAGE
   if (height) scale = height / box.h
   const total = anim.total

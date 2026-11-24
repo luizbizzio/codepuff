@@ -24,4 +24,4 @@ export const MASCOTS = Object.freeze(Object.fromEntries(Object.entries(parts).ma
 })])))
 
 export const MASCOT_IDS = Object.freeze(Object.keys(MASCOTS))
-export const mascot = id => MASCOTS[id] ?? MASCOTS.alpha
+export const mascot = id => (Object.hasOwn(MASCOTS, id) ? MASCOTS[id] : MASCOTS.alpha)

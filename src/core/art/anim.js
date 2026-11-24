@@ -62,6 +62,19 @@ const PERSONALITY = {
   ],
 }
 
+// Waiting for the user is always a happy face; each character waits in its own way (see PERSONALITY for the idle ones).
+const happyWait = (d, over = {}) => frame(d, { eyes: 'open', mouth: 'smile', cheeks: 'bright', sy: 1, ...over })
+const WAITING = {
+  fox: [happyWait(1000, { lookX: -1 }), happyWait(200, { dy: -1, sy: 1.05, mouth: 'grin', eyes: 'happy' }), happyWait(200, { dy: 0, sy: 0.97 }), happyWait(1000, { lookX: 1 }), happyWait(110, { eyes: 'blink' }), happyWait(1100, { sy: 1.03 })],
+  bot: [happyWait(900, { led: 'ok' }), happyWait(400, { lookX: -1, led: 'wait' }), happyWait(400, { lookX: 1, led: 'ok' }), happyWait(110, { eyes: 'blink' }), happyWait(1200, { sy: 1.03, mouth: 'grin', eyes: 'happy' })],
+  slime: [happyWait(800), happyWait(220, { sx: 1.06, sy: 0.94 }), happyWait(220, { sx: 0.95, sy: 1.05 }), happyWait(220, { sx: 1.03, sy: 0.97 }), happyWait(1000, { eyes: 'happy', mouth: 'grin' }), happyWait(110, { eyes: 'blink' }), happyWait(900)],
+  mage: [happyWait(900), happyWait(300, { eyes: 'happy', fx: [{ id: 'sparkles', f: 0 }] }), happyWait(300, { eyes: 'happy', fx: [{ id: 'sparkles', f: 2 }] }), happyWait(300, { fx: [{ id: 'sparkles', f: 4 }] }), happyWait(110, { eyes: 'blink' }), happyWait(1200, { sy: 1.03 })],
+  aquatic: [happyWait(700, { dy: 0 }), happyWait(700, { dy: -1 }), happyWait(900, { dy: -1.5, eyes: 'happy', mouth: 'grin' }), happyWait(700, { dy: -0.5 }), happyWait(110, { eyes: 'blink' }), happyWait(900, { dy: 0, lookX: 1 })],
+  classic: [happyWait(900), happyWait(200, { dy: -1.5, sy: 1.05, eyes: 'happy', mouth: 'grin' }), happyWait(160, { sy: 0.96 }), happyWait(900, { lookX: -1 }), happyWait(110, { eyes: 'blink' }), happyWait(1000, { sy: 1.04 })],
+  alpha: [happyWait(900), happyWait(220, { hands: 'wave', eyes: 'happy', mouth: 'grin' }), happyWait(220, { hands: 'rest', eyes: 'happy' }), happyWait(220, { hands: 'wave', eyes: 'happy', mouth: 'grin' }), happyWait(220, { hands: 'rest' }), happyWait(1100, { sy: 1.04 }), happyWait(110, { eyes: 'blink' })],
+  claude: [happyWait(900), happyWait(160, { shake: 0.6 }), happyWait(160, { shake: -0.6 }), happyWait(160, { shake: 0.6 }), happyWait(160, { shake: 0 }), happyWait(1000, { sy: 1.04, eyes: 'happy', mouth: 'grin' }), happyWait(110, { eyes: 'blink' })],
+}
+
 const loops = {
   idle: () => ({ frames: IDLE, still: 0 }),
 
@@ -78,13 +91,14 @@ const loops = {
   }),
 
   thinking: () => ({
-    frames: [0, 1, 2, 3, 4, 5].map(f => frame(f % 2 ? 480 : 620, { eyes: 'focus', mouth: 'flat', lookX: 1, lookY: -1, sy: f % 4 < 2 ? 1 : 1.03, led: 'think', fx: [{ id: 'thought', f }] })),
+    // The body bobs slowly, as if turning the problem over.
+    frames: [0, 1, 2, 3, 4, 5].map(f => frame(f % 2 ? 480 : 620, { eyes: 'focus', mouth: 'flat', lookX: 1, lookY: -1, sy: f % 4 < 2 ? 1 : 1.03, dy: [0, -0.5, -0.9, -0.5, 0, 0.2][f], led: 'think', fx: [{ id: 'thought', f }] })),
     still: 2,
   }),
 
   // The eyes sweep along a line of the book, drop to the next, and a page turns now and then.
   reading: () => {
-    const page = (d, f, lookX, extra = {}) => frame(d, { eyes: 'open', lookX, lookY: 1, mouth: 'flat', hands: 'hold', prop: { id: 'book', f }, ...extra })
+    const page = (d, f, lookX, extra = {}) => frame(d, { eyes: 'open', lookX, lookY: 1, mouth: 'flat', hands: 'hold', shake: lookX * 0.5, sy: 1.015, prop: { id: 'book', f }, ...extra })
     return {
       frames: [
         page(380, 0, -1), page(380, 0, 0), page(380, 0, 1), page(160, 1, 1), page(160, 2, 1),
@@ -95,57 +109,57 @@ const loops = {
   },
 
   searching: () => ({
-    frames: [0, 1, 2, 3].map(f => frame(450, { eyes: 'open', lookX: [0, 1, 1, 0][f], mouth: 'flat', hands: 'point', prop: { id: 'magnifier', f } })),
+    frames: [0, 1, 2, 3].map(f => frame(450, { eyes: 'open', lookX: [0, 1, 1, 0][f], mouth: 'flat', hands: 'point', shake: [0, 0.8, 0.8, 0][f], sx: [1, 1.02, 1.02, 1][f], prop: { id: 'magnifier', f } })),
     still: 1,
   }),
 
   investigating: () => ({
-    frames: [0, 1, 2, 3].map(f => frame(450, { eyes: 'open', brows: 'worry', lookX: [0, 1, 1, 0][f], mouth: 'flat', hands: 'point', prop: { id: 'magnifier', f }, fx: [{ id: 'quest', f }] })),
+    frames: [0, 1, 2, 3].map(f => frame(450, { eyes: 'open', brows: 'worry', lookX: [0, 1, 1, 0][f], mouth: 'flat', hands: 'point', shake: [0, 0.8, 0.8, 0][f], sy: 0.98, prop: { id: 'magnifier', f }, fx: [{ id: 'quest', f }] })),
     still: 1,
   }),
 
   coding: () => ({
-    frames: Array.from({ length: 8 }, (_, i) => frame(i === 7 ? 260 : 170, { eyes: 'focus', mouth: 'flat', lookY: 1, hands: i % 2 ? 'type1' : 'type0', prop: { id: 'laptop', f: i >> 1 }, fx: [{ id: 'glyphs', f: i }] })),
+    frames: Array.from({ length: 8 }, (_, i) => frame(i === 7 ? 260 : 170, { eyes: 'focus', mouth: 'flat', lookY: 1, hands: i % 2 ? 'type1' : 'type0', dy: i % 2 ? -0.5 : 0, sy: i % 2 ? 1.012 : 0.992, prop: { id: 'laptop', f: i >> 1 }, fx: [{ id: 'glyphs', f: i }] })),
     still: 1,
   }),
 
   running: () => ({
-    frames: Array.from({ length: 8 }, (_, i) => frame(i % 2 ? 150 : 230, { eyes: 'focus', mouth: 'flat', lookY: 1, hands: i % 2 ? 'type1' : 'type0', led: 'think', prop: { id: 'shell', f: i >> 1 }, fx: [{ id: 'spinner', f: i }] })),
+    frames: Array.from({ length: 8 }, (_, i) => frame(i % 2 ? 150 : 230, { eyes: 'focus', mouth: 'flat', lookY: 1, hands: i % 2 ? 'type1' : 'type0', led: 'think', shake: i % 2 ? 0.45 : -0.45, prop: { id: 'shell', f: i >> 1 }, fx: [{ id: 'spinner', f: i }] })),
     still: 1,
   }),
 
   // git: a commit graph on a small screen (a commit, a branch, a push).
   git: () => ({
-    frames: [0, 1, 2, 3, 4, 5].map(f => frame(420, { eyes: 'focus', mouth: f % 3 === 2 ? 'smile' : 'flat', lookY: 1, prop: { id: 'branch', f } })),
+    frames: [0, 1, 2, 3, 4, 5].map(f => frame(420, { eyes: 'focus', mouth: f % 3 === 2 ? 'smile' : 'flat', lookY: 1, dy: [0, -0.5, 0, -0.5, 0, -1.2][f], sy: f === 5 ? 1.04 : 1, prop: { id: 'branch', f } })),
     still: 1,
   }),
 
   // A connected tool (MCP): a plug slides into its socket and sparks.
   mcp: () => ({
-    frames: [0, 1, 2, 3].map(f => frame(f === 3 ? 600 : 380, { eyes: 'open', lookX: 1, mouth: f === 3 ? 'smile' : 'flat', prop: { id: 'plug', f } })),
+    frames: [0, 1, 2, 3].map(f => frame(f === 3 ? 600 : 380, { eyes: 'open', lookX: 1, mouth: f === 3 ? 'smile' : 'flat', shake: [0, 0.4, 0.8, 0][f], dy: f === 3 ? -1.4 : 0, sy: f === 3 ? 1.05 : 1, prop: { id: 'plug', f } })),
     still: 3,
   }),
 
   testing: () => ({
-    frames: Array.from({ length: 6 }, (_, f) => frame(330, { eyes: 'open', lookX: 1, mouth: 'cat', hands: 'rest', prop: { id: 'flask', f } })),
+    frames: Array.from({ length: 6 }, (_, f) => frame(330, { eyes: 'open', lookX: 1, mouth: 'cat', hands: 'rest', sy: [1, 0.97, 0.95, 0.97, 1, 1.035][f], prop: { id: 'flask', f } })),
     still: 2,
   }),
 
   web: () => ({
-    frames: [0, 1, 2, 3].map(f => frame(500, { eyes: 'open', lookX: 1, lookY: -1, mouth: 'cat', prop: { id: 'globe', f } })),
+    frames: [0, 1, 2, 3].map(f => frame(500, { eyes: 'open', lookX: 1, lookY: -1, mouth: 'cat', shake: [0, 0.6, 1, 0.6][f], prop: { id: 'globe', f } })),
     still: 0,
   }),
 
   delegating: () => ({
     frames: [
-      frame(700, { lookX: -1, hands: 'up0', mouth: 'cat' }), frame(700, { lookX: 1, hands: 'up1', mouth: 'cat' }),
-      frame(700, { lookX: -1, hands: 'up1', mouth: 'cat' }), frame(700, { lookX: 1, hands: 'up0', mouth: 'cat' }),
+      frame(700, { lookX: -1, hands: 'up0', mouth: 'cat', shake: -0.6 }), frame(700, { lookX: 1, hands: 'up1', mouth: 'cat', shake: 0.6 }),
+      frame(700, { lookX: -1, hands: 'up1', mouth: 'cat', shake: -0.6 }), frame(700, { lookX: 1, hands: 'up0', mouth: 'cat', shake: 0.6 }),
     ],
     still: 0,
   }),
 
   planning: () => ({
-    frames: [0, 1, 2, 3].map(f => frame(600, { eyes: 'focus', mouth: 'flat', lookX: 1, hands: 'rest', prop: { id: 'clipboard', f } })),
+    frames: [0, 1, 2, 3].map(f => frame(600, { eyes: 'focus', mouth: 'flat', lookX: 1, hands: 'rest', dy: f % 2 ? -0.5 : 0, prop: { id: 'clipboard', f } })),
     still: 3,
   }),
 
@@ -283,11 +297,12 @@ const cache = new Map()
  */
 export function animation(state, { helpers = 0, character } = {}) {
   // At rest each character has its own manner (see PERSONALITY); every other state is the same for all.
-  const own = state === 'idle' && character ? PERSONALITY[character] : undefined
+  const table = state === 'idle' ? PERSONALITY : state === 'waiting' ? WAITING : undefined
+  const own = table && Object.hasOwn(table, character) ? table[character] : undefined
   const key = state + ':' + helpers + (own ? ':' + character : '')
   const known = cache.get(key)
   if (known) return known
-  const { frames, still } = own ? { frames: own, still: 0 } : (loops[state] ?? loops.idle)()
+  const { frames, still } = own ? { frames: own, still: 0 } : (Object.hasOwn(loops, state) ? loops[state] : loops.idle)()
   const count = Math.max(0, Math.min(3, helpers | 0))
   const out = {
     state,

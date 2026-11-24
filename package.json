@@ -35,7 +35,8 @@
     "bench": "node scripts/bench.mjs",
     "preview": "node scripts/preview.mjs",
     "check:mod": "claude plugin validate . && claude plugin test .",
-    "art:hashes": "node scripts/art-hashes.mjs"
+    "art:hashes": "node scripts/art-hashes.mjs",
+    "fuzz": "node scripts/fuzz.mjs"
   },
   "keywords": [
     "claude-code",

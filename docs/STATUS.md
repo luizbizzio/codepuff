@@ -7,8 +7,9 @@ what was checked, where, and what was not.
 
 | Area | How | Result |
 | --- | --- | --- |
-| Engine, statistics, pet states, storage, CLI, installer | `npm test`: 178 tests, no dependencies (the mod has 6 more, run by `claude plugin test`) | pass |
+| Engine, statistics, pet states, storage, CLI, installer | `npm test`: 184 tests, no dependencies (the mod has 6 more, run by `claude plugin test`) | pass |
 | Eight characters, hi-res pixel art | Tests render every character through 10 states with all subagent helpers, check detail (tones, pixel counts), faces, recoloring, SVG size under the host's limit, narrow-terminal fitting; and contact sheets were looked at | pass |
+| Robustness | `npm run fuzz` (scripts/fuzz.mjs): 30,000 random hook payloads, 30,000 random prompts through the insult judge (plus a corpus of 54 realistic prompts, checked by hand), 20,000 random saved files, a 20,000-step stream of events, commands and settings through the controller, and 3,000 odd picture requests; and all 632 pictures the pet can draw parsed as strict XML in Chrome (scripts are in the scratch notes, not the repository) | no failures after the fixes |
 | Concurrent writers | 6 OS processes x 40 events on one session; 4 processes across sessions and agents | no lost update, no temp files left |
 | Date logic | fixed-offset zones, a simulated DST change, midnight crossing, leap day, streak survival after reload | pass |
 | Corruption and migration | damaged session / pet files, hand-edited and future-version records, hostile backups, path-like ids; a version-1 pet (the single "puff") migrates to Puff Alpha keeping its identity | quarantined, repaired or migrated |

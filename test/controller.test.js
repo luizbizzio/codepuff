@@ -579,3 +579,42 @@ test('the plan windows reach the model for the bars: used share and time to rese
   assert.deepEqual(plan.map(w => [w.label, w.percent]), [['5h', 93], ['week', 41]], 'known windows only, and not the one that reset')
   assert.equal(plan[0].resetsInMs, 72 * 60_000)
 })
+
+test('hearts from another process are not overwritten by a stale copy: the latest score is read before a prompt is judged', async () => {
+  const { io, files, clock } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  await new Promise(resolve => setImmediate(resolve)) // the saves started by init finish
+  clock.at += 60_000
+  // The Codex hook lowers the hearts to 50 in the file; this controller has not looked since it started.
+  const file = [...files.keys()].find(name => name.endsWith('pet.json'))
+  const saved = JSON.parse(files.get(file))
+  saved.affection = { score: 50, day: saved.affection.day, at: clock.at }
+  files.set(file, JSON.stringify(saved))
+  clock.at += 1000
+  await ctl.syncPet()
+  ctl.observe('UserPromptSubmit', payload({ prompt: 'você é um idiota' }))
+  await new Promise(resolve => setImmediate(resolve))
+  const after = JSON.parse(files.get(file)).affection.score
+  assert.equal(after, 35, 'the insult is taken from the 50 in the file, not from a stale 100')
+})
+
+test('two windows share one pet: a setting saved in one is not undone by a stale save from the other', async () => {
+  const { io, files } = fakeHost()
+  const a = createController(io)
+  const b = createController(io)
+  await a.init({ sid: 'one', cwd: '/w' })
+  await b.init({ sid: 'two', cwd: '/w' })
+  await a.setPet({ prefs: { bandSize: 'large' } })
+  // Window B has not looked since; it looks when a prompt arrives (or on a refresh), then saves its own change.
+  await b.syncPet()
+  assert.equal(b.model().pet.bandSize, 'large', 'B sees what A saved')
+  await b.setPet({ prefs: { mood: false } })
+  const saved = JSON.parse(files.get([...files.keys()].find(name => name.endsWith('pet.json'))))
+  assert.equal(saved.prefs.bandSize, 'large', "A's setting survived B's save")
+  assert.equal(saved.prefs.mood, false)
+  // What was shown once stays shown, whoever showed it.
+  await a.refreshOthers()
+  assert.equal(a.model().pet.mood, false, 'A picks up B on its refresh')
+  assert.equal(a.pet.seen.includes('sounds'), true)
+})

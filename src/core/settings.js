@@ -25,7 +25,8 @@ const UNSAFE = new RegExp('[\\u0000-\\u001f\\u007f-\\u009f\\u200b-\\u200f\\u202a
 
 /** Makes a name safe to store and draw: single line, no markup, 1..16 characters; '' means "use the default". */
 export function cleanName(input) {
-  const text = String(input ?? '')
+  // Only text is a name: a list or an object from a hand-edited file is not turned into one.
+  const text = (typeof input === 'string' ? input : '')
     .replace(LINE_BREAKS, ' ')
     .replace(UNSAFE, '')
     .replace(/\s+/g, ' ')

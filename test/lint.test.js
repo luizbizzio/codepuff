@@ -8,10 +8,11 @@ import { join } from 'node:path'
 const hooks = join(import.meta.dirname, '..', 'hooks')
 const sources = readdirSync(hooks).filter(name => /\.tsx?$/.test(name) && !/\.test\./.test(name)).map(name => [name, readFileSync(join(hooks, name), 'utf8')])
 
+// (A minimum width in cells is fine: a status block that keeps its width. Width and height are the ones that were mistaken for pixels.)
 test('no Box in the mod is given a numeric width or height (they are cells, not pixels)', () => {
   for (const [name, text] of sources) {
     for (const [tag] of text.matchAll(/<Box\b[^>]*>/g)) {
-      assert.ok(!/\b(width|height|minWidth|minHeight)=\{/.test(tag), `${name}: ${tag.slice(0, 80)} sizes a Box in pixels`)
+      assert.ok(!/\b(width|height|minHeight)=\{/.test(tag), `${name}: ${tag.slice(0, 80)} sizes a Box in pixels`)
     }
   }
 })

@@ -259,3 +259,21 @@ test('the hearts picture has five hearts, filled up to the count, and a tooltip 
   assert.ok(three.includes('<title>x &amp; y</title>'))
   assert.match(heartsSvg(1), /width="84" height="15"/)
 })
+
+test('the long waits do not look frozen: thinking is a long varied loop with a quirk per character, and the work states play three rounds', () => {
+  const key = anim => JSON.stringify(anim.frames.map(f => [f.pose.eyes, f.pose.lookX, f.pose.lookY, f.pose.mouth, f.pose.dy, f.pose.shake, f.pose.sx, f.pose.hands]))
+  const looks = new Set()
+  for (const character of CHARACTERS) {
+    const thinking = animation('thinking', { character })
+    assert.ok(thinking.total >= 8500 && thinking.frames.length >= 18, character + ': a long loop')
+    assert.ok(new Set(thinking.frames.map(f => f.pose.eyes)).size >= 4, character + ': several different looks')
+    for (const { pose } of thinking.frames) assert.ok(drawScene(character, pose).px.some(Boolean), character + ' draws every thinking frame')
+    looks.add(key(thinking))
+  }
+  assert.equal(looks.size, CHARACTERS.length, 'every character thinks in its own way')
+  for (const state of ['coding', 'running', 'searching', 'testing', 'web', 'planning', 'git', 'mcp', 'delegating', 'investigating']) {
+    const a = animation(state)
+    assert.ok(a.frames.some(f => f.pose.eyes === 'blink'), state + ': a blink in the second round')
+    assert.ok(a.total > 3000, state + ': long enough not to look stuck')
+  }
+})

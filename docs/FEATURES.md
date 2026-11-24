@@ -101,7 +101,7 @@ question), when a turn **finishes**, and when your plan's **5-hour** or **weekly
 the limits; a toast says so too). All are on by default. For each, pick one of five sounds (chime, bell, pop, ding, tada) or
 off in Customize (the sound plays as you pick it; the first time, a toast says they exist), or with
 `/codepuff sound <question|finish|reset5h|resetWeek> <off|chime|bell|pop|ding|tada>` or `codepuff set sound ...`. The volume
-is low, medium (the default) or high: `/codepuff volume low`. The clips are synthesized by `scripts/make-sounds.mjs`, so they
+is low (the default), medium or high: `/codepuff volume low`. The clips are synthesized by `scripts/make-sounds.mjs`, so they
 are original. Round numbers
 (the 100th task, a 7-day streak, 100 passing test runs...) get a toast and a celebration, once each; what was reached
 before the feature existed is not announced.

@@ -2,9 +2,23 @@
 
 All notable changes. The format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [1.0.0]
+
+The first stable version: everything from the 0.1.0 preview, plus the changes below. [docs/STATUS.md](docs/STATUS.md) says exactly what was verified where.
+
+### Changed
+- First-run defaults: Classic, large compact band, status line on, quiet sounds (pop, tada, chime, chime) at low volume, calm motion.
+- The long waits no longer repeat one short loop: `thinking` is a ten-second loop (ideas up-right and up-left, a blink, a look down, an "aha") with a quirk of its own for each character, and the work states (typing, running, searching, testing, git, MCP, web, delegating, planning) play three rounds with a blink, a glance and a pleased smile.
+- README rewritten for the GitHub front page; installing is two lines per agent, with no build.
+
+### Fixed
+- Penny's right eye lost its shine on her dark curls in the thinking face; focus eyes always keep one pixel of shine, and her gaze no longer turns onto the curls.
+- `codepuff stats | head` no longer crashes with EPIPE; the hook ignores a closed pipe; `stats` refuses an unknown scope or agent; `doctor` and `install claude` no longer trigger Node's shell deprecation warning on Windows.
+- A regular expression for `npx` flags that could backtrack exponentially (CodeQL js/redos).
+
 ## [0.1.0] - preview, not released
 
-The first public preview. No release or tag has been created yet.
+The first public preview.
 
 ### Added
 - Eight pixel-art characters (Alpha, Classic, Foxy, Bot, Slime, Mage, Penny, Claude), any of them in any palette, each with its own

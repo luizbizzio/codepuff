@@ -75,6 +75,69 @@ const WAITING = {
   claude: [happyWait(900), happyWait(160, { shake: 0.3 }), happyWait(160, { shake: -0.3 }), happyWait(160, { shake: 0.3 }), happyWait(160, { shake: 0 }), happyWait(1000, { sy: 1.04, eyes: 'happy', mouth: 'grin' }), happyWait(110, { eyes: 'blink' })],
 }
 
+// While the agent works on a response (the longest stretch of any session) the pet turns the problem over: one idea up and to the
+// right, another up and to the left, a blink, a look down at the work, an "aha", and each character's own quirk in the middle. A loop
+// that said the same thing every three seconds would look stuck, so this one runs about ten seconds before it repeats.
+const THINK_QUIRK = {
+  fox: [[130, { lookX: 1, mouth: 'o', dy: -1, sy: 1.03 }], [130, { lookX: 1, mouth: 'o' }], [130, { lookX: 1, mouth: 'o', dy: -1, sy: 1.03 }], [700, { lookX: 0, eyes: 'open', lookY: 0 }]],
+  bot: [[330, { eyes: 'open', lookX: -1, lookY: 0, led: 'wait' }], [330, { eyes: 'open', lookX: 0, lookY: 0, led: 'ok' }], [330, { eyes: 'open', lookX: 1, lookY: 0, led: 'wait' }], [330, { eyes: 'open', lookX: 0, lookY: 0, led: 'ok' }]],
+  slime: [[180, { sx: 1.07, sy: 0.93 }], [180, { sx: 0.95, sy: 1.06 }], [180, { sx: 1.04, sy: 0.96 }], [180, { sx: 1, sy: 1 }]],
+  mage: [[330, { eyes: 'happy', mouth: 'smile', lookY: 0, extra: { id: 'sparkles', f: 0 } }], [330, { eyes: 'happy', mouth: 'smile', lookY: 0, extra: { id: 'sparkles', f: 2 } }], [330, { eyes: 'open', lookY: 0, extra: { id: 'sparkles', f: 4 } }]],
+  aquatic: [[500, { dy: -1.5, lookX: -1, lookY: 0, eyes: 'open' }], [500, { dy: -1, lookX: -1, lookY: 0, eyes: 'open' }], [500, { dy: -0.3, lookX: 0, lookY: 0, eyes: 'open' }]],
+  classic: [[200, { dy: -1.5, sy: 1.05, eyes: 'open', lookX: 0, lookY: 0 }], [160, { dy: 0, sy: 0.96, eyes: 'open', lookX: 0, lookY: 0 }], [600, { eyes: 'open', lookX: -1, lookY: 0 }]],
+  claude: [[160, { shake: 0.3, eyes: 'open', lookX: 0, lookY: 0 }], [160, { shake: -0.3, eyes: 'open', lookX: 0, lookY: 0 }], [160, { shake: 0.3, eyes: 'open', lookX: 0, lookY: 0 }], [160, { shake: 0, eyes: 'open', lookX: 0, lookY: 0 }]],
+  alpha: [[220, { hands: 'wave', eyes: 'open', lookX: 0, lookY: 0, mouth: 'smile' }], [220, { hands: 'rest', eyes: 'open', lookX: 0, lookY: 0, mouth: 'smile' }], [220, { hands: 'wave', eyes: 'open', lookX: 0, lookY: 0, mouth: 'smile' }], [220, { hands: 'rest', eyes: 'open', lookX: 0, lookY: 0 }]],
+}
+function thinkingLoop(character) {
+  let n = 0 // the thought cloud alternates a bulb and a gear on the longer beats, and holds on the quick ones
+  const beat = (d, over = {}) => {
+    const { extra, f, ...pose } = over
+    const f0 = f ?? n
+    if (d >= 400 && f === undefined) n++
+    return frame(d, { eyes: 'focus', mouth: 'flat', lookX: 1, lookY: -1, led: 'think', ...pose, fx: [{ id: 'thought', f: f0 }, ...(extra ? [extra] : [])] })
+  }
+  const frames = [
+    // the first idea: up and to the right, the body turning it over
+    beat(620, { dy: 0 }), beat(480, { dy: -0.5 }), beat(620, { dy: -0.9, sy: 1.03 }), beat(480, { dy: -0.5, sy: 1.03 }),
+    // the other side: up and to the left, lips pursed, the head tilting
+    beat(620, { lookX: -1, mouth: 'o', shake: -0.25 }), beat(480, { lookX: -1, shake: -0.3, dy: -0.4 }), beat(620, { lookX: -1, shake: -0.15 }),
+    // a breath and a blink, eyes straight ahead
+    beat(700, { eyes: 'open', lookX: 0, lookY: 0, sy: 1.04 }), beat(110, { eyes: 'blink', lookX: 0, lookY: 0, sy: 1.04 }),
+    // down at the work
+    beat(700, { eyes: 'open', lookX: 0, lookY: 1, mouth: 'cat' }), beat(620, { eyes: 'open', lookX: 1, lookY: 1 }),
+    // this character's own quirk
+    ...(THINK_QUIRK[character] ?? []).map(([d, over]) => beat(d, over)),
+    // a slow look around, then the bulb lights: aha
+    beat(700, { eyes: 'open', lookX: -1, lookY: 0, mouth: 'cat' }), beat(110, { eyes: 'blink', lookX: 0, lookY: 0 }),
+    beat(260, { eyes: 'wide', brows: 'up', lookX: 0, lookY: -1, mouth: 'o', dy: -1.2, sy: 1.05, f: 4 }),
+    beat(560, { eyes: 'happy', mouth: 'smile', lookX: 0, lookY: 0, dy: -0.6, sy: 1.03, cheeks: 'bright', f: 4 }),
+    beat(900, { eyes: 'open', mouth: 'smile', lookX: 1, lookY: -1, sy: 1.03 }),
+  ]
+  return frames
+}
+const THINKING = Object.fromEntries(Object.keys(THINK_QUIRK).map(c => [c, thinkingLoop(c)]))
+
+/**
+ * The work states (typing, searching, a test run...) are short loops, and a short loop that repeats for a minute looks frozen. This
+ * plays the loop three times in a row: as it is; with a blink and a look away in the middle of the second round; and with a pleased
+ * little smile at the end of the third.
+ */
+function lively(frames) {
+  const mid = frames.length >> 1
+  const glances = frames.every(item => item.pose.lookX >= 0) // a loop that already looks left and right is left as it is
+  const second = frames.map((item, i) => {
+    if (i === mid && item.pose.eyes !== 'wide') return { d: item.d, pose: { ...item.pose, eyes: 'blink' } }
+    if (i > mid && glances) return { d: item.d, pose: { ...item.pose, lookX: item.pose.lookX === 0 ? -1 : 0 } }
+    return item
+  })
+  const third = frames.map((item, i) => {
+    const last = i >= frames.length - 2
+    return last && item.pose.mouth === 'flat' ? { d: item.d, pose: { ...item.pose, mouth: 'smile', sy: item.pose.sy + 0.025 } } : item
+  })
+  return [...frames, ...second, ...third]
+}
+const LIVELY = new Set(['searching', 'investigating', 'coding', 'running', 'git', 'mcp', 'testing', 'web', 'delegating', 'planning'])
+
 const loops = {
   idle: () => ({ frames: IDLE, still: 0 }),
 
@@ -90,11 +153,7 @@ const loops = {
     still: 0,
   }),
 
-  thinking: () => ({
-    // The body bobs slowly, as if turning the problem over.
-    frames: [0, 1, 2, 3, 4, 5].map(f => frame(f % 2 ? 480 : 620, { eyes: 'focus', mouth: 'flat', lookX: 1, lookY: -1, sy: f % 4 < 2 ? 1 : 1.03, dy: [0, -0.5, -0.9, -0.5, 0, 0.2][f], led: 'think', fx: [{ id: 'thought', f }] })),
-    still: 2,
-  }),
+  thinking: () => ({ frames: thinkingLoop(''), still: 2 }),
 
   // The eyes sweep along a line of the book, drop to the next, and a page turns now and then.
   reading: () => {
@@ -311,14 +370,16 @@ const cache = new Map()
  */
 export function animation(state, { helpers = 0, character } = {}) {
   // At rest each character has its own manner (see PERSONALITY); every other state is the same for all.
-  const table = state === 'idle' ? PERSONALITY : state === 'waiting' ? WAITING : undefined
+  const table = state === 'idle' ? PERSONALITY : state === 'waiting' ? WAITING : state === 'thinking' ? THINKING : undefined
   const own = table && Object.hasOwn(table, character) ? table[character] : undefined
   // Foxy's errors also float a "404" over its head.
   const special = state === 'error' && character === 'fox'
   const key = state + ':' + helpers + (own || special ? ':' + character : '')
   const known = cache.get(key)
   if (known) return known
-  const { frames, still } = special ? foxError() : own ? { frames: own, still: 0 } : (Object.hasOwn(loops, state) ? loops[state] : loops.idle)()
+  const made = special ? foxError() : own ? { frames: own, still: state === 'thinking' ? 2 : 0 } : (Object.hasOwn(loops, state) ? loops[state] : loops.idle)()
+  const { still } = made
+  const frames = LIVELY.has(state) ? lively(made.frames) : made.frames
   const count = Math.max(0, Math.min(3, helpers | 0))
   const out = {
     state,

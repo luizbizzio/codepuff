@@ -87,6 +87,16 @@ export function codexPluginEnabled(home) {
   try { return /\[plugins\."codepuff@[^"]*"\]\s*\n(?:[^\[]*\n)*?\s*enabled\s*=\s*true/.test(readFileSync(join(home, 'config.toml'), 'utf8')) } catch { return false }
 }
 
+/**
+ * Runs the claude command line. On Windows it is usually claude.cmd or claude.exe on PATH, which needs a shell; a shell concatenates its
+ * arguments (and Node warns about passing them separately), so they are quoted here and passed as one command.
+ */
+export function runClaude(args, options = {}) {
+  if (process.platform !== 'win32') return spawnSync('claude', args, options)
+  const quote = text => (/[\s&|<>^"%]/.test(text) ? '"' + text.replace(/"/g, '\\"') + '"' : text)
+  return spawnSync(['claude', ...args].map(quote).join(' '), { ...options, shell: true })
+}
+
 export function installCommand(target, flags, root) {
   const cliPath = join(root, 'bin', 'codepuff.js')
   if (target === 'codex') {
@@ -118,8 +128,8 @@ export function installCommand(target, flags, root) {
     return
   }
   if (target === 'claude') {
-    const run = (...args) => spawnSync('claude', args, { stdio: 'inherit', shell: process.platform === 'win32' })
-    const probe = spawnSync('claude', ['--version'], { encoding: 'utf8', shell: process.platform === 'win32' })
+    const run = (...args) => runClaude(args, { stdio: 'inherit' })
+    const probe = runClaude(['--version'], { encoding: 'utf8' })
     if (flags['dry-run'] || probe.status !== 0) {
       out('Install the CodePuff plugin from inside Claude Code:')
       out(`  /plugin marketplace add ${root}`)

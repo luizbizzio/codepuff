@@ -113,8 +113,10 @@ function stats(store, flags) {
   const records = store.listRecords()
   const h = header(store, records, now)
   const scope = String(flags.scope ?? 'all')
+  if (flags.agent !== undefined && flags.agent !== 'all' && !AGENT_LABELS[flags.agent]) return fail('Agent: claude, codex or all.')
   const agent = flags.agent && AGENT_LABELS[flags.agent] ? flags.agent : 'all'
   const range = /^(\d+)d$/.exec(scope)
+  if (scope !== 'session' && scope !== 'all' && !range) return fail('Scope: session, all, or a number of days such as 7d or 30d.')
   let columns
   let title
   if (scope === 'session') {

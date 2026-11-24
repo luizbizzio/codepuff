@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
-import { CODEX_EVENTS, codexPluginEnabled } from './install.js'
+import { CODEX_EVENTS, codexPluginEnabled, runClaude } from './install.js'
 import { dataDir } from './paths.js'
 
 export function doctor(store, root) {
@@ -56,7 +56,7 @@ export function doctor(store, root) {
   const claudeHome = process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
   let claudePlugin = false
   try { claudePlugin = Object.entries(JSON.parse(readText(join(claudeHome, 'settings.json')) || '{}').enabledPlugins ?? {}).some(([name, on]) => on && /^codepuff@/.test(name)) } catch { /* unreadable settings: not known */ }
-  const claude = spawnSync('claude', ['--version'], { encoding: 'utf8', shell: process.platform === 'win32' })
+  const claude = runClaude(['--version'], { encoding: 'utf8' })
   if (claudePlugin) ok('Claude Code', 'the CodePuff plugin is installed and enabled' + (claude.status === 0 ? ' (' + claude.stdout.trim().split('\n')[0] + ')' : ''))
   else warn('Claude Code', 'the CodePuff plugin is not enabled: in Claude Code run "/plugin marketplace add luizbizzio/codepuff" and then "/plugin install codepuff@codepuff"')
   console.log('CodePuff doctor\n' + lines.join('\n'))

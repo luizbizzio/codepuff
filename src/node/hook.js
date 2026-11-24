@@ -58,6 +58,7 @@ export async function runHookProcess(agent) {
   } catch (error) {
     note(store, error)
   }
+  process.stdout.on('error', () => {}) // the agent may have closed the pipe already; the answer is then moot
   process.stdout.write('{}\n')
   process.exit(0)
 }

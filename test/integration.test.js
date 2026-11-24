@@ -149,3 +149,24 @@ test('"install codex" refuses a copy that npx unpacked, and refuses to add hooks
     assert.match(spawnSync(process.execPath, [cli, 'doctor'], { encoding: 'utf8', env }).stdout, /installed both as a plugin and as hooks.*counted twice/)
   } finally { done() }
 })
+
+test('stats refuses a scope or an agent it does not know instead of quietly showing something else', () => {
+  const { dir, done } = tempDir()
+  try {
+    const run = (...args) => spawnSync(process.execPath, [join(ROOT, 'bin', 'codepuff.js'), 'stats', ...args], { encoding: 'utf8', env: { ...process.env, CODEPUFF_HOME: dir } })
+    assert.equal(run('--scope', 'bogus').status, 1)
+    assert.match(run('--scope', 'bogus').stderr, /Scope: session, all/)
+    assert.equal(run('--agent', 'nobody').status, 1)
+    for (const scope of ['all', 'session', '7d', '30d', '90d']) assert.equal(run('--scope', scope).status, 0, scope)
+    assert.equal(run('--agent', 'codex', '--scope', '7d').status, 0)
+  } finally { done() }
+})
+
+test('doctor and install do not trigger Node deprecation warnings (claude is started as one quoted command on Windows)', () => {
+  const { dir, done } = tempDir()
+  try {
+    const r = spawnSync(process.execPath, [join(ROOT, 'bin', 'codepuff.js'), 'doctor'], { encoding: 'utf8', env: { ...process.env, CODEPUFF_HOME: dir, CODEX_HOME: join(dir, 'cx'), CLAUDE_CONFIG_DIR: join(dir, 'cl') } })
+    assert.equal(r.status, 0)
+    assert.ok(!/DeprecationWarning/.test(r.stderr), r.stderr)
+  } finally { done() }
+})

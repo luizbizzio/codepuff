@@ -34,6 +34,7 @@ pixels, an interactive `Svg` without a size). The art fingerprints fail when a c
 | Script | What it does |
 | --- | --- |
 | `dev-sync.mjs <folder>` | Copies the mod into a Claude Code dev-mods folder so a change can be tried in a live session |
+| `branding.mjs` | Builds the page the README banner is a picture of (see the comment in the script for the Chrome command) |
 | `preview.mjs [scale] [character]` | Contact sheets of the characters and states (`out/`) |
 | `look.mjs <character> [scale] [states]` | One character, a few states, enlarged |
 | `stage-box.mjs` | Measures the one frame every character is drawn in |

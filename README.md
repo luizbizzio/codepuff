@@ -1,141 +1,172 @@
 <div align="center">
 
-# 🫧 CodePuff
+<img src="docs/images/banner.png" alt="CodePuff: a coding pet that lives next to your AI agent. Eight pixel-art characters." width="100%">
 
-### A coding pet that lives next to your AI agent.
-
-It reads when your agent reads, types when it edits, squints while tests run, cheers only when a check **really** passed,
-and winces when something **really** failed. For **Claude Code** and **OpenAI Codex**, one pet and one history for both.
+<br>
 
 [![CI](https://github.com/luizbizzio/codepuff/actions/workflows/ci.yml/badge.svg)](https://github.com/luizbizzio/codepuff/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/badge/version-1.0.0-7253b9.svg)](CHANGELOG.md)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-339933.svg)](https://nodejs.org)
-[![Zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](package.json)
-[![Local only](https://img.shields.io/badge/privacy-100%25%20local-informational.svg)](#privacy)
+[![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](package.json)
+[![Languages](https://img.shields.io/badge/languages-14-orange.svg)](docs/FEATURES.md#languages)
+[![Privacy](https://img.shields.io/badge/privacy-100%25%20local-informational.svg)](#privacy)
 
-[**Install**](#install) · [**Meet the pets**](#meet-the-pets) · [**What it does**](#what-it-does) · [**Privacy**](#privacy) · [**FAQ**](#faq) · [**Docs**](#documentation)
-
-<br>
-
-<img src="docs/images/characters.png" alt="The eight CodePuff characters: idle, coding, success and error" width="760">
+**[Install](#install)** &nbsp;&middot;&nbsp; **[What you see](#what-you-see)** &nbsp;&middot;&nbsp; **[The pets](#the-pets)** &nbsp;&middot;&nbsp; **[Claude Code and Codex](#claude-code-and-codex)** &nbsp;&middot;&nbsp; **[Privacy](#privacy)** &nbsp;&middot;&nbsp; **[FAQ](#faq)** &nbsp;&middot;&nbsp; **[Docs](#documentation)**
 
 </div>
 
 <br>
 
-## Why a pet?
+An AI agent can work for minutes at a time, and a blinking cursor tells you nothing about it. CodePuff puts a small pixel-art
+companion next to your agent that shows **what it is really doing**: reading, searching, typing, running tests, waiting for you,
+failing. It celebrates only when a test run really passed, and it keeps a running record of your work across sessions and across
+both agents.
 
-Agents work for minutes at a time, and a blinking cursor tells you nothing. CodePuff turns the agent's real events into something
-you can read **at a glance**, and keeps a friendly record of your work while it does.
+<p align="center">
+  <img src="docs/images/band.png" alt="The CodePuff band above the Claude Code prompt: the pet, a two day streak, 58 prompts, five hearts, the status, the plan limit and the success ring." width="820">
+</p>
 
-- **Honest, not decorative.** Every animation comes from a real event. No success dance unless a test run exited with code 0; no
-  error face unless a tool actually failed. If CodePuff cannot know something (see [Codex](#claude-code-and-codex)), it says so
-  instead of guessing.
-- **Alive on long waits.** Thinking, reading, searching, typing, testing, delegating... each has its own scene, and long waits keep
-  changing (a glance, a blink, a bright idea, and each character's own quirk), so it never looks frozen.
-- **Yours.** Eight characters, ten palettes (or your own colors), a name, quiet sounds, three motion levels.
-- **Private.** Everything stays on your computer. Only counters are stored, never your prompts, code or paths.
-- **Light.** Zero dependencies. No account, no server, no telemetry, no model calls.
+<p align="center"><sub>The compact band above the Claude Code prompt (large size, English).</sub></p>
+
+## Why CodePuff
+
+|  |  |
+| --- | --- |
+| **Honest** | Every animation comes from a real event. The success dance needs a test run that exited with code 0; the error face needs a tool that really failed. When CodePuff cannot know something, it says so instead of guessing. |
+| **Alive** | Thinking, reading, searching, editing, testing, delegating: each has its own scene, and long waits keep changing (a glance, a blink, a bright idea, and a quirk of each character), so it never looks frozen. |
+| **Yours** | Eight characters, ten palettes or your own colors, your own name, quiet sounds, three levels of motion, and 14 languages picked automatically from your computer. |
+| **Private** | One local folder. No account, no server, no telemetry, no model calls, no network code at all. Only counters are stored: never your prompts, code or paths. |
+| **Light** | Zero dependencies and nothing to build. Each hook is a tiny process that writes one small file. |
 
 ## Install
 
-Nothing to build and nothing to configure.
+Nothing to build, nothing to configure.
 
-### Claude Code
+### The easiest way: one command
 
-Type these two lines in Claude Code, then start a new session:
+With [Node.js](https://nodejs.org) 20 or newer, in any terminal:
+
+```text
+npx github:luizbizzio/codepuff setup
+```
+
+It looks for Claude Code and Codex on your computer and installs CodePuff in each one it finds, by running their own plugin commands
+for you. A host it does not find gets the two lines to type instead. Run it again any time: what is already installed is left alone.
+Then start a new Claude Code session, and for Codex trust the hooks once (Codex never runs new hooks without asking).
+
+### Or type it yourself
+
+**Claude Code**, inside Claude Code:
 
 ```text
 /plugin marketplace add luizbizzio/codepuff
 /plugin install codepuff@codepuff
 ```
 
-(Desktop app: **+** next to the prompt → **Plugins** → **Add marketplace**.) The pet appears above the prompt, and `/codepuff` opens
-its pane with your statistics and customization.
+In the desktop app: **+** next to the prompt, then **Plugins**, then **Add marketplace**.
 
-### Codex
+**Codex**, in a terminal:
 
 ```text
 codex plugin marketplace add luizbizzio/codepuff
 codex plugin add codepuff@codepuff
 ```
 
-Then let Codex trust the hooks (it never runs new hooks without asking): `/hooks` in the CLI, *Review hooks* in the desktop app.
-Codex has no plugin screen to draw on, so watch your pet in the terminal app next to it (needs [Node.js](https://nodejs.org) 20+; it runs
-straight from GitHub, nothing is installed or built):
+Then trust the hooks: `/hooks` in the CLI, **Review hooks** in the desktop app.
+
+### See the pet next to Codex
+
+Codex has no plugin screen to draw on, so CodePuff has a terminal app. Open it in a split or a second tab:
 
 ```text
 npx github:luizbizzio/codepuff pet
 ```
 
-### Check it
+### Check it works
 
 ```text
 npx github:luizbizzio/codepuff doctor
 ```
 
-It tells you whether CodePuff is installed in Claude Code and in Codex, and what to do if it is not. Other routes (from a clone),
-updating, uninstalling and troubleshooting: [docs/INSTALL.md](docs/INSTALL.md).
+It reports whether CodePuff is installed in Claude Code and in Codex, and what to do if it is not. Other routes (from a clone),
+updating, uninstalling and troubleshooting are in [docs/INSTALL.md](docs/INSTALL.md).
 
-## Meet the pets
+## What you see
 
-Every character is hi-res pixel art with shading, highlights and a full set of expressions, and each has its own way of idling,
-thinking and waiting. Any of them wears any palette.
+<p align="center">
+  <img src="docs/images/states-a.png" alt="Foxy in twelve states: idle, tired, thinking, reading, searching, investigating, coding, running, git, a connected tool, testing and looking things up." width="860">
+</p>
+<p align="center">
+  <img src="docs/images/states-b.png" alt="Foxy in seven more states: planning, success, error, permission, waiting, finished and disconnected." width="860">
+</p>
 
-| | Character | Personality |
-| --- | --- | --- |
-| 🟣 | **Classic** *(default)* | A fluffy code cloud with headphones. Bounces when it is happy. |
-| 🌱 | **Alpha** | The original CodePuff: a round, soft puff with a sprout. Waves hello. |
-| 🦊 | **Foxy** | A curious explorer with goggles. Sniffs around; floats a **404** over its head when something fails. |
-| 🤖 | **Bot** | A tidy little robot with a screen face. Scans left and right, status light blinking. |
-| 🟢 | **Slime** | A glossy, bouncy code slime with a lucky star. Wobbles. |
-| 🧙 | **Mage** | A tiny programming wizard with a book of spells. Sparks while it thinks. |
-| 🐡 | **Penny** | A deep-sea puffer with curly dark hair. Floats and sways her fin. |
-| 🟧 | **Claude** | A boxy orange critter (an unofficial fan design). Shuffles its feet. |
-
-## What it does
-
-### It shows what the agent is really doing
-
-| You see | It means |
+| The pet shows | When |
 | --- | --- |
-| 💭 a thought cloud: a light bulb, then a turning gear | the agent is working on a response |
-| 📖 a book, its eyes sweeping the lines · 🔍 a magnifier | reading or searching |
-| 💻 a laptop with floating `</>` · ⌨️ a shell with a spinner | editing code · running a command |
-| 🌿 a commit graph · 🔌 a plug sliding into a socket | a git command · a tool from an MCP server |
-| 🧪 goggles and a bubbling flask | a test run is in flight |
-| ✨ sparkles | a test run **confirmed passed**, or a commit was made |
-| ❗ a red badge (and Foxy's 404) | something **really** failed |
-| 🟡 a yellow badge, hands up | the agent needs **you** (an approval or a question) |
-| 🎊 confetti, then a happy face | the turn is done; it waits for your next prompt |
-| 😴 half-closed eyes, a sweat drop | your plan's limit is nearly used up |
+| A thought cloud, a light bulb, then a turning gear | The agent is working on a response |
+| A book with its eyes sweeping the lines, or a magnifier | Reading files, searching the project |
+| A laptop with floating code, or a shell with a spinner | Editing code, running a command |
+| A commit graph, or a plug sliding into a socket | A git command, a tool from an MCP server |
+| Goggles and a bubbling flask | A test run is in flight |
+| Sparkles | A test run was confirmed passed, or a commit was made |
+| A red badge (Foxy also floats a 404) | Something really failed |
+| A yellow badge, hands up | The agent needs you: an approval or a question |
+| Confetti, then a happy face | The turn is done and it waits for your next prompt |
+| Half-closed eyes and a sweat drop | Your plan's limit is nearly used up |
 
-When subagents run, small helpers appear. With several sessions open, one fixed rule decides which one the pet shows, and the label
-always says which agent and project it is.
+When subagents run, small helpers appear. With several sessions open, one fixed rule decides which one the pet shows, and the
+label always says which agent and which project it is.
 
-### The compact band (Claude Code)
+### Statistics and customization
 
-A band above the prompt with the whole pet, your streak, this session's prompts, its hearts, a status block that changes color with
-what is happening, bars for your plan's 5-hour and weekly limits (once half used), and a ring showing how this session's tasks went.
-Three sizes. Click the pet to pet it; it hops when you point at it.
+<table>
+  <tr>
+    <td width="50%" align="center"><img src="docs/images/statistics.png" alt="The Statistics page: platform and period buttons, tiles for prompts, tool calls, files, commits, tests and agent time, a success bar, a 14 day chart and what the agent did." width="100%"></td>
+    <td width="50%" align="center"><img src="docs/images/customize.png" alt="The Customize page: name, character, colors, settings, sounds, motion, volume and band size." width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Statistics</b>: a platform, a period, the numbers that matter, and every number one button away.</sub></td>
+    <td align="center"><sub><b>Customize</b>: character, colors, sounds, motion, size and language.</sub></td>
+  </tr>
+</table>
 
-### Statistics that are counted, never guessed
+Statistics are counted, never guessed: prompts, turns, tool calls (succeeded and failed), files changed, tests run, commits, lines
+added and deleted, agent time, streaks and a daily chart, by **platform** (Claude Code, Codex or both) and **period** (this session,
+7 days, 30 days, all time). Round numbers, such as the hundredth task or a seven day streak, get a small celebration, once each.
 
-Prompts, turns, tool calls (succeeded and failed), files changed, tests run, commits, lines added and deleted, agent time, streaks,
-and a daily chart, by **platform** (Claude Code, Codex or both) and **period** (this session, 7 days, 30 days, all time). Round
-numbers (the 100th task, a 7-day streak...) get a celebration, once each.
+### Hearts and sounds
 
-### Hearts
+The pet has one to five **hearts** for you, kept between sessions. Be kind and it beams; be abusive to the assistant and the hearts
+drop and it gets sad. Swearing at a bug is fine, and harsh feedback on the work only makes it flinch. A prompt is read in memory to
+tell the difference, then dropped: only a number is kept, and one switch turns the whole thing off.
 
-The pet has one to five hearts for you, kept between sessions. Be kind and it beams; be abusive to the assistant and the hearts drop,
-and it gets sad. Swearing at a bug is fine; harsh feedback only makes it flinch. The text of a prompt is looked at in memory to tell
-the difference, then dropped: only a number is kept. You can turn this off in one click.
+Short, original **sounds** play when the agent asks you something, when a turn finishes, and when your 5-hour or weekly limit resets.
+Each can be changed or silenced, and they start quiet.
 
-### Sounds
+### Fourteen languages
 
-Short, original sounds when the agent **asks you something**, when a turn **finishes**, and when your **5-hour** or **weekly** limit
-**resets**. Pick a sound for each (or none) and a volume. They start quiet.
+Everything CodePuff says is translated and follows your computer's language by itself: English, Portuguese (Brazil), Spanish, French,
+German, Italian, Dutch, Polish, Turkish, Russian, Japanese, Korean, Simplified Chinese and Traditional Chinese. Change it in Customize,
+with `/codepuff language`, or `codepuff set language`. Details in [docs/FEATURES.md](docs/FEATURES.md#languages).
+
+## The pets
+
+<p align="center">
+  <img src="docs/images/characters.png" alt="The eight characters in four moods: idle, coding, success and error." width="300">
+</p>
+
+| Character | Personality |
+| --- | --- |
+| **Classic** (default) | A fluffy code cloud with headphones. Bounces when it is happy. |
+| **Alpha** | The original CodePuff: a round, soft puff with a sprout. Waves hello. |
+| **Foxy** | A curious explorer with goggles. Sniffs around, and floats a 404 over its head when something fails. |
+| **Bot** | A tidy little robot with a screen face. Scans left and right, status light blinking. |
+| **Slime** | A glossy, bouncy code slime with a lucky star. Wobbles. |
+| **Mage** | A tiny programming wizard with a book of spells. Sparks while it thinks. |
+| **Penny** | A deep-sea puffer with curly dark hair. Floats and sways her fin. |
+| **Claude** | A boxy orange critter (an unofficial fan design). Shuffles its feet. |
+
+Every character wears any palette, has its own way of idling, thinking and waiting, and every expression the others have.
 
 ## Claude Code and Codex
 
@@ -143,73 +174,68 @@ One pet, one set of settings and one history, shared by both. What differs is wh
 
 | | Claude Code | Codex |
 | --- | --- | --- |
-| Pet and band above the prompt, pane, status line, sounds, toasts | ✅ | ➖ Codex has no plugin screen |
-| Terminal app (`codepuff pet`): pet, statistics, customization | ✅ | ✅ |
-| Prompts, turns, tool calls, sessions, time | ✅ | ✅ |
-| Tool results (passed / failed), test results, commits | ✅ | ⚠️ not reported by the Codex build checked, so those calls are counted with an *unknown* outcome |
-| Plan limits (tired pet, reset sounds) | ✅ | ➖ |
+| Pet and band above the prompt, pane, status line, sounds, toasts | Yes | No: Codex has no plugin screen |
+| Terminal app (`codepuff pet`): pet, statistics, customization | Yes | Yes |
+| Prompts, turns, tool calls, sessions, time | Yes | Yes |
+| Tool results (passed, failed), test results, commits | Yes | Not reported by the Codex build checked, so those calls are counted with an *unknown* outcome |
+| Plan limits (the tired pet, reset sounds) | Yes | No |
 
-CodePuff keeps its word here: nothing is shown for Codex that Codex did not report. If a later Codex sends tool completions, they
-are used automatically. The details, and what was verified on which system, are in [docs/STATUS.md](docs/STATUS.md).
+CodePuff keeps its word here: nothing is shown for Codex that Codex did not report. If a later Codex sends tool completions, they are
+used automatically. What was verified on which system is listed in [docs/STATUS.md](docs/STATUS.md).
 
 ## Privacy
 
 Everything stays on your computer, in one folder (`~/.codepuff`). No account, no server, no model calls, no telemetry. Only
-**counters** are stored: never your prompts, code, commands, file paths or tool output (tested with sentinel strings). The single
-place a prompt is read is the hearts: its text is judged in memory, then dropped. Switch that off (*Hearts react to my messages* in
-Customize, or `/codepuff mood off`) and nothing is read at all. Export, import, reset or delete your data any time with
-`codepuff data`. See [SECURITY.md](SECURITY.md).
+**counters** are stored: never your prompts, code, commands, file paths or tool output (tested with sentinel strings). The single place
+a prompt is read is the hearts: its text is judged in memory, then dropped. Switch that off (*Hearts react to my messages* in
+Customize, or `/codepuff mood off`) and nothing is read at all. Export, import, reset or delete your data any time with `codepuff data`.
+See [SECURITY.md](SECURITY.md).
 
 ## FAQ
 
-**Does it slow my agent down?** No. The hook is a tiny Node process that writes one small file; measured numbers are in
+**Does it slow my agent down?** No. The hook is a tiny Node process that writes one small file. Measured numbers are in
 [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 
 **Does it send anything anywhere?** No. There is no network code.
 
-**Can I use it with both Claude Code and Codex?** Yes, that is the point: they share the pet and the statistics. Install in Codex
-**one way only** (the plugin *or* `codepuff install codex`), or every event is counted twice. `codepuff doctor` warns you if you did.
+**Can I use it with Claude Code and Codex at once?** Yes, that is the point: they share the pet and the statistics. Install it in Codex
+one way only (the plugin, or `codepuff install codex`), or every event is counted twice. `codepuff doctor` warns you if you did both.
 
-**It says "waiting for an agent" in the terminal app.** The agent has not run a hook yet: for Codex, trust the hooks (`/hooks`), then
-send a prompt.
+**The terminal app says "waiting for an agent".** The agent has not run a hook yet. For Codex, trust the hooks (`/hooks`), then send a prompt.
 
-**How do I get a different pet?** `/codepuff` → **Customize** (or `/codepuff character fox`, or `codepuff set character fox`).
+**How do I change the pet?** `/codepuff`, then **Customize**. Or `/codepuff character fox`, or `codepuff set character fox`.
 
-**Is it affiliated with Anthropic or OpenAI?** No. It is an independent project. "Claude" is an unofficial fan design.
+**Is it affiliated with Anthropic or OpenAI?** No. It is an independent project, and "Claude" is an unofficial fan design.
 
 ## Documentation
 
 | | |
 | --- | --- |
 | [Install](docs/INSTALL.md) | Other ways to install, updating, troubleshooting |
-| [Features](docs/FEATURES.md) | Every state, surface, setting (with its default) and statistic, and the commands |
+| [Features](docs/FEATURES.md) | Every state, surface, setting (with its default), language and statistic, and the commands |
 | [Architecture](docs/ARCHITECTURE.md) | How it is built, the data model, concurrency, adding a character |
 | [Platforms](docs/PLATFORMS.md) | What Claude Code and Codex expose, and what only one of them can do |
 | [Status](docs/STATUS.md) | What was verified where, known limitations, what comes next |
 | [Performance](docs/PERFORMANCE.md) | Measured overhead, and how |
 | [Development](docs/DEVELOPMENT.md) | Tests, tools, CI, the art and sound pipelines |
-| [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) | |
+| [Changelog](CHANGELOG.md), [Contributing](CONTRIBUTING.md), [Security](SECURITY.md) | |
 
 ## About version 1.0
 
-1.0.0 means the engine, the Claude Code mod, the terminal app and the installers are complete, documented and covered by tests
-(on Windows, macOS and Linux in CI). It does **not** mean everything was verified everywhere: the Claude Code mod has only been
-run by hand on Windows, and the Codex support works within what the Codex hooks report. [docs/STATUS.md](docs/STATUS.md) lists
-exactly what was and was not checked.
+1.0.0 means the engine, the Claude Code mod, the terminal app and the installers are complete, documented and covered by tests, on
+Windows, macOS and Linux in CI. It does not mean everything was verified everywhere: the Claude Code mod has only been run by hand
+on Windows, the translations were written by the project rather than by native speakers, and Codex support works within what the
+Codex hooks report. [docs/STATUS.md](docs/STATUS.md) lists exactly what was and was not checked.
 
 ## Contributing
 
-Bug reports, ideas and new characters are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md). A character is pixel art plus a few lines
-of description; the engine gives it every expression and animation (see Architecture, "Adding a character").
+Bug reports, ideas, translations and new characters are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md). A character is pixel art plus
+a few lines of description, and a language is one file; the engine does the rest.
 
 ## License
 
-Apache License 2.0: see [LICENSE](LICENSE) and [NOTICE](NOTICE). CodePuff is independent and not affiliated with Anthropic or
-OpenAI. Alpha is drawn in code, "Claude" is an unofficial fan design, and the six other characters are pixel-art conversions of
-images the project owner created with an AI image generator (see [NOTICE](NOTICE)).
+Apache License 2.0: see [LICENSE](LICENSE) and [NOTICE](NOTICE). CodePuff is independent and not affiliated with Anthropic or OpenAI.
+Alpha is drawn in code, "Claude" is an unofficial fan design, and the six other characters are pixel-art conversions of images the
+project owner created with an AI image generator (see [NOTICE](NOTICE)).
 
-<div align="center">
-
-Made with 🫧 by [Luiz Bizzio](https://github.com/luizbizzio)
-
-</div>
+<p align="center"><sub>Made by <a href="https://github.com/luizbizzio">Luiz Bizzio</a>.</sub></p>

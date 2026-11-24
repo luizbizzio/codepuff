@@ -24,7 +24,7 @@ function parse(args) {
     if (arg.startsWith('--')) {
       const [key, inline] = arg.slice(2).split('=')
       if (inline !== undefined) out.flags[key] = inline
-      else if (args[i + 1] && !args[i + 1].startsWith('--') && ['agent', 'scope', 'days', 'port', 'codex-home', 'session', 'host'].includes(key)) out.flags[key] = args[++i]
+      else if (args[i + 1] && !args[i + 1].startsWith('--') && ['agent', 'scope', 'days', 'port', 'codex-home', 'session', 'host', 'only'].includes(key)) out.flags[key] = args[++i]
       else out.flags[key] = true
     } else out._.push(arg)
   }
@@ -54,6 +54,7 @@ Usage: codepuff <command>
   set restore                restore the default appearance
   data where | export [file] | import <file> [--replace] [--pet]
   data reset stats|pet|appearance --yes | data delete --yes
+  setup [--only claude|codex] [--dry-run]   installs the plugin in every host found (the easy way)
   install codex|claude [--dry-run]    uninstall codex|claude [--dry-run]
   doctor                     checks the installation
   hook <claude|codex>        (used by the agents; reads an event from stdin)
@@ -72,6 +73,7 @@ export async function main(argv) {
       case 'set': return set(store, rest)
       case 'data': return data(store, rest, flags)
       case 'doctor': return (await import('./doctor.js')).doctor(store, ROOT)
+      case 'setup': return (await import('./install.js')).setupCommand(flags)
       case 'install': return (await import('./install.js')).installCommand(rest[0], flags, ROOT)
       case 'uninstall': return (await import('./install.js')).uninstallCommand(rest[0], flags, ROOT)
       case 'pet': return (await import('./tui.js')).runTui(store, { host: ['claude', 'codex'].includes(flags.host) ? flags.host : undefined })

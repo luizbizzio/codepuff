@@ -8,7 +8,7 @@ No GitHub release or tag has been created.
 
 | Area | How | Result |
 | --- | --- | --- |
-| Engine, statistics, pet states, storage, CLI, installer | `npm test`: 214 tests, no dependencies (the mod has 8 more, run by `claude plugin test`) | pass |
+| Engine, statistics, pet states, storage, CLI, installer | `npm test`: 217 tests, no dependencies (the mod has 8 more, run by `claude plugin test`) | pass |
 | Eight characters, hi-res pixel art | Tests render every character through 10 states with all subagent helpers, check detail (tones, pixel counts), faces, recoloring, SVG size under the host's limit, narrow-terminal fitting; and contact sheets were looked at | pass |
 | Robustness | `npm run fuzz` (scripts/fuzz.mjs): 30,000 random hook payloads, 30,000 random prompts through the insult judge (plus a corpus of 54 realistic prompts, checked by hand), 20,000 random saved files, a 20,000-step stream of events, commands and settings through the controller, and 3,000 odd picture requests; and all 632 pictures the pet can draw parsed as strict XML in Chrome (scripts are in the scratch notes, not the repository) | no failures after the fixes |
 | Concurrent writers | 6 OS processes x 40 events on one session; 4 processes across sessions and agents | no lost update, no temp files left |
@@ -24,6 +24,7 @@ No GitHub release or tag has been created.
 | Codex model failure | In an earlier run the model request failed (the account's usage limit): the pet shows *The model request failed*; the error text is not stored | pass |
 | Codex plugin hook command | The exact command in `codex/hooks.json` run through `cmd.exe`, PowerShell and a POSIX shell with only `PLUGIN_ROOT` set; also with a missing folder (answers `{}`, exit 0) | pass |
 | Codex installer | Merge/uninstall against temp `hooks.json` files: keeps the user's hooks, backs up, idempotent, refuses invalid JSON, uninstall restores the original | pass |
+| `codepuff setup` | Against the real `claude` (2.1.330) and the real Codex CLI, in throwaway config folders: it added the marketplace and installed the plugin in both (version 1.0.0, from GitHub), `doctor` then reported both as installed, and a second run changed nothing; tests drive it with stand-in tools (what it runs, `--only`, `--dry-run`, already installed, hooks present, a tool that fails or is missing) | installed and idempotent |
 | Terminal app | The rewritten app (four views, hi-res pet shrunk to the pane) was started in a real terminal (Windows PowerShell, the app's Terminal panel) and drew the Puff Mage with its label, numbers and key help. The earlier version reacted live to real hook payloads (*No agent connected*, *Working on a response*, *Running tests*) | renders; live reaction seen on the earlier version |
 | Overhead | `scripts/bench.mjs` | see [PERFORMANCE.md](PERFORMANCE.md) |
 

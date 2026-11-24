@@ -2,6 +2,14 @@
 
 The short version is in the [README](../README.md). This page has the other ways, and what to do when something does not work.
 
+## The easiest way
+
+```text
+npx github:luizbizzio/codepuff setup
+```
+
+Installs CodePuff in Claude Code and in Codex, whichever it finds, by running their own plugin commands (the ones in the table below). Options: `--only claude` or `--only codex`, and `--dry-run` to see what it would run. What is already installed is left alone, and it never adds the plugin next to Codex hooks (events would be counted twice). It installs from the GitHub marketplace, never from a local folder.
+
 ## The usual way
 
 | | Claude Code | Codex |

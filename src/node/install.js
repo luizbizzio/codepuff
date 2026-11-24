@@ -99,12 +99,18 @@ export function codexPluginEnabled(home) {
 }
 
 /**
- * Runs the claude command line. On Windows it is usually claude.cmd or claude.exe on PATH, which needs a shell; a shell concatenates its
+ * Runs a command line tool (`claude`, `codex`). On Windows it is usually a .cmd or .exe on PATH, which needs a shell; a shell concatenates its
  * arguments (and Node warns about passing them separately), so they are quoted here and passed as one command.
  */
-export function runClaude(args, options = {}) {
-  if (process.platform !== 'win32') return spawnSync('claude', args, options)
-  return spawnSync(['claude', ...args].map(quoteWindowsArg).join(' '), { ...options, shell: true })
+export function runTool(name, args, options = {}) {
+  if (process.platform !== 'win32') return spawnSync(name, args, options)
+  return spawnSync([name, ...args].map(quoteWindowsArg).join(' '), { ...options, shell: true })
+}
+export const runClaude = (args, options) => runTool('claude', args, options)
+
+/** Whether CodePuff is installed and enabled as a Claude Code plugin (the user's settings list it under enabledPlugins). */
+export function claudePluginEnabled(home) {
+  try { return Object.entries(JSON.parse(readFileSync(join(home, 'settings.json'), 'utf8')).enabledPlugins ?? {}).some(([name, on]) => on && /^codepuff@/.test(name)) } catch { return false }
 }
 
 /** Quotes one argument the way Windows programs read their command line: a backslash only matters before a quote or at the end. */
@@ -161,6 +167,66 @@ export function installCommand(target, flags, root) {
     return
   }
   throw new Error('Usage: codepuff install codex|claude [--dry-run]')
+}
+
+/** Where CodePuff is installed from: the marketplace of its GitHub repository (never a local folder, which npx deletes). */
+export const REPOSITORY = 'luizbizzio/codepuff'
+
+/**
+ * `codepuff setup`: installs CodePuff as a plugin in every host it finds (Claude Code, Codex) through their own command lines, which is
+ * the same as typing their two plugin commands. Nothing is built or copied; a host that is not found gets the two commands to type.
+ * Hosts that already have it are left alone.
+ */
+export function setupCommand(flags) {
+  const dry = !!flags['dry-run']
+  const only = ['claude', 'codex'].includes(flags.only) ? flags.only : undefined
+  let failed = false
+  const step = (tool, args) => {
+    out('  $ ' + [tool, ...args].join(' '))
+    if (dry) return true
+    const result = runTool(tool, args, { stdio: 'inherit' })
+    return result.status === 0
+  }
+
+  if (only !== 'codex') {
+    out('Claude Code')
+    const home = process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
+    if (claudePluginEnabled(home)) out('  already installed')
+    else if (!dry && runTool('claude', ['--version'], { encoding: 'utf8' }).status !== 0) {
+      out('  the claude command was not found. In Claude Code, type:')
+      out('    /plugin marketplace add ' + REPOSITORY)
+      out('    /plugin install codepuff@codepuff')
+    } else {
+      // (A marketplace that is already added makes the first step complain; the install is still worth trying.)
+      step('claude', ['plugin', 'marketplace', 'add', REPOSITORY])
+      if (step('claude', ['plugin', 'install', 'codepuff@codepuff'])) out('  installed: start a new Claude Code session, and the pet appears above the prompt')
+      else { failed = true; out('  could not install it from here: in Claude Code, type the two lines above (/plugin marketplace add ' + REPOSITORY + ', /plugin install codepuff@codepuff)') }
+    }
+    out('')
+  }
+
+  if (only !== 'claude') {
+    out('Codex')
+    const home = codexHome(flags)
+    const hooks = existsSync(join(home, 'hooks.json')) && /codepuff/i.test(readFileSync(join(home, 'hooks.json'), 'utf8'))
+    if (codexPluginEnabled(home)) out('  already installed')
+    else if (hooks) out('  CodePuff is already in Codex as hooks (codepuff install codex): installing the plugin too would count every event twice, so nothing was changed')
+    else if (!dry && runTool('codex', ['--version'], { encoding: 'utf8' }).status !== 0) {
+      out('  the codex command was not found. In a terminal where Codex runs, type:')
+      out('    codex plugin marketplace add ' + REPOSITORY)
+      out('    codex plugin add codepuff@codepuff')
+    } else {
+      step('codex', ['plugin', 'marketplace', 'add', REPOSITORY])
+      if (step('codex', ['plugin', 'add', 'codepuff@codepuff'])) {
+        out('  installed. One thing is left, and only you can do it: Codex does not run new hooks until you trust them')
+        out('    Codex CLI: start Codex and type /hooks.   Codex desktop app: Review hooks.')
+        out('  To watch the pet next to Codex: npx github:' + REPOSITORY + ' pet')
+      } else { failed = true; out('  could not install it from here: type the two lines above in a terminal where Codex runs') }
+    }
+    out('')
+  }
+  out('Check it any time with: npx github:' + REPOSITORY + ' doctor')
+  if (failed) process.exitCode = 1
 }
 
 export function uninstallCommand(target, flags, root) {

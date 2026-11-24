@@ -22,8 +22,15 @@ const proj = join(tmp, 'proj')
 const data = join(tmp, 'data')
 mkdirSync(proj, { recursive: true })
 const fwd = p => p.replaceAll('\\', '/')
+const escapeUnsafeJsChars = str => str.replace(/[<>/\u2028\u2029]/g, c => (
+  c === '<' ? '\\u003C' :
+  c === '>' ? '\\u003E' :
+  c === '/' ? '\\u002F' :
+  c === '\u2028' ? '\\u2028' :
+  '\\u2029'
+))
 
-writeFileSync(join(tmp, 'capture.cjs'), `let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{require('fs').appendFileSync(${JSON.stringify(fwd(join(tmp, 'capture.jsonl')))},d.replace(/\\r?\\n/g,' ')+'\\n');process.stdout.write('{}')})`)
+writeFileSync(join(tmp, 'capture.cjs'), `let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{require('fs').appendFileSync(${escapeUnsafeJsChars(JSON.stringify(fwd(join(tmp, 'capture.jsonl'))))},d.replace(/\\r?\\n/g,' ')+'\\n');process.stdout.write('{}')})`)
 
 const events = ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'PermissionRequest', 'PreModelRequest', 'PostModelRequest', 'SubagentStart', 'SubagentStop', 'Stop', 'Interrupt', 'SessionEnd']
 const handler = (command, extra = '') => `{type="command",command="${command.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}",timeout=10${extra}}`

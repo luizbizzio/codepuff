@@ -211,12 +211,15 @@ export function setupCommand(flags) {
   const only = ['claude', 'codex'].includes(flags.only) ? flags.only : undefined
   let failed = false
   const found = {}
-  const step = (tool, args) => {
+  // `quiet` keeps the tool's own output unless it matters: the first step (adding the marketplace) complains when the marketplace is
+  // already there, and that is not a problem as long as the install works.
+  const step = (tool, args, { quiet = false } = {}) => {
     out('  $ ' + [tool, ...args].join(' '))
-    if (dry) return true
-    const result = runTool(found[tool] ?? tool, args, { stdio: 'inherit' })
-    return result.status === 0
+    if (dry) return { ok: true, text: '' }
+    const result = runTool(found[tool] ?? tool, args, quiet ? { encoding: 'utf8' } : { stdio: 'inherit' })
+    return { ok: result.status === 0, text: String(result.stdout ?? '') + String(result.stderr ?? '') }
   }
+  const lastLine = text => text.trim().split(/\r?\n/).pop()
 
   if (only !== 'codex') {
     out('Claude Code')
@@ -228,9 +231,10 @@ export function setupCommand(flags) {
       out('    /plugin install codepuff@codepuff')
     } else {
       // (A marketplace that is already added makes the first step complain; the install is still worth trying.)
-      step('claude', ['plugin', 'marketplace', 'add', REPOSITORY])
-      if (step('claude', ['plugin', 'install', 'codepuff@codepuff'])) out(dry ? '  (dry run: nothing was changed)' : '  installed: start a new Claude Code session, and the pet appears above the prompt')
-      else { failed = true; out('  could not install it from here: in Claude Code, type the two lines above (/plugin marketplace add ' + REPOSITORY + ', /plugin install codepuff@codepuff)') }
+      const added = step('claude', ['plugin', 'marketplace', 'add', REPOSITORY], { quiet: true })
+      if (added.ok) out('  marketplace added')
+      if (step('claude', ['plugin', 'install', 'codepuff@codepuff']).ok) out(dry ? '  (dry run: nothing was changed)' : '  installed: start a new Claude Code session, and the pet appears above the prompt')
+      else { failed = true; if (!added.ok) out('  (adding the marketplace said: ' + lastLine(added.text) + ')'); out('  could not install it from here: in Claude Code, type the two lines above (/plugin marketplace add ' + REPOSITORY + ', /plugin install codepuff@codepuff)') }
     }
     out('')
   }
@@ -246,12 +250,13 @@ export function setupCommand(flags) {
       out('    codex plugin marketplace add ' + REPOSITORY)
       out('    codex plugin add codepuff@codepuff')
     } else {
-      step('codex', ['plugin', 'marketplace', 'add', REPOSITORY])
-      if (step('codex', ['plugin', 'add', 'codepuff@codepuff'])) {
+      const added = step('codex', ['plugin', 'marketplace', 'add', REPOSITORY], { quiet: true })
+      if (added.ok) out('  marketplace added')
+      if (step('codex', ['plugin', 'add', 'codepuff@codepuff']).ok) {
         out(dry ? '  (dry run: nothing was changed.) After installing, trust the hooks: Codex does not run new hooks until you do' : '  installed. One thing is left, and only you can do it: Codex does not run new hooks until you trust them')
         out('    Codex CLI: start Codex and type /hooks.   Codex desktop app: Review hooks.')
         out('  To watch the pet next to Codex: npx github:' + REPOSITORY + ' pet')
-      } else { failed = true; out('  could not install it from here: type the two lines above in a terminal where Codex runs') }
+      } else { failed = true; if (!added.ok) out('  (adding the marketplace said: ' + lastLine(added.text) + ')'); out('  could not install it from here: type the two lines above in a terminal where Codex runs') }
     }
     out('')
   }

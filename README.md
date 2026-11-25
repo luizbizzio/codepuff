@@ -159,22 +159,48 @@ Foxy in every state, as the animated pictures the band draws:
 When subagents run, small helpers appear. With several sessions open, one fixed rule decides which one the pet shows, and the
 label always says which agent and which project it is.
 
-### Statistics and customization
+### The four tabs
+
+Type `/codepuff` in Claude Code to open the pane. Its four tabs, from left to right (a chart, a palette, a trophy and a gear), are below; the camera button at the right saves a **pet card**.
 
 <table>
   <tr>
-    <td width="50%" align="center"><img src="docs/images/statistics.png" alt="The Statistics page: platform and period buttons, tiles for prompts, tool calls, files, commits, tests and agent time, a success bar, a 14 day chart and what the agent did." width="100%"></td>
-    <td width="50%" align="center"><img src="docs/images/customize.png" alt="The Customize page: name, character, colors, settings, sounds, motion, volume and band size." width="100%"></td>
+    <td width="50%" align="center"><img src="docs/images/statistics.png" alt="The Statistics tab: the pet's line, platform and period buttons, tiles for prompts, tool calls, files, commits, tests, agent time, subagents and the session cost estimate, a success bar, a 14 day chart and what the agent did." width="100%"></td>
+    <td width="50%" align="center"><img src="docs/images/customize.png" alt="The Customize tab: the pet, its name, character, colors, accessory and band frame, with what is not earned yet shown with a padlock." width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Statistics</b>: a platform, a period, the numbers that matter, and every number one button away.</sub></td>
-    <td align="center"><sub><b>Customize</b>: name, character, colors, accessory and band frame. Sounds, motion, size and language are in the <b>Settings</b> tab.</sub></td>
+    <td align="center"><sub><b>Statistics</b>: pick a platform and a period; the numbers that matter, and every number one button away.</sub></td>
+    <td align="center"><sub><b>Customize</b>: name, character, colors, accessory and band frame. What is still locked shows a padlock.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><img src="docs/images/achievements.png" alt="The Achievements tab: one card for each thing that is counted, with a pixel-art medal from bronze to diamond, a progress bar and what the next level unlocks." width="100%"></td>
+    <td width="50%" align="center"><img src="docs/images/settings.png" alt="The Settings tab: compact band, hearts and status line switches, sounds, volume, motion, band size, plan limits, break reminder and language." width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Achievements</b>: medals that level up from bronze to diamond, with your progress and what comes next.</sub></td>
+    <td align="center"><sub><b>Settings</b>: sounds, motion, band size, plan limits, break reminder and language.</sub></td>
   </tr>
 </table>
 
 Statistics are counted, never guessed: prompts, turns, tool calls (succeeded and failed), files changed, tests run, commits, lines
-added and deleted, agent time, streaks and a daily chart, by **platform** (Claude Code, Codex or both) and **period** (this session,
-7 days, 30 days, all time). Round numbers, such as the hundredth task or a seven day streak, get a small celebration, once each.
+added and deleted, agent time, subagents, streaks and a daily chart, by **platform** (Claude Code, Codex or both) and **period** (this
+session, 7 days, 30 days, all time). The session's cost is the host's own estimate, marked with a `≈`. Round numbers, such as the
+hundredth task or a seven day streak, get a small celebration, once each.
+
+### Achievements and rewards
+
+Every level of every achievement unlocks something, so there is always a next thing to work toward:
+
+- **Eleven medals** for what is really counted: tasks, days in a row, prompts, passing test runs, commits, files changed, lines in commits, active days, hours of work, helpers called and projects. Each goes from bronze to silver, gold and diamond.
+- **Seventeen accessories** to wear, from a flower to a crown, a pirate hat and a Viking helmet, placed to fit every character.
+- **Fourteen color palettes**: five are free, nine are earned. A color of your own is always free.
+- **Band frames** around the compact band and the pet card: the rainbow one is yours from the start, and seven more are earned.
+
+What a pet had reached before is unlocked quietly, with no pile of messages.
+
+### A pet with something to do
+
+When nothing happens the pet gets bored, has a coffee and naps, and it greets you for the time of day. If you like, it reminds you to take a **break** after a long stretch of work (you choose how long). A thin strip under the band shows your plan's **5-hour** and **weekly** limits, and the status line shows what the pet is doing with the context used and the cost. Save a **pet card**, an animated picture with the pet and a few of its numbers, to share. See [Features](docs/FEATURES.md).
 
 ### Hearts and sounds
 
@@ -184,13 +210,6 @@ tell the difference, then dropped: only a number is kept, and one switch turns t
 
 Short, original **sounds** play when the agent asks you something, when a turn finishes, and when your 5-hour or weekly limit resets.
 Each can be changed or silenced, and they start quiet.
-
-### Accessories, achievements and breaks
-
-Every level of every achievement unlocks something: an **accessory** for the pet (17, from a flower to a crown and a pirate hat), a
-color **palette** (some of the colors have to be earned) or a **frame** for the compact band (and the pet card). Each is tied to a real count: tasks, prompts, passing tests, commits, days in a row, files changed, lines, active days, hours of work, helpers called, projects. The **Achievements** tab has a
-game-style badge for each thing that is counted, which levels up from bronze to silver, gold and diamond as you go, with your progress toward the next level. When nothing happens the pet gets bored, has a coffee and naps, and it greets you for the time of day. If you like, it also
-reminds you to take a **break** after a long stretch of work, and you can save a **pet card** to share. See [Features](docs/FEATURES.md).
 
 ### Fourteen languages
 

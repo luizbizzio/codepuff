@@ -244,7 +244,8 @@ test('Settings and Customize: the sound, volume, band size and mood buttons save
   expect(await ui.find({ type: 'Button', text: '🔒 Flower' })).toBeTruthy()
   // The palettes that are rewards and the card frames are listed the same way; the free palettes work as before.
   expect(await ui.find({ type: 'Button', text: '🔒 Sunset' })).toBeTruthy()
-  expect(await ui.find({ type: 'Button', text: '🔒 Rainbow' })).toBeTruthy()
+  expect(await ui.find({ type: 'Button', text: '🔒 Crystal' })).toBeTruthy()
+  expect(await ui.find({ type: 'Button', text: 'Rainbow' })).toBeTruthy() // (free from the start)
   expect(await ui.find({ type: 'Button', text: 'Mint' })).toBeTruthy()
   await ui.press({ plugin: 'codepuff', key: 'acc-crown' })
   await clock.advance(400)

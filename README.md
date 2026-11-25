@@ -24,10 +24,10 @@ failing. It celebrates only when a test run really passed, and it keeps a runnin
 both agents.
 
 <p align="center">
-  <img src="docs/images/band.png" alt="The CodePuff band above the Claude Code prompt: the pet, the streak, the prompts, the status, the hearts and the success ring, with the plan limits under it." width="820">
+  <img src="docs/images/band.png" alt="The CodePuff band above the Claude Code prompt: the pet on a coffee break, the streak, the prompts and the session cost, the status, the hearts, the success ring and, under it, the 5-hour and weekly plan limits." width="820">
 </p>
 
-<p align="center"><sub>The compact band above the Claude Code prompt (large size, English).</sub></p>
+<p align="center"><sub>The compact band above the Claude Code prompt (large size, English), with the plan limits under it.</sub></p>
 
 <table align="center">
   <tr>

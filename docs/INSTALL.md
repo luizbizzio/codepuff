@@ -75,8 +75,8 @@ would be cleaned up later). `codepuff uninstall codex` removes only CodePuff's h
 
 | What you see | What to try |
 | --- | --- |
-| No pet above the prompt in Claude Code | Start a **new** session after installing. `/plugin` should list `codepuff` as enabled. The band can also be switched off: `/codepuff band on`. |
-| `/codepuff` is not found | The plugin is not enabled: `/plugin install codepuff@codepuff`. |
+| No pet above the prompt in Claude Code | Start a **new** session after installing (or run `/reload-plugins`). `/plugin` should list `codepuff` as enabled. The band can also be switched off: `/codepuff band on`. Use a local session (**This computer** in the desktop app): CodePuff runs where the session runs. |
+| `/codepuff` is not found | The plugin is not enabled: `/plugin install codepuff@codepuff`. If you just installed it, start a new session or run `/reload-plugins`: a plugin installed in an open session only takes effect then. |
 | The Codex terminal app says "waiting for an agent" | Codex has not run a hook yet: trust the hooks (`/hooks`), then send a prompt. `npx github:luizbizzio/codepuff doctor` shows whether they are installed. |
 | Numbers look doubled in Codex | CodePuff is installed twice (plugin and hooks): keep one. |
 | No sound | Sounds play on the Claude Code desktop app on Windows through PowerShell; check `/codepuff sound question chime` and `/codepuff volume high`, and that the system volume is up. |

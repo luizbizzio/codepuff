@@ -71,6 +71,8 @@ Inside Claude Code, send these **one at a time**, then open a new session (or ru
 /plugin install codepuff@codepuff
 ```
 
+<sub>CodePuff runs on the computer where your Claude Code session runs, so use a local session (in the desktop app, **This computer**). Do not add it from the app's Settings, Plugins screen: it can refuse CodePuff.</sub>
+
 ### Codex &nbsp;<sub>needs <a href="https://nodejs.org">Node.js</a> 20+</sub>
 
 **1.** In a terminal: `npx github:luizbizzio/codepuff setup --only codex`

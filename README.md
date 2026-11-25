@@ -59,7 +59,7 @@ both agents.
 
 ## Install
 
-### Claude Code &nbsp;<sub>no Node.js needed</sub>
+### Claude Code
 
 Inside Claude Code, send these **one at a time**, then open a new session:
 

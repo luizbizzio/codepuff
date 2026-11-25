@@ -41,19 +41,9 @@ both agents.
 
 Pick your agent. Nothing to build, nothing to configure.
 
-**[Claude Code](#claude-code)** (no Node.js needed) &nbsp;&nbsp;|&nbsp;&nbsp; **[Codex](#codex)** (needs Node.js 20 or newer)
+### Claude Code &nbsp;<sub>no Node.js needed</sub>
 
-<br>
-
----
-
-### Claude Code
-
-> **No Node.js needed.** About one minute.
-
-#### Option 1: inside Claude Code (easiest)
-
-**1.** Type this and press Enter:
+**1.** Type this and press Enter (send the commands one at a time, do not paste both together):
 
 ```text
 /plugin marketplace add luizbizzio/codepuff
@@ -67,45 +57,47 @@ Pick your agent. Nothing to build, nothing to configure.
 
 **3.** Open a **new session**. The pet is above the prompt.
 
-> Send the two commands **one at a time**. If you paste both together, Claude Code may send them as a normal message instead of running them.
+<details>
+<summary>Other ways: terminal, or buttons in the desktop app</summary>
 
-#### Option 2: in a terminal
+<br>
 
-**1.** Run:
+**In a terminal** (pasting works here), run these two, then open a new Claude Code session:
 
 ```text
 claude plugin marketplace add luizbizzio/codepuff
 ```
 
-**2.** Run:
-
 ```text
 claude plugin install codepuff@codepuff
 ```
 
-**3.** Open a **new Claude Code session**.
+**With buttons** (desktop app): click **+** next to the prompt, then **Plugins**, then **Add marketplace**, paste `luizbizzio/codepuff` and add the `codepuff` plugin.
 
-#### Option 3: with buttons (desktop app)
-
-Click **+** next to the prompt, then **Plugins**, then **Add marketplace**. Paste `luizbizzio/codepuff` and add the `codepuff` plugin. Then open a new session.
+</details>
 
 <br>
 
----
+### Codex &nbsp;<sub>needs <a href="https://nodejs.org">Node.js</a> 20 or newer</sub>
 
-### Codex
-
-> **Needs [Node.js](https://nodejs.org) 20 or newer.** Three steps: install, trust, watch.
-
-#### Step 1: install (choose one)
-
-**Option A: one command**
+**1.** In a terminal, run:
 
 ```text
 npx github:luizbizzio/codepuff setup --only codex
 ```
 
-**Option B: two commands**, in a terminal:
+**2.** Open Codex, go to **Review hooks** (CLI: `/hooks`) and click **Trust all**. Codex does not run new hooks until you do this, so nothing works before it.
+
+**3.** To see the pet, run this in a second terminal next to Codex:
+
+```text
+npx github:luizbizzio/codepuff pet
+```
+
+<details>
+<summary>Other way to do step 1: two commands instead of npx</summary>
+
+<br>
 
 ```text
 codex plugin marketplace add luizbizzio/codepuff
@@ -115,43 +107,13 @@ codex plugin marketplace add luizbizzio/codepuff
 codex plugin add codepuff@codepuff
 ```
 
-#### Step 2: trust the hooks (do this once)
-
-Codex does not run new hooks until you approve them, so nothing works before this step.
-
-**1.** Open Codex and go to **Review hooks** (in the CLI, type `/hooks`).
-
-**2.** You will see **CodePuff** with 12 hooks that need review. Click **Trust all**.
-
-#### Step 3: watch your pet
-
-Codex has no screen for plugins, so CodePuff has a small terminal app. Open a second terminal next to Codex and run:
-
-```text
-npx github:luizbizzio/codepuff pet
-```
-
-Send a prompt to Codex and the pet reacts. If it says "waiting for an agent", step 2 is not done yet.
+</details>
 
 <br>
 
----
+### Both, and checking
 
-### Both agents
-
-Do the Claude Code section and the Codex section above. Or run one command that installs whichever it finds (Codex still needs step 2):
-
-```text
-npx github:luizbizzio/codepuff setup
-```
-
-### Check that it works
-
-```text
-npx github:luizbizzio/codepuff doctor
-```
-
-It says whether CodePuff is installed in Claude Code and in Codex, and what to do if it is not. Updating, uninstalling, installing from a clone and troubleshooting are in [docs/INSTALL.md](docs/INSTALL.md).
+Install both by doing each section above, or run `npx github:luizbizzio/codepuff setup` (Codex still needs step 2). To check that it works: `npx github:luizbizzio/codepuff doctor`. Updating, uninstalling, installing from a clone and troubleshooting: [docs/INSTALL.md](docs/INSTALL.md).
 
 ## What you see
 

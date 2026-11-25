@@ -2,7 +2,7 @@
 //   node scripts/branding.mjs
 //   chrome --headless --screenshot=docs/images/banner.png --window-size=1600,640 --force-device-scale-factor=2 file:///.../docs/images/banner.html
 // The pets are the real ones: the same pictures the Claude Code band draws, in their resting state.
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { petSvg } from '../src/core/render/raster.js'
 
@@ -53,22 +53,3 @@ for (const [character, state] of DEMO) {
   writeFileSync(join(import.meta.dirname, '..', 'docs', 'images', 'demo-' + character + '.svg'), petSvg({ character, state, height: 160, crop: 'band' }))
 }
 console.log('docs/images/demo-*.svg')
-
-// "What you see": every state as its own small animated SVG (Foxy), six to a row. The README table that shows them is printed to
-// docs/images/states/grid.md and pasted between the markers of the README.
-const STATE_GRID = [
-  ['idle', 'Idle'], ['thinking', 'Thinking'], ['reading', 'Reading'], ['searching', 'Searching'], ['investigating', 'Investigating'], ['coding', 'Coding'],
-  ['running', 'Running'], ['git', 'Git'], ['mcp', 'Connected tool'], ['testing', 'Testing'], ['web', 'Web'], ['delegating', 'Subagents'],
-  ['planning', 'Planning'], ['success', 'Success'], ['error', 'Error'], ['permission', 'Needs you'], ['waiting', 'Waiting'], ['finished', 'Finished'],
-  ['tired', 'Tired'], ['sad', 'Sad'], ['disconnected', 'Disconnected'], ['petted', 'Petted'], ['giggle', 'Giggle'], ['delighted', 'Delighted'],
-]
-const COLUMNS = 6
-mkdirSync(join(import.meta.dirname, '..', 'docs', 'images', 'states'), { recursive: true })
-for (const [state] of STATE_GRID) {
-  writeFileSync(join(import.meta.dirname, '..', 'docs', 'images', 'states', state + '.svg'), petSvg({ character: 'fox', state, helpers: state === 'delegating' ? 2 : 0, height: 120, crop: 'band' }))
-}
-const cell = ([state, label]) => `    <td align="center"><img src="docs/images/states/${state}.svg" alt="${label}" width="120"><br><sub>${label}</sub></td>`
-const rows = []
-for (let i = 0; i < STATE_GRID.length; i += COLUMNS) rows.push('  <tr>\n' + STATE_GRID.slice(i, i + COLUMNS).map(cell).join('\n') + '\n  </tr>')
-writeFileSync(join(import.meta.dirname, '..', 'docs', 'images', 'states', 'grid.md'), '<table>\n' + rows.join('\n') + '\n</table>\n')
-console.log('docs/images/states/*.svg + grid.md')

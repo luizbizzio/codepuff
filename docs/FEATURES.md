@@ -16,6 +16,10 @@ Top to bottom: **Alpha** (the original CodePuff, redesigned), **Classic** (a cod
 **Slime**, **Mage**, **Penny** and **Claude** (a boxy orange critter, an unofficial fan design). Each has its own colors, and any
 character wears any palette. Foxy also floats a `404` over its head when something fails.
 
+Every animation of each character, and when it appears: [Alpha](characters/alpha.md), [Classic](characters/classic.md),
+[Foxy](characters/fox.md), [Bot](characters/bot.md), [Slime](characters/slime.md), [Mage](characters/mage.md),
+[Penny](characters/aquatic.md), [Claude](characters/claude.md).
+
 ## What the pet shows
 
 ![Foxy in every state, first half: idle, tired, thinking, reading, searching, investigating, coding, running, git, a connected tool, testing, looking things up](images/states-a.png)

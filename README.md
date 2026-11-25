@@ -43,7 +43,7 @@ Pick your agent. Nothing to build, nothing to configure.
 
 ### Claude Code &nbsp;<sub>no Node.js needed</sub>
 
-**1.** Type this and press Enter (send the commands one at a time, do not paste both together):
+**1.** Type this and press Enter. ⚠ Send the commands **one at a time**: pasting both together may be sent as a normal message and not run.
 
 ```text
 /plugin marketplace add luizbizzio/codepuff
@@ -86,7 +86,7 @@ claude plugin install codepuff@codepuff
 npx github:luizbizzio/codepuff setup --only codex
 ```
 
-**2.** Open Codex, go to **Review hooks** (CLI: `/hooks`) and click **Trust all**. Codex does not run new hooks until you do this, so nothing works before it.
+**2.** Open Codex, go to **Review hooks** (CLI: `/hooks`) and click **Trust all**. ⚠ Codex does not run new hooks until you do this, so nothing works before it.
 
 **3.** To see the pet, run this in a second terminal next to Codex:
 
@@ -113,7 +113,7 @@ codex plugin add codepuff@codepuff
 
 ### Both, and checking
 
-Install both by doing each section above, or run `npx github:luizbizzio/codepuff setup` (Codex still needs step 2). To check that it works: `npx github:luizbizzio/codepuff doctor`. Updating, uninstalling, installing from a clone and troubleshooting: [docs/INSTALL.md](docs/INSTALL.md).
+Install both by doing each section above, or run `npx github:luizbizzio/codepuff setup` (Codex still needs step 2). To check that it works ✔: `npx github:luizbizzio/codepuff doctor`. Updating, uninstalling, installing from a clone and troubleshooting: [docs/INSTALL.md](docs/INSTALL.md).
 
 ## What you see
 

@@ -8,6 +8,7 @@ import { disc } from './draw.js'
 const W = 36
 const H = 36
 import { HI_FX, HI_PROPS, drawHiFx, drawHiProp } from './props.js'
+import { drawWorn } from './worn.js'
 import { mascot } from './registry.js'
 
 const M = { '.': undefined, ' ': undefined }
@@ -212,11 +213,14 @@ export function drawScene(character, pose, layer = 'all') {
   const body = new Canvas()
   const a = who.draw(body, pose)
 
+  // What it wears: over the body, under what it holds.
+  const worn = new Canvas()
+  if (pose.worn && a.head) drawWorn(worn, a.head, pose.worn)
   // What it holds, its hands, and the effects around it: drawn over the body.
   const held = new Canvas()
   if (pose.prop) {
     if (HI_PROPS.has(pose.prop.id)) {
-      const centred = ['laptop', 'shell', 'book', 'branch', 'plug'].includes(pose.prop.id) && a.propCx !== undefined
+      const centred = ['laptop', 'shell', 'book', 'branch', 'plug', 'mug'].includes(pose.prop.id) && a.propCx !== undefined
       drawHiProp(held, centred ? { ...a, cx: a.propCx, bottom: a.propBottom } : a, pose.prop, character)
     } else { const lo = new Canvas(W, H); drawProp(lo, a, pose.prop); enlarge(held, lo) }
   }
@@ -230,7 +234,7 @@ export function drawScene(character, pose, layer = 'all') {
     for (const item of pose.fx) if (HI_FX.has(item.id)) drawHiFx(effects, a, item)
   }
 
-  shadow.stamp(ground); shadow.stamp(body); shadow.stamp(held); shadow.stamp(hands); shadow.stamp(effects)
+  shadow.stamp(ground); shadow.stamp(body); shadow.stamp(worn); shadow.stamp(held); shadow.stamp(hands); shadow.stamp(effects)
   // Every character is moved onto the shared line.
   return standOnLine(shadow, Math.round(who.ground * K))
 }

@@ -19,7 +19,7 @@ const rgb = Buffer.alloc(width * ch * 3)
 for (let i = 0; i < width * ch; i++) { rgb[i * 3] = 13; rgb[i * 3 + 1] = 17; rgb[i * 3 + 2] = 23 }
 states.forEach((state, n) => {
   const anim = animation(state, { character: id })
-  const rgba = toRgba(drawScene(id, anim.frames[anim.still].pose), buildPalette(id, {}, { gray: anim.gray ? 0.8 : 0 }))
+  const rgba = toRgba(drawScene(id, { ...anim.frames[anim.still].pose, worn: process.env.WORN || null }), buildPalette(id, {}, { gray: anim.gray ? 0.8 : 0 }))
   for (let y = 0; y < box.h * scale; y++) for (let x = 0; x < box.w * scale; x++) {
     const o = ((box.y + Math.floor(y / scale)) * W + box.x + Math.floor(x / scale)) * 4
     const a = rgba[o + 3] / 255

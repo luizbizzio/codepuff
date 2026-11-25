@@ -22,6 +22,28 @@ export function duration(ms) {
   return t('duration.h', { h: hours })
 }
 
+/** An amount in US dollars as the host's `/cost` counts it, told as an estimate ("≈ $1.23"), or plain ("$1.23") where the place already says
+ *  it is one; the decimal sign and the symbol follow the language. */
+export function usd(amount, approx = true) {
+  const cents = Math.max(0, Math.round((Number.isFinite(amount) ? amount : 0) * 100))
+  const text = n(Math.floor(cents / 100)) + t('num.decimal') + String(cents % 100).padStart(2, '0')
+  return (approx ? '≈ ' : '') + t('stats.cost.value', { usd: text })
+}
+
+/** A number of minutes, short: "45 min", "1h", "1h 30m". */
+export const minutesText = minutes => (minutes >= 60 && minutes % 60 === 0 ? t('duration.h', { h: minutes / 60 }) : duration(minutes * 60_000))
+
+/** How long until a plan window resets: minutes, hours and minutes, and from a day on days and hours ("6d 9h", never "153h"). */
+export function resetIn(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return t('duration.none')
+  const minutes = Math.round(ms / 60_000)
+  if (minutes < 1) return t('duration.lt1')
+  if (minutes < 60) return t('duration.min', { n: minutes })
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return t('duration.hm', { h: hours, m: String(minutes % 60).padStart(2, '0') })
+  return t('duration.dh', { d: Math.floor(hours / 24), h: hours % 24 })
+}
+
 export function ago(at, now = Date.now()) {
   if (!at) return t('ago.never')
   const seconds = Math.max(0, Math.round((now - at) / 1000))
@@ -97,6 +119,8 @@ export function statTiles(s) {
     // "unconfirmed", not a pass and not a failure.
     { id: 'tests', label: t('stats.tile.tests'), value: n(x.run), note: testNotes },
     { id: 'time', label: t('stats.tile.time'), value: duration(s.activeMs), note: '' },
+    // How many subagents the agent started (the helpers that appear next to the pet while they work).
+    { id: 'subagents', label: t('stats.cat.agent'), value: n(s.subagents), note: '' },
   ]
 }
 

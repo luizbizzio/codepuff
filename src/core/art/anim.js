@@ -247,6 +247,42 @@ const loops = {
     still: 4,
   }),
 
+  // Nothing has happened for a few minutes: it looks around, up at the ceiling, yawns, and taps a foot.
+  bored: () => ({
+    frames: [
+      frame(1200, { eyes: 'open', mouth: 'flat', lookX: -1, sy: 0.99 }),
+      frame(900, { eyes: 'open', mouth: 'flat', lookX: 1 }),
+      frame(130, { eyes: 'blink', mouth: 'flat' }),
+      frame(700, { eyes: 'open', mouth: 'flat', lookY: -1 }),
+      frame(500, { eyes: 'sleep', mouth: 'o', sy: 1.04, dy: -0.6 }),
+      frame(700, { eyes: 'sleep', mouth: 'o', sy: 1.06, dy: -0.9 }),
+      frame(600, { eyes: 'open', mouth: 'flat', sy: 0.98 }),
+      ...[0.3, -0.3, 0.3, 0].map(shake => frame(240, { eyes: 'open', mouth: 'flat', lookY: 1, shake })),
+      frame(1000, { eyes: 'open', mouth: 'flat', lookX: -1 }),
+    ],
+    still: 0,
+  }),
+
+  // A coffee break: holds a mug, steam rising, a sip now and then and a content little sigh.
+  coffee: () => ({
+    frames: [
+      frame(500, { eyes: 'open', mouth: 'smile', hands: 'hold', sy: 1, prop: { id: 'mug', f: 0 } }),
+      frame(500, { eyes: 'open', mouth: 'smile', hands: 'hold', sy: 1.02, prop: { id: 'mug', f: 1 } }),
+      frame(350, { eyes: 'sleep', mouth: 'o', hands: 'hold', dy: -0.5, prop: { id: 'mug', f: 2 } }),
+      frame(450, { eyes: 'happy', mouth: 'smile', hands: 'hold', cheeks: 'bright', sy: 1.03, prop: { id: 'mug', f: 3 } }),
+      frame(500, { eyes: 'open', mouth: 'smile', hands: 'hold', prop: { id: 'mug', f: 4 } }),
+      frame(110, { eyes: 'blink', mouth: 'smile', hands: 'hold', prop: { id: 'mug', f: 5 } }),
+      frame(600, { eyes: 'open', mouth: 'smile', hands: 'hold', lookX: 1, prop: { id: 'mug', f: 0 } }),
+    ],
+    still: 0,
+  }),
+
+  // Asleep: eyes closed, breathing slowly, a few Zs. (Unlike "disconnected" it is not grey: it is here, just napping.)
+  sleeping: () => ({
+    frames: [1, 1.03, 1.045, 1.02].map((sy, f) => frame(1100, { eyes: 'sleep', mouth: 'none', sy, dy: sy > 1.03 ? -0.3 : 0, led: 'off', fx: [{ id: 'zzz', f }] })),
+    still: 2,
+  }),
+
   // Waiting for the user: a happy face, always (it is glad you are there), with a little breathing, a blink and a beam.
   waiting: () => ({
     frames: [
@@ -322,6 +358,74 @@ const loops = {
     still: 4,
   }),
 
+  // Good morning: a stretch and a yawn, then a bright wave under the sun.
+  morning: () => ({
+    frames: [
+      frame(200, { eyes: 'open', mouth: 'smile', sy: 0.97, fx: [{ id: 'sun', f: 0 }] }),
+      frame(320, { eyes: 'sleep', mouth: 'o', sy: 1.05, dy: -1, hands: 'up0', fx: [{ id: 'sun', f: 0 }] }),
+      frame(320, { eyes: 'sleep', mouth: 'o', sy: 1.08, dy: -1.6, hands: 'up1', fx: [{ id: 'sun', f: 1 }] }),
+      frame(260, { eyes: 'open', mouth: 'grin', cheeks: 'bright', dy: -0.4, hands: 'up0', fx: [{ id: 'sun', f: 2 }] }),
+      frame(240, { eyes: 'happy', mouth: 'grin', cheeks: 'bright', dy: -1.4, hands: 'wave', fx: [{ id: 'sun', f: 3 }] }),
+      frame(240, { eyes: 'happy', mouth: 'grin', cheeks: 'bright', dy: 0, hands: 'rest', fx: [{ id: 'sun', f: 4 }] }),
+      frame(240, { eyes: 'happy', mouth: 'grin', cheeks: 'bright', dy: -1.4, hands: 'wave', fx: [{ id: 'sun', f: 5 }] }),
+      frame(980, { eyes: 'open', mouth: 'smile', cheeks: 'bright', sy: 1.03, fx: [{ id: 'sun', f: 6 }] }),
+    ],
+    still: 3,
+  }),
+
+  // Good afternoon: a cheerful hop and a wave, the sun high.
+  afternoon: () => ({
+    frames: [
+      frame(200, { eyes: 'open', mouth: 'smile', sy: 0.95, sx: 1.03, fx: [{ id: 'sun', f: 0 }] }),
+      frame(220, { eyes: 'happy', mouth: 'grin', cheeks: 'bright', dy: -2.4, sy: 1.05, hands: 'wave', fx: [{ id: 'sun', f: 1 }] }),
+      frame(200, { eyes: 'happy', mouth: 'grin', cheeks: 'bright', dy: 0, sy: 0.96, hands: 'rest', fx: [{ id: 'sun', f: 2 }] }),
+      frame(220, { eyes: 'happy', mouth: 'grin', cheeks: 'bright', dy: -1.2, hands: 'wave', fx: [{ id: 'sun', f: 3 }] }),
+      frame(200, { eyes: 'happy', mouth: 'smile', cheeks: 'bright', hands: 'rest', fx: [{ id: 'sun', f: 4 }] }),
+      frame(1160, { eyes: 'open', mouth: 'smile', cheeks: 'bright', sy: 1.03, fx: [{ id: 'sun', f: 5 }] }),
+    ],
+    still: 3,
+  }),
+
+  // Good evening: a calm wave under the moon and a few stars.
+  evening: () => ({
+    frames: [
+      frame(300, { eyes: 'open', mouth: 'smile', fx: [{ id: 'moon', f: 0 }, { id: 'stars', f: 0 }] }),
+      frame(300, { eyes: 'happy', mouth: 'smile', cheeks: 'bright', hands: 'wave', dy: -0.8, fx: [{ id: 'moon', f: 0 }, { id: 'stars', f: 1 }] }),
+      frame(300, { eyes: 'happy', mouth: 'smile', cheeks: 'bright', hands: 'rest', fx: [{ id: 'moon', f: 0 }, { id: 'stars', f: 2 }] }),
+      frame(300, { eyes: 'happy', mouth: 'smile', cheeks: 'bright', hands: 'wave', dy: -0.8, fx: [{ id: 'moon', f: 0 }, { id: 'stars', f: 3 }] }),
+      frame(300, { eyes: 'open', mouth: 'smile', hands: 'rest', fx: [{ id: 'moon', f: 0 }, { id: 'stars', f: 4 }] }),
+      frame(800, { eyes: 'open', mouth: 'smile', cheeks: 'bright', sy: 1.03, fx: [{ id: 'moon', f: 0 }, { id: 'stars', f: 5 }] }),
+    ],
+    still: 1,
+  }),
+
+  // Still up late: sleepy eyes, a big yawn under the stars, then it perks up for you.
+  night: () => ({
+    frames: [
+      frame(420, { eyes: 'open', mouth: 'flat', sy: 0.97, fx: [{ id: 'moon', f: 0 }, { id: 'stars', f: 0 }] }),
+      frame(420, { eyes: 'sleep', mouth: 'o', sy: 1.05, dy: -0.8, fx: [{ id: 'moon', f: 0 }, { id: 'stars', f: 1 }] }),
+      frame(420, { eyes: 'sleep', mouth: 'o', sy: 1.07, dy: -1.1, fx: [{ id: 'moon', f: 0 }, { id: 'stars', f: 2 }] }),
+      frame(300, { eyes: 'wide', brows: 'up', mouth: 'o', dy: -1.4, sy: 1.05, fx: [{ id: 'moon', f: 0 }, { id: 'stars', f: 3 }] }),
+      frame(380, { eyes: 'happy', mouth: 'smile', cheeks: 'bright', hands: 'wave', dy: -0.6, fx: [{ id: 'moon', f: 0 }, { id: 'stars', f: 4 }] }),
+      frame(660, { eyes: 'open', mouth: 'smile', cheeks: 'bright', fx: [{ id: 'moon', f: 0 }, { id: 'stars', f: 5 }] }),
+    ],
+    still: 4,
+  }),
+
+  // Time to stretch (the break reminder): arms up, a long stretch, a shake out.
+  stretch: () => ({
+    frames: [
+      frame(300, { eyes: 'open', mouth: 'smile', sy: 0.95, sx: 1.03 }),
+      frame(500, { eyes: 'sleep', mouth: 'o', hands: 'up0', dy: -1.6, sy: 1.1, sx: 0.96, fx: [{ id: 'sparkles', f: 0 }] }),
+      frame(500, { eyes: 'sleep', mouth: 'o', hands: 'up1', dy: -2, sy: 1.12, sx: 0.95, fx: [{ id: 'sparkles', f: 2 }] }),
+      frame(240, { eyes: 'happy', mouth: 'grin', shake: -0.5, dy: -0.6, fx: [{ id: 'sparkles', f: 3 }] }),
+      frame(240, { eyes: 'happy', mouth: 'grin', shake: 0.5, dy: -0.6, fx: [{ id: 'sparkles', f: 4 }] }),
+      frame(240, { eyes: 'happy', mouth: 'grin', shake: -0.4, fx: [{ id: 'sparkles', f: 5 }] }),
+      frame(380, { eyes: 'open', mouth: 'smile', cheeks: 'bright' }),
+    ],
+    still: 2,
+  }),
+
   // Patted a few times in a row: a ticklish giggle, shaking side to side with sparkles. (1300 ms)
   giggle: () => ({
     frames: [
@@ -360,7 +464,7 @@ function foxError() {
 }
 
 /** One-shot reactions to the user (a pat; patting again and again escalates). */
-export const REACTIONS = ['petted', 'giggle', 'delighted', 'hurt']
+export const REACTIONS = ['petted', 'giggle', 'delighted', 'hurt', 'morning', 'afternoon', 'evening', 'night', 'stretch']
 
 const cache = new Map()
 
@@ -368,13 +472,13 @@ const cache = new Map()
  * @param {string} state a pet state (see petstate.js), or 'petted'
  * @param {{ helpers?: number, character?: string }} [options] subagent helpers to show beside the pet (0..3); the character, for its own way of idling
  */
-export function animation(state, { helpers = 0, character } = {}) {
+export function animation(state, { helpers = 0, character, worn = null } = {}) {
   // At rest each character has its own manner (see PERSONALITY); every other state is the same for all.
   const table = state === 'idle' ? PERSONALITY : state === 'waiting' ? WAITING : state === 'thinking' ? THINKING : undefined
   const own = table && Object.hasOwn(table, character) ? table[character] : undefined
   // Foxy's errors also float a "404" over its head.
   const special = state === 'error' && character === 'fox'
-  const key = state + ':' + helpers + (own || special ? ':' + character : '')
+  const key = state + ':' + helpers + (own || special ? ':' + character : '') + (worn ? '@' + worn : '')
   const known = cache.get(key)
   if (known) return known
   const made = special ? foxError() : own ? { frames: own, still: state === 'thinking' ? 2 : 0 } : (Object.hasOwn(loops, state) ? loops[state] : loops.idle)()
@@ -386,7 +490,7 @@ export function animation(state, { helpers = 0, character } = {}) {
     gray: state === 'disconnected',
     loop: !REACTIONS.includes(state),
     still,
-    frames: frames.map((item, index) => ({ d: item.d, pose: { ...item.pose, helpers: count, f: index } })),
+    frames: frames.map((item, index) => ({ d: item.d, pose: { ...item.pose, helpers: count, f: index, worn } })),
   }
   out.total = out.frames.reduce((sum, item) => sum + item.d, 0)
   cache.set(key, out)

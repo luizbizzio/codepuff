@@ -9,6 +9,7 @@ import { artHashes } from './art-hashes.js'
 import { STAND, drawScene } from '../src/core/art/scene.js'
 import { bandBox, petSvg, stageBounds, terminalFrame } from '../src/core/render/raster.js'
 import { STATES } from '../src/core/petstate.js'
+import { ACCESSORY_IDS } from '../src/core/rewards.js'
 import { openStore } from '../src/node/store.js'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -114,6 +115,32 @@ test('a hi-res pet shrinks to fit a narrow terminal pane and shows full detail i
   assert.ok(wide.columns > narrow.columns)
   const short = terminalFrame({ character: 'fox', state: 'idle', columns: 200, rows: 8 })
   assert.ok(short.rows <= 8, 'the row budget is respected too')
+})
+
+test('every accessory shows on every character, inside the shared frame, in every state', () => {
+  const box = stageBounds('alpha')
+  for (const id of MASCOT_IDS) {
+    const rest = animation('idle', { character: id }).frames[0].pose
+    const bare = drawScene(id, rest)
+    for (const worn of ACCESSORY_IDS) {
+      const dressed = drawScene(id, { ...rest, worn })
+      assert.ok(dressed.px.some((role, i) => role !== bare.px[i]), `${id} wears ${worn}`)
+      for (const state of STATES) {
+        const frames = animation(state, { character: id, worn }).frames
+        assert.equal(frames[0].pose.worn, worn, 'what is worn is in every pose')
+        for (const { pose } of [frames[0], frames[frames.length >> 1]]) {
+          const canvas = drawScene(id, pose)
+          for (let y = 0; y < canvas.h; y++) for (let x = 0; x < canvas.w; x++) {
+            if (canvas.px[y * canvas.w + x]) assert.ok(x >= box.x && x < box.x + box.w && y >= box.y && y < box.y + box.h, `${id} wearing ${worn} in ${state} draws outside the frame at ${x},${y}`)
+          }
+        }
+      }
+    }
+  }
+  // What is worn is part of the picture (and of its cache), and nothing changes for a pet that wears nothing.
+  assert.notEqual(petSvg({ character: 'fox', state: 'idle', worn: 'crown' }), petSvg({ character: 'fox', state: 'idle' }))
+  assert.equal(petSvg({ character: 'fox', state: 'idle', worn: null }), petSvg({ character: 'fox', state: 'idle' }))
+  assert.equal(animation('idle', { character: 'fox' }).frames[0].pose.worn, null)
 })
 
 test('every character, state and frame fits one shared frame, and all of them stand on the same line', () => {

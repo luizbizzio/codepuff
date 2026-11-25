@@ -1,8 +1,8 @@
-# Status of CodePuff 1.0.0
+# Status of CodePuff 1.1.0
 
-Version 1.0.0 means the engine, the Claude Code mod, the terminal app and the installers are complete, documented and tested.
+Version 1.1.0 (the 1.0.0 release plus the changes in the [changelog](../CHANGELOG.md)) means the engine, the Claude Code mod, the terminal app and the installers are complete, documented and tested.
 It does **not** mean everything was verified everywhere: this page says exactly what was checked, where, and what was not.
-No GitHub release or tag has been created.
+The 1.0.0 release exists; this status is for 1.1.0, whose release and tag are made by the maintainer.
 
 ## Verified
 
@@ -50,6 +50,13 @@ No GitHub release or tag has been created.
   contact sheets (several states); the faces are redrawn by the engine (so every expression exists), so
   they are simpler than the sheets' own faces, and the sprites have no separate hands. Alpha and Claude are drawn in
   code. The hover hop is plain CSS in an interactive `Svg`; it was checked in Chrome only, not in the Claude Code window.
+
+## New in 1.1.0: what was and was not checked
+
+* **Checked**: all of it by the automated tests (244) and the engine's own test kit (`claude plugin test`, 10 tests, and `claude plugin validate --strict`); the art by rendering every accessory on every character, every new state on several characters, every badge and every card frame and looking at the pictures; the new commands, the pet card and the settings against a real `claude` in a throwaway data folder; the word lists of the pet's mood against sentences in all 14 languages (written by the project).
+* **Not verified in the real Claude Code window**: how the new screens look and fit: the **Achievements** tab (its cards and badges), the **Settings** and **Customize** tabs with their rows of buttons, the two-column grid of tiles in Statistics (it asks for a width of 48%), the compact band at its three sizes (the smaller ones use the host's smaller type sizes) and with a **Band Frame** (the line styles — double, bold, classic, single — are names the host may draw differently or ignore; the engine accepts any name), the **📸** button, the toasts, and the status line with the context, limits and cost.
+* **Not verified with real data**: the context percentage and the cost in the status line and the band (both come from `$.session.usage()`; the cost was seen in a headless session and in the desktop window of the maintainer); the break reminder over real hours of work; the greetings and the bored, coffee and nap states over real waits.
+* **Mood in 14 languages**: the lists of insults, criticism and thanks for every language were written by the project and have **not** been reviewed by native speakers (they will have mistakes, and the languages that change their words, such as Russian, Polish and Turkish, are only covered for the commonest forms). [docs/MOOD-REVIEW.md](MOOD-REVIEW.md) lists every word so a native speaker can check them.
 
 ## Languages
 

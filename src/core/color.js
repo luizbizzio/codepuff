@@ -118,4 +118,7 @@ export const PRESETS = Object.freeze([
   { id: 'berry', name: 'Berry', body: '#d4568f', accent: '#ffb4cf' },
   { id: 'ember', name: 'Ember', body: '#d97757', accent: '#c4633f' },
   { id: 'graphite', name: 'Graphite', body: '#7d8590', accent: '#58a6ff' },
+  { id: 'aurora', name: 'Aurora', body: '#59e0c5', accent: '#a78bfa' },
+  { id: 'cotton', name: 'Cotton candy', body: '#ffb3de', accent: '#8fe3ff' },
+  { id: 'galaxy', name: 'Galaxy', body: '#a38bff', accent: '#ff7ad9' },
 ])

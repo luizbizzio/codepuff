@@ -6,8 +6,8 @@ import { Canvas, K, R } from './canvas.js'
 import { PI, disc, line } from './draw.js'
 import { BROWN, paint, poly, rrect } from './shapes.js'
 
-export const HI_PROPS = new Set(['book', 'laptop', 'shell', 'flask', 'magnifier', 'branch', 'plug'])
-export const HI_FX = new Set(['excl', 'alert', 'rays', 'thought', 'spinner', 'glyphs', 'e404'])
+export const HI_PROPS = new Set(['book', 'laptop', 'shell', 'flask', 'magnifier', 'branch', 'plug', 'mug'])
+export const HI_FX = new Set(['excl', 'alert', 'rays', 'thought', 'spinner', 'glyphs', 'e404', 'sun', 'moon', 'stars'])
 
 const flatRamp = (edge, fill) => [edge, fill, fill, fill, fill]
 const PAGE = flatRamp(R.PAPER2, R.PAPER)
@@ -186,6 +186,25 @@ function glyphs(c, a, f) {
   }
 }
 
+/** A mug of coffee with steam curling up from it (the pet's coffee break). */
+function mug(c, a, f) {
+  const x = a.cx
+  const y = a.bottom
+  // The handle, the cup, the coffee at its brim.
+  line(c, P(x + 2.7), P(y - 4.6), P(x + 4.1), P(y - 4.6), R.METAL3, K * 0.7)
+  line(c, P(x + 4.1), P(y - 4.6), P(x + 4.1), P(y - 2.2), R.METAL3, K * 0.7)
+  line(c, P(x + 4.1), P(y - 2.2), P(x + 2.7), P(y - 2.2), R.METAL3, K * 0.7)
+  stamp(c, [rrect(x - 3, y - 6, 6, 6, 1, [R.METAL2, R.WHITE, R.WHITE, R.CREAM, R.CREAM], { flat: true })])
+  c.rect(P(x - 2.4), P(y - 5.5), P(4.8), K * 0.8, R.BROWN)
+  // Three wisps of steam that rise, drift and fade.
+  for (let k = 0; k < 3; k++) {
+    const age = (f + k * 2) % 6
+    const sx = x - 1.6 + k * 1.6 + Math.sin(age * 0.9 + k) * 0.5
+    const sy = y - 6.8 - age * 0.9
+    disc(c, P(sx), P(sy), K * 0.45, K * 0.45, age > 4 ? R.METAL3 : R.WHITE)
+  }
+}
+
 export function drawHiProp(c, a, prop, character) {
   const f = prop.f ?? 0
   switch (prop.id) {
@@ -196,6 +215,7 @@ export function drawHiProp(c, a, prop, character) {
     case 'magnifier': return magnifier(c, a, f)
     case 'branch': return branch(c, a, f)
     case 'plug': return plug(c, a, f)
+    case 'mug': return mug(c, a, f)
     default:
   }
 }
@@ -216,6 +236,42 @@ function e404(c, a, f) {
   glyph(R.RED, 0, 0)
 }
 
+/** A sun with turning rays, up at the corner (the morning and the afternoon greetings; `f` turns the rays). */
+function sun(c, a, f) {
+  const x = Math.min(a.cx + 11, 36 - 5)
+  const y = Math.max(5.4, a.top - 0.5)
+  for (let i = 0; i < 8; i++) {
+    const t = (i * PI) / 4 + f * 0.12
+    const r0 = 3.4
+    const r1 = i % 2 ? 4.4 : 5.2
+    line(c, P(x + Math.cos(t) * r0), P(y + Math.sin(t) * r0), P(x + Math.cos(t) * r1), P(y + Math.sin(t) * r1), R.GOLD, K * 0.6)
+  }
+  disc(c, P(x), P(y), K * 2.6, K * 2.6, R.GOLD)
+  disc(c, P(x), P(y), K * 2.2, K * 2.2, R.YEL)
+  disc(c, P(x - 0.8), P(y - 0.8), K * 0.7, K * 0.6, R.WHITE)
+}
+
+/** A crescent moon at the corner (the evening and night greetings). */
+function moon(c, a) {
+  const x = Math.min(a.cx + 11, 36 - 5)
+  const y = Math.max(5.4, a.top - 0.5)
+  disc(c, P(x), P(y), K * 3, K * 3, R.CREAM)
+  disc(c, P(x), P(y), K * 2.6, K * 2.6, R.WHITE)
+  disc(c, P(x + 1.5), P(y - 0.7), K * 2.5, K * 2.5, 0)
+}
+
+/** Little stars that twinkle around the pet. */
+function stars(c, a, f) {
+  const spots = [[a.cx - 12, a.top + 1.5], [a.cx + 14, a.top + 10], [a.cx - 8, a.top - 3.5], [a.cx + 5, a.top - 4]]
+  spots.forEach(([x, y], i) => {
+    const grow = [0.4, 0.8, 1.2, 0.8, 0.4, 0.2][(f + i * 2) % 6]
+    const r = 0.6 + grow
+    line(c, P(x - r), P(y), P(x + r), P(y), R.YEL, K * 0.8)
+    line(c, P(x), P(y - r), P(x), P(y + r), R.YEL, K * 0.8)
+    disc(c, P(x), P(y), K * 0.4, K * 0.4, R.WHITE)
+  })
+}
+
 export function drawHiFx(c, a, item) {
   const f = item.f ?? 0
   switch (item.id) {
@@ -226,6 +282,9 @@ export function drawHiFx(c, a, item) {
     case 'spinner': return spinner(c, a, f)
     case 'glyphs': return glyphs(c, a, f)
     case 'e404': return e404(c, a, f)
+    case 'sun': return sun(c, a, f)
+    case 'moon': return moon(c, a)
+    case 'stars': return stars(c, a, f)
     default:
   }
 }

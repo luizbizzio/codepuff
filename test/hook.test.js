@@ -272,6 +272,32 @@ test('the CLI validates settings and guards destructive commands', () => {
   } finally { done() }
 })
 
+test('the CLI takes what the pet wears and the frame only once they are earned, and saves the pet card', () => {
+  const { dir, done } = tempDir()
+  try {
+    assert.match(run(dir, ['set', 'name', 'Mochi']).stdout, /Mochi/)
+    assert.equal(run(dir, ['set', 'accessory', 'crown']).status, 1, 'locked')
+    assert.match(run(dir, ['set', 'accessory', 'crown']).stderr, /locked/)
+    assert.equal(run(dir, ['set', 'accessory', 'nope']).status, 1)
+    assert.equal(run(dir, ['set', 'frame', 'gold']).status, 1, 'locked')
+    assert.equal(run(dir, ['set', 'accessory', 'none']).status, 0)
+    // Earned: the milestone for it is in the pet's file.
+    const store = openStore(dir)
+    const pet = store.ensurePet()
+    pet.milestones = ['tools-100', 'days-365']
+    store.writePet(pet)
+    assert.equal(run(dir, ['set', 'accessory', 'flower']).status, 0)
+    assert.equal(run(dir, ['set', 'frame', 'gold']).status, 0)
+    assert.equal(openStore(dir).ensurePet().prefs.accessory, 'flower')
+    assert.equal(openStore(dir).ensurePet().prefs.frame, 'gold')
+    const card = run(dir, ['card'])
+    assert.equal(card.status, 0)
+    assert.match(card.stdout, /cards[\\/]codepuff-mochi\.svg/)
+    const svg = readFileSync(join(dir, 'cards', 'codepuff-mochi.svg'), 'utf8')
+    assert.ok(svg.startsWith('<svg') && svg.includes('Mochi') && svg.includes('#f2c14e'), 'the card wears the gold frame')
+  } finally { done() }
+})
+
 test('the Codex hook judges the user\'s message the same way: hearts fall, nothing of the text is kept, and the switch turns it off', () => {
   const { dir, done } = tempDir()
   try {

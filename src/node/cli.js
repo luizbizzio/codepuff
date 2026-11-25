@@ -1,7 +1,7 @@
 // The `codepuff` command. Everything that is not the hot-path hook lives here.
 
-import { existsSync, readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { openStore } from './store.js'
 import { dataDir } from './paths.js'
@@ -10,6 +10,10 @@ import { addDays, dayKey } from '../core/days.js'
 import { AGENT_LABELS, ago, statRows } from '../core/format.js'
 import { focus } from '../core/petstate.js'
 import { PRESETS, isHex } from '../core/color.js'
+import { ACCESSORY_IDS, FRAME_IDS, PALETTE_REWARDS, frameOf, paletteOpen, unlockedOf, wornOf } from '../core/rewards.js'
+import { cardSvg } from '../core/card.js'
+import { MILESTONES, lifeOf } from '../core/milestones.js'
+import { heartsOf } from '../core/mood.js'
 import { LANGUAGE_CODES, chooseLanguage, setLanguage, t } from '../core/i18n/index.js'
 import { systemLanguage } from './locale.js'
 import { BAND_SIZES, CHARACTERS, MOTIONS, SOUNDS, SOUND_MOMENTS, VOLUMES, cleanName, displayName, NAME_MAX } from '../core/settings.js'
@@ -48,7 +52,10 @@ Usage: codepuff <command>
   set sound <question|finish|reset5h|resetWeek> <off|chime|bell|pop|ding|tada>   the sounds played in Claude Code: when it asks you something, when it finishes, when the 5-hour or weekly limit resets
   set band <on|off|small|medium|large>   the compact band above the Claude Code prompt, and its size
   set body <#rrggbb|default>  set accent <#rrggbb|default>
-  set palette <id>           one of: ${PRESETS.map(p => p.id).join(', ')}
+  set accessory <id|none>    what the pet wears (earned with the achievements: ids are ${ACCESSORY_IDS.join(', ')})
+  set frame <id|none>        the frame of the pet card and of the compact band (earned too: ${FRAME_IDS.join(', ')})
+  card                       saves the pet card (an SVG with the pet and a few of its numbers) to the data folder
+  set palette <id>           one of: ${PRESETS.filter(p => !PALETTE_REWARDS.some(r => r.id === p.id)).map(p => p.id).join(', ')} (and the ones earned: ${PALETTE_REWARDS.map(r => r.id).join(', ')})
   set motion <full|calm|reduced>   how much the pet moves (calm is the default)
   set language <auto|en|pt-BR|...>   the language of the pet's words (auto follows the computer's; see docs/FEATURES.md)
   set restore                restore the default appearance
@@ -71,6 +78,7 @@ export async function main(argv) {
       case 'status': return status(store)
       case 'stats': return stats(store, flags)
       case 'set': return set(store, rest)
+      case 'card': return card(store)
       case 'data': return data(store, rest, flags)
       case 'doctor': return (await import('./doctor.js')).doctor(store, ROOT)
       case 'setup': return (await import('./install.js')).setupCommand(flags)
@@ -193,10 +201,21 @@ function set(store, [key, ...values]) {
       break
     case 'palette': {
       const preset = PRESETS.find(p => p.id === value)
-      if (!preset) return fail('Palettes: ' + PRESETS.map(p => p.id).join(', '))
+      if (!preset) return fail('Palettes: ' + PRESETS.filter(p => paletteOpen(p.id, pet.milestones)).map(p => p.id).join(', '))
+      if (!paletteOpen(preset.id, pet.milestones)) return fail(preset.id + ' is still locked: it is a reward (see the Achievements tab).')
       pet.colors = { body: preset.body, accent: preset.accent }
       break
     }
+    case 'accessory':
+      if (value !== 'none' && !ACCESSORY_IDS.includes(value)) return fail('Accessories: none, ' + ACCESSORY_IDS.join(', '))
+      if (value !== 'none' && !unlockedOf('accessory', pet.milestones).includes(value)) return fail(value + ' is still locked: it is a reward (see the Achievements tab in Claude Code, or "codepuff stats").')
+      pet.prefs.accessory = value
+      break
+    case 'frame':
+      if (value !== 'none' && !FRAME_IDS.includes(value)) return fail('Frames: none, ' + FRAME_IDS.join(', '))
+      if (value !== 'none' && !unlockedOf('frame', pet.milestones).includes(value)) return fail(value + ' is still locked: it is a reward (see the Achievements tab in Claude Code, or "codepuff stats").')
+      pet.prefs.frame = value
+      break
     case 'motion':
       { const level = { auto: 'calm', off: 'reduced' }[value] ?? value
         if (!MOTIONS.includes(level)) return fail('Motion: full, calm or reduced.')
@@ -209,11 +228,32 @@ function set(store, [key, ...values]) {
       break
     }
     case 'restore': store.resetAppearance(); return out('Appearance restored. Your pet keeps its birthday and statistics.')
-    default: return fail('Usage: codepuff set name|character|sound|volume|mood|band|body|accent|palette|motion|language <value>, or: codepuff set restore')
+    default: return fail('Usage: codepuff set name|character|sound|volume|mood|band|body|accent|palette|accessory|frame|motion|language <value>, or: codepuff set restore')
   }
   store.writePet(pet)
   const saved = store.ensurePet()
   out(`Saved. ${displayName(saved)} (${saved.character})${saved.colors.body ? ' with custom colors' : ''}.`)
+}
+
+/** Saves the pet card (the same SVG the Claude Code pane's camera button saves) to the cards folder of the data folder. */
+function card(store) {
+  useLanguage(store)
+  const now = Date.now()
+  const records = store.listRecords()
+  const pet = store.ensurePet(now)
+  const life = lifeOf(records, now)
+  const total = aggregate(records, { now })
+  const reached = pet.milestones ?? []
+  const svg = cardSvg({
+    name: displayName(pet), character: pet.character, colors: pet.colors, worn: wornOf(pet), frame: frameOf(pet), motion: pet.prefs.motion, hearts: heartsOf(pet.affection.score),
+    streak: life.streak, ageDays: petAge(pet.createdAt, now).days, prompts: total.prompts, tools: total.tools.total, done: MILESTONES.filter(m => reached.includes(m.id)).length, total: MILESTONES.length,
+  })
+  const slug = displayName(pet).replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'pet'
+  const dir = join(dataDir(), 'cards')
+  mkdirSync(dir, { recursive: true })
+  const file = join(dir, 'codepuff-' + slug + '.svg')
+  writeFileSync(file, svg)
+  out(t('cmd.card.saved', { file }))
 }
 
 // ---- data ------------------------------------------------------------------------------------------------------

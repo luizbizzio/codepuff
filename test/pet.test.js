@@ -20,10 +20,14 @@ function timeline(agent, steps, session = 's1') {
 const tool = (id, name, input) => ({ tool_name: name, tool_input: input, tool_use_id: id })
 const state = (rec, offset) => stateOf(rec, T0 + offset).state
 
-test('a new session with nothing happening is idle; an old silent one is resting', () => {
+test('a new session with nothing happening is idle, and the longer it is quiet the further the pet goes: bored, a coffee, a nap', () => {
   const rec = timeline('claude', [[0, 'SessionStart']])
   assert.equal(state(rec, 100), 'idle')
-  assert.equal(state(rec, WINDOWS.stale + 1000), 'idle')
+  assert.equal(state(rec, WINDOWS.bored - 1000), 'idle')
+  assert.equal(state(rec, WINDOWS.bored + 1000), 'bored')
+  assert.equal(state(rec, WINDOWS.coffee + 1000), 'coffee')
+  assert.equal(state(rec, WINDOWS.stale + 1000), 'sleeping')
+  assert.equal(stateOf(rec, T0 + WINDOWS.bored + 1000).running, false, 'resting is not work')
 })
 
 test('each tool shows the matching activity while it runs', () => {

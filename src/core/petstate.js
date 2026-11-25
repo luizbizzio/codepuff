@@ -15,7 +15,10 @@ export const WINDOWS = Object.freeze({
   investigate: 25_000,
   finished: 5_000,
   waiting: 2 * 60_000,
-  /** A session not heard from for this long is shown as resting, whatever it last did. */
+  /** After this long without anything happening the pet gets bored, then (a little later) takes a coffee break, and at `stale` it naps. */
+  bored: 5 * 60_000,
+  coffee: 10 * 60_000,
+  /** A session not heard from for this long is shown as resting (asleep), whatever it last did. */
   stale: 15 * 60_000,
   /** A tool call that started this long ago and never finished is no longer shown as running. */
   tool: 10 * 60_000,
@@ -23,7 +26,7 @@ export const WINDOWS = Object.freeze({
 })
 
 export const STATES = [
-  'idle', 'tired', 'sad', 'thinking', 'reading', 'searching', 'coding', 'running', 'git', 'mcp', 'testing', 'web', 'delegating', 'planning',
+  'idle', 'bored', 'coffee', 'sleeping', 'tired', 'sad', 'thinking', 'reading', 'searching', 'coding', 'running', 'git', 'mcp', 'testing', 'web', 'delegating', 'planning',
   'success', 'error', 'investigating', 'waiting', 'permission', 'finished', 'disconnected',
 ]
 
@@ -33,14 +36,14 @@ const ACT_STATE = { read: 'reading', search: 'searching', edit: 'coding', run: '
 const RANK = Object.freeze({
   permission: 7, error: 6,
   thinking: 5, reading: 5, searching: 5, coding: 5, running: 5, git: 5, mcp: 5, testing: 5, web: 5, delegating: 5, planning: 5, investigating: 5,
-  success: 4, finished: 3, waiting: 2, tired: 1, sad: 1, idle: 1, disconnected: 0,
+  success: 4, finished: 3, waiting: 2, tired: 1, sad: 1, idle: 1, bored: 1, coffee: 1, sleeping: 1, disconnected: 0,
 })
 
 const TIRED_KINDS = ['five_hour', 'seven_day', 'spend_limit']
 
 export function labelFor(state, detail = {}) {
   switch (state) {
-    case 'thinking': case 'reading': case 'searching': case 'coding': case 'running': case 'sad': case 'git': case 'mcp': case 'testing': case 'web': case 'planning': case 'investigating': case 'waiting': case 'finished':
+    case 'bored': case 'coffee': case 'sleeping': case 'thinking': case 'reading': case 'searching': case 'coding': case 'running': case 'sad': case 'git': case 'mcp': case 'testing': case 'web': case 'planning': case 'investigating': case 'waiting': case 'finished':
       return t('state.' + state)
     case 'tired': return t('state.tired.' + (TIRED_KINDS.includes(detail.kind) ? detail.kind : 'plan'), { percent: detail.percent ?? '?' })
     case 'delegating': return detail.helpers ? t('state.delegating.helpers', { n: detail.helpers }) : t('state.delegating')
@@ -64,7 +67,7 @@ export function stateOf(rec, now) {
 
   if (rec.ended) return done('disconnected', { ended: true }, rec.ended)
   base.helpers = live.sub > 0 && now - live.sa < WINDOWS.subagents ? Math.min(live.sub, 3) : 0
-  if (now - rec.last > WINDOWS.stale) return done('idle')
+  if (now - rec.last > WINDOWS.stale) return done('sleeping')
 
   const tool = [...live.tools].filter(item => now - item.t < WINDOWS.tool).sort((a, b) => b.t - a.t)[0]
   if (live.perm) return done('permission', { kind: live.pk }, live.perm)
@@ -79,7 +82,9 @@ export function stateOf(rec, now) {
   }
   if (live.run) return done(base.helpers > 0 ? 'delegating' : 'thinking', {}, live.think || live.lt || live.t0)
   if (live.te && now - live.te < WINDOWS.waiting) return done('waiting', {}, live.te)
-  return done('idle')
+  // Nothing is going on: for a while it just rests, then gets bored, then has a coffee (and, past `stale`, naps).
+  const quiet = now - rec.last
+  return done(quiet > WINDOWS.coffee ? 'coffee' : quiet > WINDOWS.bored ? 'bored' : 'idle')
 }
 
 const rankOf = result => RANK[result.state] ?? 1

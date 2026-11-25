@@ -36,8 +36,10 @@ pixels, an interactive `Svg` without a size). The art fingerprints fail when a c
 | `dev-sync.mjs <folder>` | Copies the mod into a Claude Code dev-mods folder so a change can be tried in a live session |
 | `branding.mjs` | Builds the page the README banner is a picture of (see the comment in the script for the Chrome command) and the animated demo SVGs |
 | `characters.mjs` | Builds one animated SVG per character and state (`docs/images/states/`), one page per character (`docs/characters/`), and rewrites the "What you see" block of the README between its `states:` markers |
+| `badges.mjs` | Writes one SVG for each achievement level (`docs/images/achievements/`) and the table of them in `docs/FEATURES.md` (between its `achievements:` markers). |
+| `mood-review.mjs` | Writes `docs/MOOD-REVIEW.md`, every word the pet reads as an insult or as thanks, language by language, from `src/core/mood.js`, for native speakers to check. |
 | `preview.mjs [scale] [character]` | Contact sheets of the characters and states (`out/`) |
-| `look.mjs <character> [scale] [states]` | One character, a few states, enlarged |
+| `look.mjs <character> [scale] [states]` | One character, a few states, enlarged (`WORN=crown node scripts/look.mjs classic 8 idle` shows what it wears) |
 | `stage-box.mjs` | Measures the one frame every character is drawn in |
 | `bench.mjs` | Measures the overhead (see [PERFORMANCE.md](PERFORMANCE.md)) |
 | `live-codex.mjs [path to codex]` | ONE tiny real Codex run with the hooks attached; prints what Codex sent and what CodePuff made of it (uses a little Codex usage) |

@@ -23,7 +23,7 @@ import { detectLanguage, t } from '../src/core/i18n/index.js'
 import { toolPayload } from '../src/core/normalize.js'
 // @ts-ignore
 import { base64, petSvg, terminalFrame } from '../src/core/render/raster.js'
-import { renderBand, renderCustomize, renderHead, renderStats, renderTabs, sizeOf } from './views.js'
+import { renderAchievements, renderBand, renderCustomize, renderHead, renderSettings, renderStats, renderTabs, sizeOf } from './views.js'
 
 const PANE = 'codepuff'
 
@@ -88,7 +88,7 @@ export const register: Register = on => {
   const applyStatusLine = () => {
     if (!ctl || !bridge) return
     const m = ctl.model()
-    const text = m.pet.line ? `${m.pet.name} · ${m.me.label}` : undefined
+    const text = m.pet.line ? m.statusLine : undefined
     if (text !== lastLine) { lastLine = text; bridge.status(text) }
   }
 
@@ -96,6 +96,7 @@ export const register: Register = on => {
   // a host that cannot say simply leaves the pet rested.
   const readUsage = async () => {
     try { ctl?.setUsage(await bridge?.usage()) } catch { /* no usage figures: the pet is simply not tired */ }
+    ctl?.checkBreak() // (once a minute is often enough for the break reminder, too)
   }
   const watchUsage = () => {
     void readUsage()
@@ -103,18 +104,18 @@ export const register: Register = on => {
   }
 
   // The animation restarts from its first frame whenever what is drawn changes.
-  const epochFor = (character: string, colors: any, state: string, helpers: number) => {
-    const key = [character, colors?.body, colors?.accent, state, helpers].join('|')
+  const epochFor = (character: string, colors: any, state: string, helpers: number, worn: string | null = null) => {
+    const key = [character, colors?.body, colors?.accent, state, helpers, worn].join('|')
     if (epoch.key !== key) { epoch = { key, at: Date.now() }; lastCells = '' }
     return Date.now() - epoch.at
   }
 
   // Terminal animation: frame stepping with $.ui.blit, which repaints cells without a redraw. It runs only while
   // the pane is drawn (a refused blit ends it) and stops by itself when the pose is still.
-  const animate = (requestId: string, character: string, colors: any, state: string, helpers: number, reduced: boolean, columns: number) => {
+  const animate = (requestId: string, character: string, colors: any, state: string, helpers: number, reduced: boolean, columns: number, worn: string | null = null) => {
     if (reduced || !bridge) { timers.anim?.cancel(); return }
     const step = async () => {
-      const frame = terminalFrame({ character, colors, state, helpers, elapsed: epochFor(character, colors, state, helpers), reduced, columns })
+      const frame = terminalFrame({ character, worn, colors, state, helpers, elapsed: epochFor(character, colors, state, helpers, worn), reduced, columns })
       const cells = base64(frame.cells)
       if (cells !== lastCells) {
         const out = await bridge!.blit({ requestId, key: 'pet', cells, columns: frame.columns, rows: frame.rows }).catch(() => ({ deny: 'failed' }))
@@ -176,7 +177,7 @@ export const register: Register = on => {
         now: () => Date.now(),
         run: (argv: string[], cwd?: string) => $.process.run(argv, { cwd, timeoutMs: 4000 }) as any,
       }
-      ctl = createController(io, { locale: (await systemLanguage($)) ?? 'en' })
+      ctl = createController(io, { locale: (await systemLanguage($)) ?? 'en', greet: true })
       ctl.onChange(() => { bridge?.redraw(); flushSoon(); tick(); applyStatusLine(); for (const cue of ctl!.takeCues()) bridge?.play(cue.sound, cue.volume); for (const text of ctl!.takeToasts()) bridge?.toast('🎉 ' + text) })
       await ctl.init({ sid: await $.session.id(), cwd: e.cwd })
       watchUsage()
@@ -268,14 +269,14 @@ export const register: Register = on => {
     // The picture.
     let picture: any = null
     if (surface === 'terminal') {
-      const elapsed = epochFor(m.pet.character, m.pet.colors, m.me.state, helpers)
-      const frame = terminalFrame({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers, elapsed, reduced, columns: Math.max(12, columns) })
+      const elapsed = epochFor(m.pet.character, m.pet.colors, m.me.state, helpers, m.pet.worn)
+      const frame = terminalFrame({ character: m.pet.character, worn: m.pet.worn, colors: m.pet.colors, state: m.me.state, helpers, elapsed, reduced, columns: Math.max(12, columns) })
       if (frame.columns <= columns) {
         picture = <Raster key="pet" columns={frame.columns} rows={frame.rows} cells={base64(frame.cells)} />
-        animate((e as any).requestId, m.pet.character, m.pet.colors, m.me.state, helpers, reduced, Math.max(12, columns))
+        animate((e as any).requestId, m.pet.character, m.pet.colors, m.me.state, helpers, reduced, Math.max(12, columns), m.pet.worn)
       }
     } else if (Svg) {
-      const svg = petSvg({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers, scale: isWidget ? 2.2 : 2.8, reduced, motion: m.pet.motion, hover: true })
+      const svg = petSvg({ character: m.pet.character, worn: m.pet.worn, colors: m.pet.colors, state: m.me.state, helpers, scale: isWidget ? 2.2 : 2.8, reduced, motion: m.pet.motion, hover: true })
       picture = <Svg source={svg} alt={`${m.pet.name}: ${m.me.label}`} isInteractive {...sizeOf(svg)} />
     }
 
@@ -284,7 +285,9 @@ export const register: Register = on => {
     if (isWidget) return <Box flexDirection="column" alignItems="center">{picture}{head}</Box>
 
     const tabs = renderTabs(els, m, ctl)
+    if (m.ui.tab === 'achievements') return renderAchievements(els, m, ctl, tabs, surface)
+    if (m.ui.tab === 'settings') return renderSettings(els, m, ctl, tabs, (sound, volume) => bridge?.play(sound, volume))
     if (m.ui.tab !== 'look') return renderStats(els, m, ctl, tabs, surface)
-    return renderCustomize(els, m, ctl, tabs, picture, (sound, volume) => bridge?.play(sound, volume))
+    return renderCustomize(els, m, ctl, tabs, picture)
   })
 }

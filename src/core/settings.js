@@ -4,6 +4,7 @@
 import { isHex } from './color.js'
 import { CHARACTER_IDS, CHARACTER_NAMES } from './art/defaults.js'
 import { LANGUAGE_CODES } from './i18n/index.js'
+import { ACCESSORY_IDS, FRAME_IDS } from './rewards.js'
 
 const PET_SCHEMA = 2
 export const NAME_MAX = 16
@@ -17,6 +18,24 @@ export const VOLUMES = Object.freeze(['low', 'medium', 'high'])
 /** question: the agent asks you something; finish: a turn ends well; reset5h and resetWeek: the plan's 5-hour or weekly limit has reset. */
 /** How much the pet moves: full (livelier sways), calm (the default), or reduced (still). */
 export const MOTIONS = Object.freeze(['full', 'calm', 'reduced'])
+/** When the plan's limit bars show: always both windows (the default), only once half of a window is used (auto), only the 5-hour one, only the weekly one, or never. */
+export const PLAN_MODES = Object.freeze(['auto', 'always', 'five_hour', 'seven_day', 'off'])
+/** The break reminder: after `breakEvery` minutes of work (0 is never; from 15 minutes to 8 hours) without a pause of `breakRest` minutes. */
+export const BREAK_MIN = 15
+export const BREAK_MAX = 480
+export const REST_MIN = 5
+export const REST_MAX = 60
+export const BREAK_STEP = 15
+/** What the buttons offer (the arrows go in steps of fifteen minutes anywhere in between). */
+export const BREAK_PRESETS = Object.freeze([30, 45, 60, 90, 120, 180, 240])
+export const REST_PRESETS = Object.freeze([5, 10, 15, 20, 30])
+const OLD_BREAKS = { '1h': 60, '2h': 120, '3h': 180 }
+const breakEveryOf = prefs => {
+  const n = prefs?.breakEvery
+  if (Number.isFinite(n)) return n < BREAK_MIN ? 0 : Math.min(BREAK_MAX, Math.round(n))
+  return OLD_BREAKS[prefs?.breaks] ?? 0 // (an earlier version had "off", "1h", "2h" and "3h")
+}
+const breakRestOf = prefs => (Number.isFinite(prefs?.breakRest) ? Math.max(REST_MIN, Math.min(REST_MAX, Math.round(prefs.breakRest))) : 10)
 export const SOUND_MOMENTS = Object.freeze(['question', 'finish', 'reset5h', 'resetWeek'])
 const DEFAULT_SOUNDS = Object.freeze({ question: 'pop', finish: 'tada', reset5h: 'chime', resetWeek: 'chime' })
 /** How tall the compact band is (its pet is drawn this tall, and the pie column beside it), in pixels, for each size the user can pick. */
@@ -52,7 +71,7 @@ export function defaultPet(now = Date.now()) {
     name: '',
     character: DEFAULT_CHARACTER,
     colors: { body: null, accent: null },
-    prefs: { motion: 'calm', line: true, band: true, bandSize: 'large', sounds: { ...DEFAULT_SOUNDS }, volume: 'low', mood: true, language: 'auto' },
+    prefs: { motion: 'calm', line: true, band: true, bandSize: 'large', sounds: { ...DEFAULT_SOUNDS }, volume: 'low', mood: true, language: 'auto', plan: 'always', accessory: 'none', frame: 'none', breakEvery: 0, breakRest: 10 },
     seen: [], // one-time notices already shown
     affection: { score: 100, day: '', at: 0 }, // how much the pet likes the user (1 to 100, shown as one to five hearts); see mood.js
     milestones: null, // the milestones already celebrated; null until the first look at the statistics (what was reached before is not celebrated)
@@ -96,6 +115,12 @@ export function sanitizePet(raw, now = Date.now()) {
       band: migrated.prefs?.band !== false,
       bandSize: Object.hasOwn(BAND_SIZES, migrated.prefs?.bandSize) ? migrated.prefs.bandSize : 'large',
       mood: migrated.prefs?.mood !== false,
+      plan: PLAN_MODES.includes(migrated.prefs?.plan) ? migrated.prefs.plan : 'always',
+      // What it wears (only shown once the milestone for it has been reached) and when it suggests a break.
+      accessory: ACCESSORY_IDS.includes(migrated.prefs?.accessory) ? migrated.prefs.accessory : 'none',
+      frame: FRAME_IDS.includes(migrated.prefs?.frame) ? migrated.prefs.frame : 'none',
+      breakEvery: breakEveryOf(migrated.prefs),
+      breakRest: breakRestOf(migrated.prefs),
       // "auto" follows the system's language; otherwise one of the supported codes (see i18n/).
       language: LANGUAGE_CODES.includes(migrated.prefs?.language) ? migrated.prefs.language : 'auto',
       volume: VOLUMES.includes(migrated.prefs?.volume) ? migrated.prefs.volume : 'low',

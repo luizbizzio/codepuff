@@ -2,10 +2,27 @@
 // controller's own methods (`api`), so it behaves exactly like the buttons in the pane. The words of the command stay English (so
 // the documentation is true in every language); what it answers is in the active language.
 
-import { CHARACTERS, DEFAULT_NAMES, BAND_SIZES, MOTIONS, NAME_MAX, SOUNDS, SOUND_MOMENTS, VOLUMES, cleanName, displayName } from '../core/settings.js'
+import { CHARACTERS, DEFAULT_NAMES, BAND_SIZES, BREAK_MAX, BREAK_MIN, MOTIONS, REST_MAX, REST_MIN, NAME_MAX, PLAN_MODES, SOUNDS, SOUND_MOMENTS, VOLUMES, cleanName, displayName } from '../core/settings.js'
+import { ACCESSORIES, FRAMES, PALETTE_REWARDS, rewardFor } from '../core/rewards.js'
+import { MILESTONES } from '../core/milestones.js'
 import { PRESETS, isHex } from '../core/color.js'
+import { minutesText } from '../core/format.js'
 import { LANGUAGE_CODES, t } from '../core/i18n/index.js'
 import { SCOPES } from './constants.js'
+
+/** "45", "45m", "1h", "1h30", "1.5h" as minutes (0 when it is none of those). */
+function minutesOf(text) {
+  const s = String(text).trim().toLowerCase().replace(',', '.')
+  let m = /^(\d+)\s*h\s*(\d+)\s*m?(?:in)?$/.exec(s)
+  if (m) return Number(m[1]) * 60 + Number(m[2])
+  m = /^(\d+(?:\.\d+)?)\s*h(?:ours?)?$/.exec(s)
+  if (m) return Math.round(Number(m[1]) * 60)
+  m = /^(\d+)\s*(?:m|min|minutes?)?$/.exec(s)
+  return m ? Number(m[1]) : 0
+}
+
+/** What it takes to earn something, in words ("100 tasks done together!"). */
+const how = unlock => { const m = MILESTONES.find(item => item.id === unlock); return m ? t(m.key, { n: m.n }) : '' }
 
 /** @returns {Promise<{ text: string, open?: boolean }>} */
 export async function runCommand(api, args = '') {
@@ -20,8 +37,8 @@ export async function runCommand(api, args = '') {
         const m = api.model()
         return { text: t('cmd.pet', { name: m.pet.name, label: m.me.label, streak: t('unit.day', { n: m.life.current }), age: t('unit.day', { n: m.age.days }) }), open: true }
       }
-      case 'help': return say('/codepuff [open] · stats [session|all|7d|30d] · name <name> · character <id> · characters · palette <id> · body <#hex> · accent <#hex> · motion <full|calm|reduced> · band <on|off|small|medium|large> · sound <question|finish|reset5h|resetWeek> <off|chime|bell|pop|ding|tada> · volume <low|medium|high> · mood <on|off> · line <on|off> · language <auto|' + LANGUAGE_CODES.join('|') + '> · restore · export · import <file> · reset stats|pet confirm · palettes')
-      case 'palettes': return say(t('cmd.palettes', { list: PRESETS.map(p => p.id).join(', ') }))
+      case 'help': return say('/codepuff [open] · stats [session|all|7d|30d] · name <name> · character <id> · characters · palette <id> · body <#hex> · accent <#hex> · motion <full|calm|reduced> · band <on|off|small|medium|large> · sound <question|finish|reset5h|resetWeek> <off|chime|bell|pop|ding|tada> · volume <low|medium|high> · mood <on|off> · line <on|off> · plan <auto|always|five_hour|seven_day|off> · accessory <id|none> · frame <id|none> · achievements · breaks <off|45m|1h|1h30> · breakrest <minutes> · card · language <auto|' + LANGUAGE_CODES.join('|') + '> · restore · export · import <file> · reset stats|pet confirm · palettes')
+      case 'palettes': return say(t('cmd.palettes', { list: PRESETS.filter(p => api.model().palettes[p.id] !== false).map(p => p.id).join(', ') }))
       case 'stats': {
         if (value && SCOPES.includes(value)) api.setUi({ scope: value })
         const m = api.model()
@@ -50,7 +67,10 @@ export async function runCommand(api, args = '') {
         await api.setPet({ prefs: { band: value === 'on' } }); return say(t(value === 'on' ? 'cmd.band.on' : 'cmd.band.off'))
       case 'palette': {
         const preset = PRESETS.find(p => p.id === value)
-        if (!preset) return say(t('cmd.palettes', { list: PRESETS.map(p => p.id).join(', ') }))
+        const open = api.model().palettes
+        if (!preset) return say(t('cmd.palettes', { list: PRESETS.filter(p => open[p.id] !== false).map(p => p.id).join(', ') }))
+        // The palettes that are rewards stay locked until earned.
+        if (open[preset.id] === false) return say(t('cmd.accessory.locked', { name: t('palette.' + preset.id), how: how(PALETTE_REWARDS.find(item => item.id === preset.id).unlock) }))
         await api.setPet({ colors: { body: preset.body, accent: preset.accent } }); return say(t('cmd.palette', { name: t('palette.' + preset.id) }))
       }
       case 'body':
@@ -68,6 +88,51 @@ export async function runCommand(api, args = '') {
       case 'line':
         if (!['on', 'off'].includes(value)) return usage('/codepuff line on|off')
         await api.setPet({ prefs: { line: value === 'on' } }); return say(t(value === 'on' ? 'cmd.line.on' : 'cmd.line.off'))
+      case 'accessory': {
+        const m = api.model()
+        if (value === 'none') { await api.setPet({ prefs: { accessory: 'none' } }); return say(t('cmd.accessory.none')) }
+        const item = m.accessories.find(a => a.id === value)
+        if (!item) return say(t('cmd.accessory.usage', { list: m.accessories.filter(a => a.unlocked).map(a => a.id).join(', ') || '-' }))
+        if (!item.unlocked) return say(t('cmd.accessory.locked', { name: item.name, how: how(ACCESSORIES.find(a => a.id === item.id).unlock) }))
+        await api.setPet({ prefs: { accessory: item.id } }); return say(t('cmd.accessory.set', { name: item.name }))
+      }
+      case 'frame': {
+        const m = api.model()
+        if (value === 'none') { await api.setPet({ prefs: { frame: 'none' } }); return say(t('cmd.frame.none')) }
+        const item = m.frames.find(f => f.id === value)
+        if (!item) return say(t('cmd.frame.usage', { list: m.frames.filter(f => f.unlocked).map(f => f.id).join(', ') || '-' }))
+        if (!item.unlocked) return say(t('cmd.accessory.locked', { name: item.name, how: how(FRAMES.find(f => f.id === item.id).unlock) }))
+        await api.setPet({ prefs: { frame: item.id } }); return say(t('cmd.frame.set', { name: item.name }))
+      }
+      case 'achievements': {
+        const { done, total } = api.model().achievements
+        const reached = api.pet.milestones ?? []
+        const lines = MILESTONES.map(m => {
+          const reward = rewardFor(m.id)
+          return `${reached.includes(m.id) ? '✔' : '·'} ${t(m.key, { n: m.n })}${reward ? ' (' + t('ui.ach.reward', { name: t(reward.key) }) + ')' : ''}`
+        })
+        return say([t('ui.ach') + ' · ' + t('ui.ach.count', { done, total }), ...lines].join('\n'))
+      }
+      case 'breaks': {
+        if (value === 'off') { await api.setPet({ prefs: { breakEvery: 0 } }); return say(t('cmd.breaks.off')) }
+        const minutes = minutesOf(value)
+        if (minutes < BREAK_MIN || minutes > BREAK_MAX) return usage(`/codepuff breaks <off|45m|1h|1h30|90> (from ${BREAK_MIN} minutes to ${BREAK_MAX / 60} hours)`)
+        await api.setPet({ prefs: { breakEvery: minutes } })
+        return say(t('cmd.breaks.on', { time: minutesText(minutes) }))
+      }
+      case 'breakrest': {
+        const minutes = minutesOf(value)
+        if (minutes < REST_MIN || minutes > REST_MAX) return usage(`/codepuff breakrest <${REST_MIN} to ${REST_MAX} minutes>`)
+        await api.setPet({ prefs: { breakRest: minutes } })
+        return say(t('cmd.breaks.rest', { time: minutesText(minutes) }))
+      }
+      case 'card': { const saved = await api.saveCard({ notify: false }); return say(t('cmd.card.saved', { file: saved.file })) }
+      case 'plan': {
+        // (A few easier words for the same choices.)
+        const mode = { '5h': 'five_hour', week: 'seven_day', weekly: 'seven_day', on: 'always', both: 'always' }[value] ?? value
+        if (!PLAN_MODES.includes(mode)) return usage('/codepuff plan <' + PLAN_MODES.join('|') + '>')
+        await api.setPet({ prefs: { plan: mode } }); return say(t('cmd.plan.' + mode))
+      }
       case 'language': {
         // The code as written ("pt-BR", or "pt-br" in any case), or auto.
         const code = value.toLowerCase() === 'auto' ? 'auto' : LANGUAGE_CODES.find(item => item.toLowerCase() === value.toLowerCase())

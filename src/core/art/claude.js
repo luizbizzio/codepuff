@@ -45,6 +45,8 @@ function drawClaude(c, pose) {
     cx: tf.X(18), top: tf.Y(9 - d - 4), bottom: tf.Y(24), faceY: tf.Y(13), left: tf.X(10), right: tf.X(26 + d),
     hands: handsFor(pose.hands ?? 'rest', tf.X(18), tf.Y(9), tf.Y(23)),
     arms: { left: [tf.X(10), tf.Y(14)], right: [tf.X(26 + d), tf.Y(14)] },
+    // The hat sits on the middle of the top of the box; the eyes are on the front, a little lower than the design row and 7 pixels from the middle.
+    head: { cx: tf.X(18 + d / 2) * K, faceX: tf.X(18) * K, top: tf.Y(9 - d) * K, eyeY: tf.Y(13) * K + 1.2, gap: 7 },
   }
 }
 

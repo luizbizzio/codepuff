@@ -1,6 +1,6 @@
 {
   "name": "codepuff",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "An interactive coding pet for Claude Code: it reacts to what the agent is really doing and keeps statistics shared with Codex.",
   "author": { "name": "Luiz Bizzio" },
   "license": "Apache-2.0",

@@ -4,6 +4,8 @@ import { createController } from '../src/claude/controller.js'
 import { openStore } from '../src/node/store.js'
 import { normalizeHook } from '../src/core/normalize.js'
 import { WINDOWS } from '../src/core/petstate.js'
+import { greetingAt, REACTION_LENGTH } from '../src/claude/constants.js'
+import { cardSvg } from '../src/core/card.js'
 import { T0, tempDir } from './helpers.js'
 
 /** An in-memory stand-in for the host's file system, with the same limits: read, write, list, no append, no delete. */
@@ -305,7 +307,7 @@ test('the model is plain JSON, small, and the same for the same inputs', async (
   ctl.observe('UserPromptSubmit', payload())
   const a = JSON.stringify(ctl.model())
   assert.equal(a, JSON.stringify(ctl.model()))
-  assert.ok(a.length < 6000)
+  assert.ok(a.length < 10000, 'small (' + a.length + '): the achievements and what can be earned are most of it')
 })
 
 test('the pet looks tired when the plan is nearly used up, and only while it has nothing else to do', async () => {
@@ -349,6 +351,19 @@ test('the model reports how tasks went, as the agent said: successes and failure
   assert.deepEqual(ctl.model().outcome, { ok: 3, failed: 1 })
 })
 
+test('the tests tile says how many runs could not be confirmed: a piped command hides its exit code', async () => {
+  const { io } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  ctl.observe('UserPromptSubmit', payload())
+  ctl.observe('PostToolUse', payload(tool('t1', 'Bash', { command: 'npm test | tail -5' }), { tool_response: {} }))
+  ctl.observe('PostToolUse', payload(tool('t2', 'Bash', { command: 'npm test' }), { tool_response: {} }))
+  const tests = ctl.model().stats.tiles.find(tile => tile.id === 'tests')
+  assert.equal(tests.value, '2')
+  assert.match(tests.note, /1 passed/)
+  assert.match(tests.note, /1 unconfirmed/)
+})
+
 test('the compact band size is a preference: small, medium or large, large by default', async () => {
   const { io } = fakeHost()
   const ctl = createController(io)
@@ -361,7 +376,69 @@ test('the compact band size is a preference: small, medium or large, large by de
   await ctl.setPet({ prefs: { bandSize: 'huge' } })
   assert.equal(ctl.model().pet.bandSize, 'large', 'an unknown size falls back to the default')
   await ctl.command('band small')
-  assert.ok(ctl.model().pet.bandHeight < 96 && ctl.model().pet.band)
+  assert.ok(ctl.model().pet.bandHeight < 96 &&ctl.model().pet.band)
+})
+
+test('plan limits: both windows are always shown by default, or only when they matter on request; the model keeps every window either way', async () => {
+  const { io, clock } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  assert.equal(ctl.model().pet.plan, 'always', 'by default both windows are shown')
+  ctl.setUsage({ rateLimits: [{ kind: 'five_hour', percentUsed: 12, resetsAt: new Date(clock.at + 3_600_000).toISOString() }, { kind: 'seven_day', percentUsed: 3 }] })
+  assert.deepEqual(ctl.model().plan.map(w => [w.id, w.percent]), [['five_hour', 12], ['seven_day', 3]], 'the windows are always in the model: what is shown is decided when drawing')
+  assert.match((await ctl.command('plan auto')).text, /half/i)
+  assert.equal(ctl.model().pet.plan, 'auto')
+  assert.match((await ctl.command('plan always')).text, /always/i)
+  assert.equal(ctl.model().pet.plan, 'always')
+  assert.match((await ctl.command('plan 5h')).text, /5-hour/)
+  assert.equal(ctl.model().pet.plan, 'five_hour')
+  assert.match((await ctl.command('plan week')).text, /weekly/)
+  assert.equal(ctl.model().pet.plan, 'seven_day')
+  assert.match((await ctl.command('plan off')).text, /hidden/)
+  assert.equal(ctl.model().pet.plan, 'off')
+  await ctl.command('plan auto')
+  assert.match((await ctl.command('plan sometimes')).text, /plan <auto\|always\|five_hour\|seven_day\|off>/, 'an unknown word shows the syntax')
+  assert.equal(ctl.model().pet.plan, 'auto')
+  await ctl.setPet({ prefs: { plan: 'nonsense' } })
+  assert.equal(ctl.model().pet.plan, 'always', 'an unknown value falls back to the default')
+  await ctl.command('plan always')
+  const other = createController(io)
+  await other.init({ sid: 'b', cwd: '/w' })
+  assert.equal(other.model().pet.plan, 'always', 'the choice is kept between sessions')
+})
+
+test('the session cost estimate: shown for this session only, and never when the host reports none', async () => {
+  const { io } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  const costTile = () => ctl.model().stats.tiles.find(tile => tile.id === 'cost')
+  const costRow = () => ctl.model().stats.rows.find(row => row.id === 'cost')
+  ctl.setUi({ scope: 'session' })
+  assert.equal(costTile(), undefined, 'nothing read yet: no tile')
+  assert.equal(ctl.model().sessionCost, null, 'nothing read yet: nothing for the band either')
+  ctl.setUsage({ rateLimits: [], cost: { usd: 1.234 } })
+  assert.equal(ctl.model().sessionCost, '$1.23', 'the compact band shows it, without the approximation sign')
+  assert.equal(costTile().value, '≈ $1.23')
+  assert.equal(costTile().note, 'estimate')
+  assert.equal(costRow().value, '≈ $1.23')
+  assert.match(costRow().label, /estimate/)
+  const ids = ctl.model().stats.rows.map(row => row.id)
+  assert.equal(ids[ids.indexOf('time') + 1], 'cost', 'right after the agent time')
+
+  ctl.setUsage({ rateLimits: [], cost: { usd: 1234.5 } })
+  assert.equal(costTile().value, '≈ $1,234.50')
+  ctl.setUsage({ rateLimits: [], cost: { usd: 0 } })
+  assert.equal(costTile().value, '≈ $0.00')
+
+  ctl.setUi({ scope: '7d' })
+  assert.equal(costTile(), undefined, 'a cost is of this session: no tile for a period')
+  assert.equal(ctl.model().sessionCost, '$0.00', 'the band is about this session whatever period the statistics show')
+  ctl.setUi({ scope: 'session' })
+  ctl.setUsage({ rateLimits: [] })
+  assert.equal(costTile(), undefined, 'no figure from the host: nothing, not zero')
+  assert.equal(costRow(), undefined)
+  assert.equal(ctl.model().sessionCost, null)
+  assert.equal(ctl.model().pet.cost, undefined, 'there is no option for it')
 })
 
 test('sounds: the pet plays what the user chose when the agent asks something and when a turn ends well', async () => {
@@ -416,8 +493,9 @@ test('milestones: reaching a round number celebrates once, and what was reached 
   clock.at += 6000
   ctl.observe('PostToolUse', payload(tool('last', 'Read', { file_path: '/w/a' }), { tool_response: {} }))
   const toasts = ctl.takeToasts()
-  assert.equal(toasts.length, 1)
+  assert.equal(toasts.length, 2, 'the milestone, and what it unlocked')
   assert.match(toasts[0], /100 tasks done together/)
+  assert.match(toasts[1], /Unlocked: Flower/)
   assert.equal(ctl.model().me.state, 'delighted', 'the pet celebrates')
   assert.deepEqual(ctl.pet.milestones.includes('tools-100'), true, 'and remembers it')
   clock.at += 6000
@@ -427,6 +505,269 @@ test('milestones: reaching a round number celebrates once, and what was reached 
   const again = createController(io)
   await again.init({ sid: 'b', cwd: '/w' })
   assert.deepEqual(again.takeToasts(), [])
+})
+
+/** Gives the pet a hundred tool calls, which is the milestone that unlocks the flower. */
+function reachHundredTasks(ctl, clock) {
+  ctl.observe('UserPromptSubmit', payload())
+  for (let i = 0; i < 100; i++) ctl.observe('PostToolUse', payload(tool('t' + i, 'Read', { file_path: '/w/a' }), { tool_response: {} }))
+  clock.at += 6000
+  ctl.observe('PostToolUse', payload(tool('last', 'Read', { file_path: '/w/a' }), { tool_response: {} }))
+}
+
+test('accessories: earned with a milestone, worn only once earned, chosen with the button or /codepuff accessory', async () => {
+  const { io, clock } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  ctl.takeToasts()
+  const flower = () => ctl.model().accessories.find(item => item.id === 'flower')
+  assert.equal(flower().unlocked, false)
+  assert.match((await ctl.command('accessory flower')).text, /still locked: 100 tasks/)
+  assert.equal(ctl.model().pet.worn, null)
+  // Saved before it was earned (an edited file), it is still not worn.
+  await ctl.setPet({ prefs: { accessory: 'flower' } })
+  assert.equal(ctl.model().pet.worn, null, 'a locked accessory is not worn')
+  await ctl.setPet({ prefs: { accessory: 'none' } })
+
+  reachHundredTasks(ctl, clock)
+  assert.equal(flower().unlocked, true)
+  assert.match((await ctl.command('accessory flower')).text, /Now wearing: Flower/)
+  assert.equal(ctl.model().pet.worn, 'flower')
+  assert.match((await ctl.command('accessory crown')).text, /still locked/)
+  assert.match((await ctl.command('accessory nope')).text, /Available now: flower/)
+  assert.match((await ctl.command('accessory none')).text, /Not wearing anything/)
+  assert.equal(ctl.model().pet.worn, null)
+  await ctl.setPet({ prefs: { accessory: 'party' } })
+  assert.equal(ctl.model().pet.accessory, 'party', 'the choice is kept')
+  assert.equal(ctl.model().pet.worn, null, 'but nothing is worn until the milestone for it is reached')
+})
+
+test('palettes and band frames are rewards too: locked until earned, chosen with the buttons or /codepuff palette and frame', async () => {
+  const { io, clock, files } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  const model = () => ctl.model()
+  assert.deepEqual([model().palettes.sunset, model().palettes.aurora, 'mint' in model().palettes], [false, false, false], 'the ones to earn are listed as locked; the free ones are not in the list')
+  assert.match((await ctl.command('palette sunset')).text, /Sunset is still locked: 500 tasks done together!/)
+  assert.equal(model().pet.colors.body, null, 'nothing changed')
+  assert.match((await ctl.command('palette mint')).text, /Mint/)
+  assert.ok(!(await ctl.command('palettes')).text.includes('sunset'), 'the list offers only what can be used')
+  assert.match((await ctl.command('frame rainbow')).text, /Rainbow is still locked: 5,000 tasks done together!/)
+  assert.match((await ctl.command('frame nope')).text, /Available now: -\./)
+  assert.equal(model().pet.frame, null)
+  // Earn silver for tasks: the Sunset palette opens (and a message says so), and the card frame comes with the diamond.
+  const mark = JSON.parse(files.get('/data/.codepuff/pet.json'))
+  files.set('/data/.codepuff/pet.json', JSON.stringify({ ...mark, milestones: ['tools-100', 'tools-500', 'tools-5000'], seen: [...mark.seen, 'milestones-2'] }))
+  await ctl.syncPet()
+  assert.equal(model().palettes.sunset, true)
+  assert.match((await ctl.command('palette sunset')).text, /Sunset/)
+  assert.equal(model().pet.colors.body, '#ff9a6b')
+  assert.match((await ctl.command('frame rainbow')).text, /Band frame: Rainbow/)
+  assert.equal(model().pet.frame, 'rainbow')
+  assert.match((await ctl.command('frame none')).text, /No band frame/)
+  assert.equal(model().pet.frame, null)
+  await ctl.setPet({ prefs: { frame: 'gold' } })
+  assert.equal(model().pet.frame, null, 'a frame that is not earned is not used')
+  await ctl.setPet({ prefs: { frame: 'rainbow' } })
+  await ctl.command('card')
+  assert.ok(files.get('/data/.codepuff/cards/codepuff-classic.svg').includes('url(#rainbow)'), 'the card wears the frame')
+  clock.at += 1
+})
+
+test('achievements: every milestone with whether it was reached, and what it unlocks', async () => {
+  const { io, clock } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  assert.equal(ctl.model().achievements.done, 0)
+  assert.equal(ctl.model().achievements.total, 33)
+  reachHundredTasks(ctl, clock)
+  const { done, groups } = ctl.model().achievements
+  assert.equal(done, 1)
+  // One card for each thing that is counted, and it levels up: bronze after 100 tasks, then silver at 500, gold at 1000, diamond at 5000.
+  assert.deepEqual(groups.map(g => g.kind), ['tools', 'streak', 'prompts', 'tests', 'commits', 'files', 'lines', 'days', 'time', 'helpers', 'projects'])
+  const tools = groups.find(g => g.kind === 'tools')
+  assert.deepEqual([tools.title, tools.tier, tools.tierName, tools.complete], ['Tasks together', 0, 'Bronze', false])
+  assert.deepEqual(tools.levels.map(level => [level.n, level.tier, level.reached]), [[100, 0, true], [500, 1, false], [1000, 2, false], [5000, 3, false]])
+  assert.deepEqual([tools.current, tools.target, tools.nextName, tools.reward], [101, 500, 'Silver', 'Sunset'], 'the count so far, toward the next level (and what it unlocks: a palette)')
+  const streak = groups.find(g => g.kind === 'streak')
+  assert.deepEqual([streak.tier, streak.tierName, streak.current, streak.target, streak.nextName, streak.reward], [null, null, 1, 3, 'Bronze', 'Bow'], 'nothing yet: the next level is bronze, and it unlocks the bow')
+  assert.equal(groups.find(g => g.kind === 'tests').current, 0)
+  assert.ok(JSON.stringify(ctl.model().achievements).length < 4500, 'small')
+  // The other things that are counted: files changed, lines in commits, active days, hours of work, helpers called, projects.
+  const files = groups.find(g => g.kind === 'files')
+  assert.deepEqual([files.title, files.tier, files.target], ['Files changed', null, 10])
+  assert.deepEqual(groups.find(g => g.kind === 'lines').levels.map(level => level.n), [1000, 10000, 100000])
+  assert.deepEqual(groups.find(g => g.kind === 'time').levels.map(level => level.tier), [0, 1, 2])
+  assert.equal(groups.find(g => g.kind === 'days').levels.length, 4)
+  ctl.setUi({ tab: 'achievements' })
+  assert.equal(ctl.model().ui.tab, 'achievements', 'a tab of its own')
+  ctl.setUi({ tab: 'settings' })
+  assert.equal(ctl.model().ui.tab, 'settings', 'and so are the settings')
+  ctl.setUi({ tab: 'nope' })
+  assert.equal(ctl.model().ui.tab, 'stats')
+  const text = (await ctl.command('achievements')).text
+  assert.match(text, /Achievements · 1 of 33 reached/)
+  assert.match(text, /✔ 100 tasks done together!/)
+  assert.match(text, /· 500 tasks done together!/)
+})
+
+test('the break reminder: off by default; set to any number of minutes, a long stretch of work gets a message and a stretch, and a pause of the chosen length starts the count again', async () => {
+  const { io, clock } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  ctl.takeToasts()
+  const work = () => ctl.observe('PostToolUse', payload(tool('w' + clock.at, 'Read', { file_path: '/w/a' }), { tool_response: {} }))
+  const MIN = 60_000
+  work()
+  for (let i = 0; i < 12; i++) { clock.at += 5 * MIN; work() }
+  assert.equal(ctl.checkBreak(), false, 'off by default')
+  assert.match((await ctl.command('breaks 1h')).text, /after 1h of work/)
+  assert.equal(ctl.model().pet.breakEvery, 60)
+  // Any length from 15 minutes to 8 hours, in the ways people write it.
+  for (const [text, minutes] of [['45m', 45], ['45', 45], ['90 min', 90], ['1h30', 90], ['1h 30m', 90], ['1.5h', 90], ['2h', 120], ['15', 15], ['8h', 480]]) {
+    await ctl.command('breaks ' + text)
+    assert.equal(ctl.model().pet.breakEvery, minutes, text)
+  }
+  for (const bad of ['soon', '10', '9h', '0', '1h99x']) {
+    const before = ctl.model().pet.breakEvery
+    assert.match((await ctl.command('breaks ' + bad)).text, /breaks <off\|45m\|1h\|1h30\|90>/, bad)
+    assert.equal(ctl.model().pet.breakEvery, before, bad + ' changes nothing')
+  }
+  await ctl.command('breaks 1h')
+  assert.equal(ctl.checkBreak(), true, 'an hour of work with no pause')
+  assert.match(ctl.takeToasts().at(-1), /without a break/)
+  assert.equal(ctl.model().me.state, 'stretch')
+  assert.equal(ctl.checkBreak(), false, 'it does not nag')
+  // A pause of ten minutes (the default rest) or more ends the stretch: the count starts over.
+  assert.equal(ctl.model().pet.breakRest, 10)
+  clock.at += 30 * MIN
+  work()
+  for (let i = 0; i < 6; i++) { clock.at += 5 * MIN; work() }
+  assert.equal(ctl.checkBreak(), false, 'half an hour into the new stretch')
+  for (let i = 0; i < 6; i++) { clock.at += 5 * MIN; work() }
+  assert.equal(ctl.checkBreak(), true, 'and an hour into it')
+  // The rest that ends a stretch can be longer: with 30 minutes, a pause of 20 is not a break and the count goes on.
+  assert.match((await ctl.command('breakrest 30')).text, /30 min or more counts as a break/)
+  assert.equal(ctl.model().pet.breakRest, 30)
+  assert.match((await ctl.command('breakrest 3')).text, /breakrest <5 to 60 minutes>/)
+  assert.match((await ctl.command('breakrest 90')).text, /breakrest <5 to 60 minutes>/)
+  clock.at += 20 * MIN
+  work()
+  for (let i = 0; i < 8; i++) { clock.at += 5 * MIN; work() }
+  assert.equal(ctl.checkBreak(), true, 'a pause of 20 minutes did not end the stretch, so the hour was over')
+  assert.match((await ctl.command('breaks off')).text, /is off/)
+  assert.equal(ctl.model().pet.breakEvery, 0)
+  for (let i = 0; i < 14; i++) { clock.at += 5 * MIN; work() }
+  assert.equal(ctl.checkBreak(), false)
+})
+
+test('the status line says what the pet is doing, then what is worth a glance: the context, the plan limits, the cost', async () => {
+  const { io, clock } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  assert.equal(ctl.model().statusLine, 'Classic · Resting', 'nothing reported yet: just the pet')
+  ctl.setUsage({
+    rateLimits: [{ kind: 'five_hour', percentUsed: 24, resetsAt: new Date(clock.at + 3_600_000).toISOString() }, { kind: 'seven_day', percentUsed: 31, resetsAt: new Date(clock.at + 86_400_000).toISOString() }],
+    context: { window: 200000, tokens: 124000, percent: 62 }, cost: { usd: 0.314 },
+  })
+  assert.equal(ctl.model().statusLine, 'Classic · Resting · ctx 62% · 5h 24% · week 31% · $0.31')
+  ctl.setUsage({ rateLimits: [], context: { window: 200000 } })
+  assert.equal(ctl.model().statusLine, 'Classic · Resting', 'what the host does not report is left out')
+})
+
+test('the band frame is the chosen frame as soon as it is earned, and "none" turns it off', async () => {
+  const { io, files } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  await ctl.syncPet() // (waits for the saves under way, so the file edited below is not written over)
+  assert.equal(ctl.model().pet.bandFrame, null, 'by default there is none')
+  assert.match((await ctl.command('frame gold')).text, /Gold is still locked: 365 active days!/)
+  const path = '/data/.codepuff/pet.json'
+  const saved = JSON.parse(files.get(path))
+  files.set(path, JSON.stringify({ ...saved, milestones: ['days-365', 'tools-5000'], seen: [...saved.seen, 'milestones-2'] }))
+  await ctl.syncPet()
+  assert.match((await ctl.command('frame gold')).text, /Band frame: Gold/)
+  assert.equal(ctl.model().pet.bandFrame, 'gold', 'it frames the band at once: there is no other switch')
+  assert.match((await ctl.command('frame none')).text, /No band frame/)
+  assert.equal(ctl.model().pet.bandFrame, null)
+  assert.match((await ctl.command('frameband on')).text, /codepuff|\//i, 'the old switch is gone: an unknown word shows the help')
+})
+
+test('a pet saved by an earlier version keeps its break reminder, and a new one starts with the plan limits always shown', async () => {
+  const { io, files } = fakeHost()
+  const first = createController(io)
+  await first.init({ sid: 'a', cwd: '/w' })
+  await first.syncPet()
+  assert.deepEqual([first.pet.prefs.plan, first.pet.prefs.breakEvery, first.pet.prefs.breakRest], ['always', 0, 10])
+  const path = '/data/.codepuff/pet.json'
+  const saved = JSON.parse(files.get(path))
+  const old = { ...saved, prefs: { ...saved.prefs, breaks: '2h' } }
+  delete old.prefs.breakEvery
+  delete old.prefs.breakRest
+  files.set(path, JSON.stringify(old))
+  const later = createController(io)
+  await later.init({ sid: 'b', cwd: '/w' })
+  assert.equal(later.pet.prefs.breakEvery, 120, 'the old "2h" is two hours')
+  assert.equal(later.pet.prefs.breakRest, 10)
+  files.set(path, JSON.stringify({ ...saved, prefs: { ...saved.prefs, breakEvery: 7, breakRest: 999 } }))
+  const odd = createController(io)
+  await odd.init({ sid: 'c', cwd: '/w' })
+  assert.deepEqual([odd.pet.prefs.breakEvery, odd.pet.prefs.breakRest], [0, 60], 'too short is off; a rest is kept between 5 and 60 minutes')
+})
+
+test('a greeting that fits the time of day, when the host asks for one', async () => {
+  const { io, clock } = fakeHost()
+  const quiet = createController(io)
+  await quiet.init({ sid: 'a', cwd: '/w' })
+  assert.equal(quiet.model().me.state, 'idle', 'a controller that was not asked to greet does not')
+  const ctl = createController(io, { greet: true })
+  await ctl.init({ sid: 'b', cwd: '/w' })
+  const expected = greetingAt(new Date(clock.at).getHours())
+  assert.ok(['morning', 'afternoon', 'evening', 'night'].includes(expected))
+  assert.equal(ctl.model().me.state, expected)
+  assert.match(ctl.model().me.label, /!|\?/, 'it says something')
+  ctl.observe('UserPromptSubmit', payload())
+  assert.equal(ctl.model().me.state, 'thinking', 'a greeting gives way to the work')
+  clock.at += REACTION_LENGTH[expected] + 100
+  ctl.observe('Stop', payload())
+  clock.at += 60_000 * 3
+  assert.equal(ctl.model().me.state, 'idle', 'and then it is done')
+  assert.deepEqual([4, 5, 11, 12, 16, 17, 21, 22, 23, 0].map(greetingAt), ['night', 'morning', 'morning', 'afternoon', 'afternoon', 'evening', 'evening', 'night', 'night', 'night'])
+})
+
+test('the pet card is a self-contained SVG with the pet and a few numbers, and nothing private', async () => {
+  const { io, files } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/secret/project-name' })
+  await ctl.setPet({ name: 'Mochi <b>' })
+  const reply = (await ctl.command('card')).text
+  assert.match(reply, /Pet card saved: .*cards\/codepuff-mochi-b\.svg/)
+  const svg = files.get('/data/.codepuff/cards/codepuff-mochi-b.svg')
+  assert.ok(svg.startsWith('<svg') && svg.includes('</svg>'))
+  assert.ok(svg.includes('Mochi b') && !svg.includes('<b>'), 'the name has no markup in it')
+  assert.ok(cardSvg({ name: 'A<b>&"x', character: 'fox', hearts: 5, streak: 1, ageDays: 1, prompts: 1, tools: 1, done: 0, total: 13 }).includes('A&lt;b&gt;&amp;&quot;x'), 'and whatever a name holds is escaped anyway')
+  assert.match(svg, /together for/)
+  assert.match(svg, /achievements/)
+  assert.ok(!svg.includes('secret') && !svg.includes('project-name'), 'no project name or path')
+})
+
+test('when the list of milestones grows, what a pet had already reached is recorded quietly, not announced', async () => {
+  const { io, clock, files } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  reachHundredTasks(ctl, clock)
+  ctl.takeToasts()
+  await ctl.flush()
+  // A pet saved by an earlier version: it knows no milestone (an empty list) and has not seen this version of the list.
+  const path = '/data/.codepuff/pet.json'
+  const saved = JSON.parse(files.get(path))
+  files.set(path, JSON.stringify({ ...saved, milestones: [], seen: saved.seen.filter(id => id !== 'milestones-2') }))
+  const later = createController(io)
+  await later.init({ sid: 'b', cwd: '/w' })
+  assert.deepEqual(later.takeToasts().filter(text => !/sounds/i.test(text)), [], 'no pile of old news')
+  assert.ok(later.pet.milestones.includes('tools-100'), 'but it is recorded')
+  assert.ok(later.pet.seen.includes('milestones-2'))
+  assert.equal(later.model().achievements.groups.find(g => g.kind === 'tools').tier, 0, 'and the badge is earned')
 })
 
 test('affection: unkind messages lower the hearts and hurt, thanks raise them, time heals, and it persists', async () => {
@@ -551,7 +892,7 @@ test('the statistics come as a few tiles, tool bars and a chart, with the long l
   ctl.observe('PostToolUse', payload(tool('t1', 'Read', { file_path: '/w/a' }), { tool_response: {} }))
   ctl.observe('PostToolUse', payload(tool('t2', 'Edit', { file_path: '/w/a' }), { tool_response: {} }))
   const m = ctl.model()
-  assert.deepEqual(m.stats.tiles.map(t => t.id), ['prompts', 'tools', 'files', 'commits', 'tests', 'time'])
+  assert.deepEqual(m.stats.tiles.map(t => t.id), ['prompts', 'tools', 'files', 'commits', 'tests', 'time', 'subagents'])
   assert.equal(m.stats.tiles.find(t => t.id === 'tools').value, '2')
   assert.match(m.stats.tiles.find(t => t.id === 'tools').note, /100% succeeded/)
   assert.deepEqual(m.stats.bars.map(b => b.label).sort(), ['Edit', 'Read'])

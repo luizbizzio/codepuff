@@ -15,7 +15,7 @@ import { CLAUDE as claude } from './claude.js'
 
 const parts = {
   alpha: ALPHA,
-  classic: defineSprite('classic'), fox: defineSprite('fox'), bot: defineSprite('bot'), slime: defineSprite('slime'), mage: defineSprite('mage'), aquatic: defineSprite('aquatic'),
+  classic: defineSprite('classic'), fox: defineSprite('fox'), bot: defineSprite('bot'), slime: defineSprite('slime'), mage: defineSprite('mage', { crown: 'tip' }), aquatic: defineSprite('aquatic'),
   claude,
 }
 

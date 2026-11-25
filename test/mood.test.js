@@ -21,6 +21,72 @@ test('thanks are noticed, but not from someone who also insults', () => {
   assert.equal(judge('fix the login').kind, false)
 })
 
+test('more ways to say thanks are noticed, and a negated one is not', () => {
+  for (const kind of ['muito bem', 'Muito bem!', 'bem feito', 'mandou bem', 'ficou ótimo', 'nice job', 'perfect', 'love it', 'gracias', 'danke', 'merci', 'no problem, thanks'])
+    assert.equal(judge(kind).kind, true, kind)
+  for (const plain of ['not perfect', 'nao ficou perfeito', 'it was not muito bem', 'show me the file', 'good morning', 'a nice day', 'fix the login'])
+    assert.equal(judge(plain).kind, false, plain)
+})
+
+// What each language says: abuse aimed at the assistant (2), harsh criticism of the work (1), nothing (0), and thanks.
+const ABUSE = {
+  es: ['eres un idiota', 'cállate', 'eres tonto', 'vete a la mierda', 'pendejo!'],
+  fr: ['tu es un idiot', 'ta gueule', 'espèce de connard', 'vous êtes stupide'],
+  de: ['du bist ein Idiot', 'halt die Klappe', 'du bist dumm', 'Arschloch!'],
+  it: ['sei un idiota', 'stai zitto', 'sei stupido', 'vaffanculo'],
+  nl: ['je bent een idioot', 'hou je mond', 'klootzak!'],
+  pl: ['jesteś idiota', 'zamknij się', 'ty głupku', 'ty debilu'],
+  tr: ['sen aptalsın', 'kapa çeneni', 'sen salaksın'],
+  ru: ['ты идиот', 'заткнись', 'ты тупой', 'дурак!', 'ты полный дурак'],
+  ja: ['お前はバカだ', 'バカ！', '黙れ', 'あなたは無能だ'],
+  zh: ['你是笨蛋', '闭嘴', '你这个废物', '蠢货'],
+  ko: ['너 바보야', '닥쳐', '이 멍청이', '너는 병신이야'],
+}
+const FINE = {
+  es: ['no eres tonto', 'este bug es tonto', 'hay que arreglar el login'],
+  fr: ['tu n\'es pas idiot', 'ce bug stupide', 'corrige le login'],
+  de: ['du bist nicht dumm', 'dieser blöde Bug', 'bitte den Login reparieren'],
+  it: ['non sei stupido', 'questo bug stupido', 'correggi il login'],
+  nl: ['je bent geen idioot', 'dit domme bug', 'repareer de login'],
+  pl: ['nie jesteś głupi', 'napraw logowanie', 'ten głupi błąd'],
+  tr: ['aptal değilsin', 'bu aptal hata', 'girişi düzelt'],
+  ru: ['ты не дурак', 'этот тупой баг', 'исправь логин'],
+  ja: ['今来たばかりです', 'ごみ箱を開いて', 'ログインを直して', '私がバカだった'],
+  zh: ['你不是笨蛋', '笨重的箱子', '这个垃圾桶', '请修复登录', '我是笨蛋'],
+  ko: ['너무 바보 같은 버그', '로그인을 고쳐줘', '바보 아니야'],
+}
+const HARSH = {
+  es: ['eres inútil'], fr: ['tu es nul'], de: ['du bist nutzlos'], it: ['sei inutile'], nl: ['je bent waardeloos'], pl: ['jesteś beznadziejny'],
+  ru: ['ты бесполезный'], ja: ['お前は使えない'], zh: ['你太垃圾了'], ko: ['너는 쓰레기'],
+}
+const THANKS = {
+  es: ['gracias', 'muy bien', 'buen trabajo', 'bien hecho'],
+  fr: ['merci', 'bon travail', 'très bien', 'merci beaucoup'],
+  de: ['danke', 'gut gemacht', 'vielen Dank', 'sehr gut'],
+  it: ['grazie', 'ottimo lavoro', 'ben fatto', 'bravo'],
+  nl: ['bedankt', 'goed gedaan', 'dankjewel'],
+  pl: ['dziękuję', 'dobra robota', 'dzięki', 'świetnie'],
+  tr: ['teşekkürler', 'harika', 'eline sağlık', 'çok iyi'],
+  ru: ['спасибо', 'отлично', 'молодец', 'хорошая работа'],
+  ja: ['ありがとう', 'ありがとうございます', 'お疲れ様', 'ナイス'],
+  zh: ['谢谢', '做得好', '太棒了', '謝謝'],
+  ko: ['고마워', '감사합니다', '잘했어', '수고했어'],
+}
+const NOT_THANKS = {
+  fr: ['ce n\'est pas parfait'], de: ['das ist nicht perfekt'], it: ['non è perfetto'], ja: ['感謝しない'], zh: ['不是很好'], ru: ['не отлично'],
+}
+
+test('abuse, harsh criticism and thanks are told apart in every language the pet speaks', () => {
+  for (const [language, list] of Object.entries(ABUSE)) for (const text of list) assert.equal(judge(text).insult, 2, `${language}: ${text}`)
+  for (const [language, list] of Object.entries(FINE)) for (const text of list) assert.equal(judge(text).insult, 0, `${language}: ${text}`)
+  for (const [language, list] of Object.entries(HARSH)) for (const text of list) assert.equal(judge(text).insult, 1, `${language}: ${text}`)
+  for (const [language, list] of Object.entries(THANKS)) for (const text of list) assert.deepEqual(judge(text), { insult: 0, kind: true }, `${language}: ${text}`)
+  for (const [language, list] of Object.entries(NOT_THANKS)) for (const text of list) assert.equal(judge(text).kind, false, `${language}: ${text}`)
+  assert.equal(judge('спасибо, ты идиот').kind, false, 'thanks from someone who also insults')
+  assert.equal(judge('谢谢你，笨蛋').kind, false)
+  assert.equal(judge('un messaggio normale sulla prima versione').kind, false, '"prima" is Italian for "first", not praise')
+})
+
 test('hearts: one to five from a score; insults cost, thanks and days give back, and the score stays in range', () => {
   assert.deepEqual([1, 20, 21, 40, 60, 80, 81, 100].map(heartsOf), [1, 1, 2, 2, 3, 4, 5, 5])
   assert.equal(afterMessage(100, { insult: 2, kind: false }), 85)

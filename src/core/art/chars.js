@@ -41,13 +41,14 @@ function define(def) {
     const key = [def.id, pose.dy ?? 0, pose.sx ?? 1, pose.sy ?? 1, pose.shake ?? 0].join('|')
     canvas.stamp(cachedBody(key, body => paint(body, def.shapes(), tf)))
     def.details?.(design(canvas), tf, pose)
-    if (!pose.noFace) drawFace(canvas, pose, def.face(tf))
+    const face = def.face(tf)
+    if (!pose.noFace) drawFace(canvas, pose, face)
     const A = def.anchors
     // Anchors stay in design units: props, hands and effects are placed on the 36x28 design grid.
     const cx = tf.X(A.cx)
     const cy = tf.Y(A.cy)
     const bottom = tf.Y(A.bottom)
-    return { cx, top: tf.Y(A.top), bottom, faceY: tf.Y(A.faceY), left: tf.X(A.left), right: tf.X(A.right), hands: handsFor(pose.hands ?? 'rest', { cx, cy, bottom, half: A.half }) }
+    return { cx, top: tf.Y(A.top), bottom, faceY: tf.Y(A.faceY), left: tf.X(A.left), right: tf.X(A.right), hands: handsFor(pose.hands ?? 'rest', { cx, cy, bottom, half: A.half }), head: { cx: cx * K, faceX: cx * K, top: tf.Y(A.headTop ?? A.top) * K, eyeY: face.eyeL[1] * K, gap: ((face.eyeR[0] - face.eyeL[0]) / 2) * K } }
   }
   const limb = (canvas, anchors, index, hand) => mitten(canvas, hand[0], hand[1], def.hand[0], def.hand[1])
   return { draw, limb, ground: def.ground, depth: def.depth ?? 2 }
@@ -64,6 +65,6 @@ export const ALPHA = define({
   ],
   details: c => c.patch(15.5, 18.6, ['.##.#', '#..#.', '#..#.', '.##.#'], { '#': R.ALIGHT }),
   face: tf => ({ set: 'round', eyeL: [tf.X(13), tf.Y(13.2)], eyeR: [tf.X(23), tf.Y(13.2)], mouth: [tf.X(18), tf.Y(17.4)], cheeks: [[tf.X(10.2), tf.Y(16.6)], [tf.X(25.8), tf.Y(16.6)]], cheekRole: R.ABASE, cheekBright: R.ALIGHT }),
-  anchors: { cx: 18, cy: 14.2, top: 4, bottom: 22.4, faceY: 11.2, left: 8, right: 28, half: 9.9 },
+  anchors: { cx: 18, cy: 14.2, top: 4, headTop: 6, bottom: 22.4, faceY: 11.2, left: 8, right: 28, half: 9.9 },
 })
 

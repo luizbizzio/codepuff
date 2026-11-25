@@ -1,11 +1,13 @@
 // The moments the pet makes a fuss about: a sound when the agent asks something or a turn ends well, a toast and a celebration
 // for a milestone, and the one-time word about the sounds. They are queued here and taken by the mod, which plays and shows them.
 
-import { activity, aggregate } from '../core/aggregate.js'
-import { dayKey } from '../core/days.js'
-import { MILESTONES, reachedMilestones } from '../core/milestones.js'
+import { MILESTONES, lifeOf, reachedMilestones } from '../core/milestones.js'
+import { rewardFor } from '../core/rewards.js'
 import { t } from '../core/i18n/index.js'
 import { defaultPet } from '../core/settings.js'
+
+/** Which version of the list of milestones the pet has seen (a new one is recorded quietly, see checkMilestones). */
+const MILESTONES_MARK = 'milestones-2'
 
 /** @param {{ s: any, now: () => number, records: () => any[], writePet: () => Promise<void> }} deps */
 export function createMoments({ s, now, records, writePet }) {
@@ -24,17 +26,21 @@ export function createMoments({ s, now, records, writePet }) {
     if (!s.pet || (!force && at - s.milestoneAt < 5000)) return
     s.milestoneAt = at
     const all = records()
-    const total = aggregate(all, { now: at })
-    const reached = reachedMilestones({ tools: total.tools.total, prompts: total.prompts, passed: total.tests.passed, commits: total.git.commits, streak: activity(all, { today: dayKey(at) }).current })
+    const reached = reachedMilestones(lifeOf(all, at))
     const known = s.pet.milestones
-    const fresh = known === null ? [] : reached.filter(id => !known.includes(id))
-    if (known !== null && !fresh.length) return
-    s.pet = { ...s.pet, milestones: [...new Set([...(known ?? []), ...reached])] }
+    // The first look, and the first look after the list of milestones grew, only records what was already reached: nobody is greeted
+    // with a pile of old news.
+    const firstLook = known === null || !s.pet.seen.includes(MILESTONES_MARK)
+    const fresh = firstLook ? [] : reached.filter(id => !known.includes(id))
+    if (!firstLook && !fresh.length) return
+    s.pet = { ...s.pet, milestones: [...new Set([...(known ?? []), ...reached])], seen: s.pet.seen.includes(MILESTONES_MARK) ? s.pet.seen : [...s.pet.seen, MILESTONES_MARK] }
     void writePet()
     if (fresh.length) {
       // The biggest one is announced; the pet celebrates.
       const last = MILESTONES.filter(m => fresh.includes(m.id)).at(-1)
       if (last) s.toasts.push(t(last.key, { n: last.n }))
+      // Whatever those milestones unlocked is told too (after the first look, so an old pet is not greeted with a pile of them).
+      for (const m of MILESTONES.filter(item => fresh.includes(item.id))) { const reward = rewardFor(m.id); if (reward) s.toasts.push(t('toast.unlocked', { name: t(reward.key) })) }
       s.react = at; s.reaction = 'delighted'
     }
   }

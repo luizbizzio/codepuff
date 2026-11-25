@@ -5,26 +5,30 @@
 // @ts-ignore
 import { PRESETS } from '../src/core/color.js'
 // @ts-ignore
-import { AGENT_LABELS, duration } from '../src/core/format.js'
+import { achievementSvg, TIER_COLORS } from '../src/core/render/badge.js'
+// @ts-ignore
+import { AGENT_LABELS, minutesText, resetIn } from '../src/core/format.js'
+// @ts-ignore
+import { bandStyle } from '../src/core/frames.js'
 // @ts-ignore
 import { ringSvg } from '../src/core/render/pie.js'
 // @ts-ignore
 import { activitySvg, heartsSvg } from '../src/core/render/charts.js'
 // @ts-ignore
-import { SOUNDS, VOLUMES } from '../src/core/settings.js'
+import { BREAK_MAX, BREAK_MIN, BREAK_PRESETS, BREAK_STEP, REST_PRESETS, SOUNDS, VOLUMES } from '../src/core/settings.js'
 // @ts-ignore
 import { petSvg } from '../src/core/render/raster.js'
 // @ts-ignore
 import { MASCOTS, MASCOT_IDS } from '../src/core/art/registry.js'
 // @ts-ignore
-import { LANGUAGES, padCells, t } from '../src/core/i18n/index.js'
+import { LANGUAGES, cellWidth, t } from '../src/core/i18n/index.js'
 
 /** The size a picture asks for (its own width and height attributes), so the host draws it at exactly that size.
  *  (Only a picture has a size in pixels: a Box's width and height are in terminal cells, so none is given one.) */
 export const sizeOf = (svg: string) => ({ width: Math.round(Number(/ width="([0-9.]+)"/.exec(svg)?.[1] ?? 0)) || undefined, height: Math.round(Number(/ height="([0-9.]+)"/.exec(svg)?.[1] ?? 0)) || undefined })
 
 export const COLORS: Record<string, string> = { success: '#3fb950', error: '#f85149', permission: '#d29922', investigating: '#d29922', finished: '#3fb950', disconnected: '#8b949e' }
-const GLYPH: Record<string, string> = { success: '^_^', finished: '^_^', error: '>_<', permission: 'O_O', investigating: 'o_O', disconnected: '-_-', waiting: '^_^', idle: 'o_o', thinking: 'o.o', sad: 'T_T', hurt: '>_<', petted: '^_^', giggle: '^o^', delighted: '^o^' }
+const GLYPH: Record<string, string> = { bored: '-_-', coffee: 'u_u', sleeping: '-_-', morning: '^_^', afternoon: '^_^', evening: '^_^', night: 'o_o', stretch: '^o^', success: '^_^', finished: '^_^', error: '>_<', permission: 'O_O', investigating: 'o_O', disconnected: '-_-', waiting: '^_^', idle: 'o_o', thinking: 'o.o', sad: 'T_T', hurt: '>_<', petted: '^_^', giggle: '^o^', delighted: '^o^' }
 
 /** The moments that can make a sound: its key in the preferences and the prefix of its buttons (its name is `ui.sound.<moment>`). */
 const MOMENTS: [string, string][] = [['question', 'q'], ['finish', 'f'], ['reset5h', 'r5'], ['resetWeek', 'rw']]
@@ -33,10 +37,10 @@ type Els = { Box: any; Text: any; Button?: any; Svg?: any; Input?: any }
 
 /** One to five hearts: how much the pet likes the user (filled ones red, the rest outlined). Where the window draws pictures the
  *  hearts say what they mean when the pointer rests on them; in a terminal they are characters. */
-export function heartsRow({ Box, Text, Svg }: Els, m: any, surface: string, tooltip = true) {
+export function heartsRow({ Box, Text, Svg }: Els, m: any, surface: string, tooltip = true, scale = 1) {
   const n: number = m.pet.hearts
   const note = t('ui.hearts.note', { n, score: m.pet.heartScore })
-  if (tooltip && surface !== 'terminal' && Svg) return <Svg source={heartsSvg(n, { title: note })} width={84} height={15} isInteractive alt={t('ui.hearts.alt', { n })} />
+  if (tooltip && surface !== 'terminal' && Svg) return <Svg source={heartsSvg(n, { title: note })} width={Math.round(84 * scale)} height={Math.round(15 * scale)} isInteractive alt={t('ui.hearts.alt', { n })} />
   return (
     <Box flexDirection="row">
       <Text color="#f85149">{'♥'.repeat(n)}</Text>
@@ -51,39 +55,55 @@ function toneOf(state: string): string {
   if (['success', 'finished', 'waiting'].includes(state)) return '#3fb950'
   if (['error', 'hurt'].includes(state)) return '#f85149'
   if (['permission', 'investigating', 'tired'].includes(state)) return '#d29922'
-  if (['petted', 'giggle', 'delighted'].includes(state)) return '#f778ba'
-  if (['idle', 'sad', 'disconnected'].includes(state)) return '#8b949e'
+  if (['petted', 'giggle', 'delighted', 'morning', 'afternoon', 'evening', 'night', 'stretch'].includes(state)) return '#f778ba'
+  if (state === 'coffee') return '#d29922'
+  if (['idle', 'sad', 'disconnected', 'bored', 'sleeping'].includes(state)) return '#8b949e'
   return '#58a6ff'
 }
 
-/** The plan's windows worth showing (half used or more) as small bars: how much is used, and when it resets. */
-function renderPlan({ Box, Text }: Els, plan: any[]) {
-  return plan.filter(w => w.percent >= 50).map(w => {
+/** Which of the plan's windows to draw, by the person's choice: `auto` the ones half used or more, `always` all of them, `five_hour`
+ *  or `seven_day` that one only (always), `off` none. */
+export function planShown(plan: any[], mode: string): any[] {
+  if (mode === 'off') return []
+  if (mode === 'always') return plan
+  if (mode === 'five_hour' || mode === 'seven_day') return plan.filter(w => w.id === mode)
+  return plan.filter(w => w.percent >= 50)
+}
+
+/** The plan's windows as small bars: how much is used, and when it resets. Every bar is the same size (the label and the percentage sit in
+ *  boxes with a minimum width in cells, the longest label's, so "5h" and "week" do not change it), and a note says so when the person
+ *  asked to always see a window and the host reports none. */
+function renderPlan({ Box, Text }: Els, plan: any[], mode = 'auto') {
+  const shown = planShown(plan, mode)
+  if (shown.length === 0) return mode === 'off' || mode === 'auto' ? [] : [<Text key="plan-none" dimColor>{t('plan.none')}</Text>]
+  const labelWidth = Math.max(...['five_hour', 'seven_day', 'spend_limit'].map(id => cellWidth(t('plan.' + id))))
+  return shown.map(w => {
     const filled = Math.max(1, Math.round(w.percent / 10))
     const tone = w.percent >= 90 ? '#f85149' : w.percent >= 70 ? '#d29922' : '#3fb950'
     return (
       <Box key={'plan-' + w.id} flexDirection="row" gap={1}>
-        <Text dimColor>{padCells(w.label, 5)}</Text>
+        <Box minWidth={labelWidth}><Text dimColor>{w.label}</Text></Box>
         <Box flexDirection="row">
           <Text color={tone}>{'█'.repeat(filled)}</Text>
           <Text dimColor>{'░'.repeat(10 - filled)}</Text>
         </Box>
-        <Text color={tone}>{w.percent + '%'}</Text>
-        {w.resetsInMs > 0 ? <Text dimColor>{t('plan.resets', { time: duration(w.resetsInMs) })}</Text> : null}
+        <Box minWidth={4} justifyContent="flex-end"><Text color={tone}>{w.percent + '%'}</Text></Box>
+        {w.resetsInMs > 0 ? <Text dimColor>{t('plan.resets', { time: resetIn(w.resetsInMs) })}</Text> : null}
       </Box>
     )
   })
 }
 
-/** The compact band: the pet at the left edge, then (hugging it) the streak, the prompts and the hearts, the status block with
- *  the color of what is going on, and the plan's bars when it is getting used up; and at the right edge a ring of how the tasks went. */
+/** The compact band: the pet at the left edge, then the streak, the prompts and the session's estimated cost (when the host reports
+ *  one), and under them the status block with the color of what is going on, and the hearts under that; at the right edge a ring of how the tasks went; and, as a strip under all of it, the plan's bars when it
+ *  is getting used up (or always, as the person chose). */
 export function renderBand(els: Els, m: any, surface: string, onPat: () => void) {
   const { Box, Text, Button, Svg } = els
   const reduced = m.pet.motion === 'reduced'
   const size: number = m.pet.bandHeight
   const ringSize = Math.round(size * 0.6)
   const drawn = surface !== 'terminal' && Svg
-  const petPicture = drawn ? petSvg({ character: m.pet.character, colors: m.pet.colors, state: m.me.state, helpers: m.me.helpers, height: size, reduced, motion: m.pet.motion, crop: 'band', hover: true, title: `${m.pet.name}: ${m.me.label}` }) : ''
+  const petPicture = drawn ? petSvg({ character: m.pet.character, worn: m.pet.worn, colors: m.pet.colors, state: m.me.state, helpers: m.me.helpers, height: size, reduced, motion: m.pet.motion, crop: 'band', hover: true, title: `${m.pet.name}: ${m.me.label}` }) : ''
   const face = drawn
     ? <Svg source={petPicture} alt={`${m.pet.name}: ${m.me.label}`} isInteractive {...sizeOf(petPicture)} />
     : <Text color={COLORS[m.me.state] ?? undefined}>{GLYPH[m.me.state] ?? 'o_o'}</Text>
@@ -96,31 +116,60 @@ export function renderBand(els: Els, m: any, surface: string, onPat: () => void)
   const days = m.life.current
   const tone = toneOf(m.me.state)
   // The pet at the left, the ring at the right (with a margin, not flush against the edge), and the information centered in the
-  // space between them: the streak, prompts and hearts above, the status block (a fixed minimum width, so it does not jump as the
-  // words change) in the middle, the plan's bars below.
-  return (
+  // space between them: the streak, prompts and estimated cost above, the status block (a fixed minimum width, so it does not jump as
+  // the words change) below, and the hearts right under it. The same layout at every size: the smaller sizes scale all of it down together
+  // (the type size, the air between the lines and the hearts), so the band can be as short as the pet and nothing is taken away.
+  const tier = m.pet.bandSize === 'small' ? 0 : m.pet.bandSize === 'medium' ? 1 : 2
+  const type = (['caption', 'footnote', undefined] as const)[tier]
+  const air = ([0, 'xs', 1] as const)[tier]
+  const sideSpace = (['sm', 'md', 2] as const)[tier]
+  const heartsScale = [0.62, 0.8, 1][tier]
+  const stats = <Text size={type} dimColor>{`🔥 ${t('unit.day', { n: days })}  ·  💬 ${t('unit.prompt', { n: m.sessionPrompts })}` + (m.sessionCost ? `  ·  💵 ${m.sessionCost}` : '')}</Text>
+  const hearts = m.pet.mood ? heartsRow(els, m, surface, true, heartsScale) : null
+  const centre = (
+    <Box flexDirection="column" alignItems="center" gap={air}>
+      <Box flexDirection="row" gap={2} justifyContent="center">{stats}</Box>
+      <Box flexDirection="column" alignItems="center" gap={air}>
+        <Box borderStyle="round" borderColor={tone} paddingX={sideSpace} minWidth={[24, 30, 34][tier]} flexDirection="row" gap={1} justifyContent="center">
+          <Text size={type} color={tone}>●</Text>
+          <Button plain key="pet-it" onPress={onPat}><Text size={type}>{m.me.label}</Text></Button>
+        </Box>
+        {hearts}
+      </Box>
+    </Box>
+  )
+  const band = (
     <Box flexDirection="row" gap={2} alignItems="center" paddingRight={3}>
       {face}
       <Box flexGrow={1} />
-      <Box flexDirection="column" alignItems="center" gap={1}>
-        <Box flexDirection="row" gap={2} justifyContent="center">
-          <Text dimColor>{`🔥 ${t('unit.day', { n: days })}  ·  💬 ${t('unit.prompt', { n: m.sessionPrompts })}`}</Text>
-          {m.pet.mood ? heartsRow(els, m, surface, false) : null}
-        </Box>
-        <Box borderStyle="round" borderColor={tone} paddingX={2} minWidth={34} flexDirection="row" gap={1} justifyContent="center">
-          <Text color={tone}>●</Text>
-          <Button plain key="pet-it" onPress={onPat}>{m.me.label}</Button>
-        </Box>
-        {renderPlan(els, m.plan ?? [])}
-      </Box>
+      {centre}
       <Box flexGrow={1} />
       <Box flexDirection="column" alignItems="center" justifyContent="center">
         {ring}
         <Box flexDirection="row" gap={1} justifyContent="center">
-          <Text color="#3fb950">{'✔ ' + ok}</Text>
-          <Text color="#f85149">{'✖ ' + failed}</Text>
+          <Text size={type} color="#3fb950">{'✔ ' + ok}</Text>
+          <Text size={type} color="#f85149">{'✖ ' + failed}</Text>
         </Box>
       </Box>
+    </Box>
+  )
+  // The plan's limits are a band of their own under the pet's, next to the prompt: a little air, a faint rule, then one line of text (no
+  // background and no border, which both add height), both windows side by side (they wrap onto a second line only if the window is
+  // narrow). The rule runs edge to edge where the surface clips it, and is a fixed length on the terminal. The pet's band above is
+  // exactly as it was.
+  const plan = renderPlan(els, m.plan ?? [], m.pet.plan)
+  // With every achievement unlocked, the card frame can go around the band (its main color on its background).
+  const frame = bandStyle(m.pet.bandFrame)
+  // (A column, so the band fills the width either way; and the same inset with or without the frame, so nothing moves when it is switched on.)
+  const shown = frame
+    ? <Box flexDirection="column" borderStyle={frame.line} borderColor={frame.border} backgroundColor={frame.background} paddingX={1}>{band}</Box>
+    : <Box flexDirection="column" paddingX={1}>{band}</Box>
+  if (plan.length === 0) return shown
+  return (
+    <Box flexDirection="column">
+      {shown}
+      <Box marginTop={1} justifyContent="center"><Text color="#3a3a3a" wrap="clip">{'─'.repeat(surface === 'terminal' ? 72 : 400)}</Text></Box>
+      <Box flexDirection="row" gap={4} justifyContent="center" flexWrap="wrap">{plan}</Box>
     </Box>
   )
 }
@@ -144,15 +193,67 @@ export function renderHead(els: Els, m: any, isWidget: boolean, surface: string)
   )
 }
 
-/** The Statistics and Customize buttons. */
+/** One emoji for each tab (so the four fit on one line, in any language); the name of the tab is the title of its page. */
+const TAB_EMOJI = { stats: '📊', look: '🎨', achievements: '🏆', settings: '⚙️' } as const
+const tabTitle = (tab: keyof typeof TAB_EMOJI) => TAB_EMOJI[tab] + ' ' + t(tab === 'stats' ? 'ui.tab.stats' : tab === 'look' ? 'ui.tab.look' : tab === 'achievements' ? 'ui.ach' : 'ui.tab.settings')
+
+/** The four tab buttons, and at the right the one that saves the pet card (a snapshot to share). */
 export function renderTabs({ Box, Button }: Els, m: any, ctl: any) {
   return (
-    <Box gap={1} flexWrap="wrap">
-      {(['stats', 'look'] as const).map(tab => (
-        <Button key={'tab-' + tab} variant={m.ui.tab === tab ? 'primary' : 'secondary'} onPress={() => ctl.setUi({ tab })}>
-          {t(tab === 'stats' ? 'ui.tab.stats' : 'ui.tab.look')}
-        </Button>
-      ))}
+    <Box flexDirection="row" justifyContent="space-between" gap={1}>
+      <Box gap={1} flexWrap="wrap">
+        {(['stats', 'look', 'achievements', 'settings'] as const).map(tab => (
+          <Button key={'tab-' + tab} variant={m.ui.tab === tab ? 'primary' : 'secondary'} onPress={() => ctl.setUi({ tab })}>
+            {TAB_EMOJI[tab]}
+          </Button>
+        ))}
+      </Box>
+      <Button key="card" onPress={() => { void ctl.saveCard().catch(() => {}) }}>📸</Button>
+    </Box>
+  )
+}
+
+/** The Achievements tab: one card for each thing that is counted, as a game-style badge that levels up (a bronze, silver, gold or diamond
+ *  medal; grey with a padlock until the first goal), the metals reached so far, and the progress toward the next goal. One column, so every
+ *  card is as wide as the pane and nothing misaligns. */
+export function renderAchievements(els: Els, m: any, ctl: any, tabs: any, surface: string) {
+  const { Box, Text, Svg } = els as Required<Els>
+  const { done, total, groups } = m.achievements
+  const emoji = (tier: number | null) => (tier === null ? '🔒' : ['🥉', '🥈', '🥇', '💎'][tier])
+  return (
+    <Box flexDirection="column" gap={1}>
+      {tabs}
+      <Text weight="bold">{tabTitle('achievements')} · {t('ui.ach.count', { done, total })}</Text>
+      {groups.map((g: any) => {
+        const filled = Math.round((g.current / g.target) * 20)
+        const started = g.tier !== null
+        const picture = surface !== 'terminal' && Svg
+          ? <Svg source={achievementSvg({ kind: g.kind, tier: g.tier ?? 0, reached: started, size: 80, title: `${g.title} · ${g.tierName ?? t('ach.locked')}` })} width={80} height={80} alt={`${g.title}: ${g.tierName ?? t('ach.locked')}`} />
+          : <Text>{emoji(g.tier)}</Text>
+        return (
+          <Box key={'ach-' + g.kind} flexDirection="row" gap={2} alignItems="center" borderStyle="round" borderColor={g.complete ? '#d29922' : '#30363d'} paddingX={1}>
+            {picture}
+            <Box flexDirection="column">
+              <Text weight="bold">{g.title}</Text>
+              <Box flexDirection="row" gap={1}>
+                {g.levels.map((level: any) => <Text key={'pip-' + level.id} color={level.reached ? TIER_COLORS[level.tier] : '#30363d'}>●</Text>)}
+                <Text dimColor={!started}>{g.tierName ?? t('ach.locked')}</Text>
+              </Box>
+              {g.complete
+                ? <Text color="#3fb950">✔ {t('ach.max')}</Text>
+                : (
+                  <Box flexDirection="column">
+                    <Box flexDirection="row" gap={1}>
+                      <Text color="#58a6ff">{'█'.repeat(filled)}</Text>
+                      <Text color="#30363d">{'█'.repeat(20 - filled)}</Text>
+                    </Box>
+                    <Text dimColor>{g.current} / {g.target} · {t('ach.next', { goal: g.nextName })}{g.reward ? ' · ' + t('ui.ach.reward', { name: g.reward }) : ''}</Text>
+                  </Box>
+                )}
+            </Box>
+          </Box>
+        )
+      })}
     </Box>
   )
 }
@@ -169,6 +270,10 @@ export function renderStats(els: Els, m: any, ctl: any, tabs: any, surface: stri
   return (
     <Box flexDirection="column" gap={1}>
       {tabs}
+      <Text weight="bold">{tabTitle('stats')}</Text>
+      <Text dimColor>
+        {t('ui.footer', { name: m.pet.name, age: t('unit.day', { n: m.age.days }), streak: m.life.current, best: m.life.longest, active: t('unit.activeDay', { n: m.life.days }), last: m.life.last ?? t('ago.never') })}
+      </Text>
       <Text weight="bold">{t('ui.platform')}</Text>
       <Box gap={1} flexWrap="wrap">
         {m.platforms.map((agent: string) => (
@@ -186,12 +291,17 @@ export function renderStats(els: Els, m: any, ctl: any, tabs: any, surface: stri
         ))}
       </Box>
       <Text dimColor>{m.rangeLabel}</Text>
-      <Box gap={1} flexWrap="wrap">
-        {m.stats.tiles.map((tile: any) => (
-          <Box key={'tile-' + tile.id} flexDirection="column" alignItems="center" borderStyle="round" borderColor="#30363d" paddingX={1} minWidth={17}>
-            <Text weight="bold">{tile.value}</Text>
-            <Text dimColor>{tile.label}</Text>
-            {tile.note ? <Text dimColor>{tile.note}</Text> : null}
+      {/* The numbers that matter, two to a row and all the same size (a row's tiles are as tall as the tallest). */}
+      <Box flexDirection="column" gap={1}>
+        {Array.from({ length: Math.ceil(m.stats.tiles.length / 2) }, (_, row) => (
+          <Box key={'tiles-' + row} flexDirection="row" gap={1}>
+            {m.stats.tiles.slice(row * 2, row * 2 + 2).map((tile: any) => (
+              <Box key={'tile-' + tile.id} flexDirection="column" alignItems="center" justifyContent="center" borderStyle="round" borderColor="#30363d" paddingX={1} width="48%">
+                <Text weight="bold">{tile.value}</Text>
+                <Text dimColor>{tile.label}</Text>
+                {tile.note ? <Text dimColor>{tile.note}</Text> : null}
+              </Box>
+            ))}
           </Box>
         ))}
       </Box>
@@ -233,20 +343,18 @@ export function renderStats(els: Els, m: any, ctl: any, tabs: any, surface: stri
           ))}
         </Box>
       )}
-      <Text dimColor>
-        {t('ui.footer', { name: m.pet.name, age: t('unit.day', { n: m.age.days }), streak: m.life.current, best: m.life.longest, active: t('unit.activeDay', { n: m.life.days }), last: m.life.last ?? t('ago.never') })}
-      </Text>
     </Box>
   )
 }
 
-/** The Customize tab: name, character, colors, settings, sounds and band size. `play` plays a sound as it is chosen. */
-export function renderCustomize({ Box, Text, Button, Input }: Els, m: any, ctl: any, tabs: any, picture: any, play: (sound: string, volume: string) => void) {
+/** The Customize tab: how the pet looks (its name, character, colors, what it wears, the frame of its band and its card). */
+export function renderCustomize({ Box, Text, Button, Input }: Els, m: any, ctl: any, tabs: any, picture: any) {
   const set = (patch: any) => { void ctl.setPet(patch) }
   const choice = (key: string, label: string, on: boolean, onPress: () => void) => <Button key={key} variant={on ? 'primary' : 'secondary'} onPress={onPress}>{label}</Button>
   return (
     <Box flexDirection="column" gap={1}>
       {tabs}
+      <Text weight="bold">{tabTitle('look')}</Text>
       {picture}
       <Input key="name" label={t('ui.name')} placeholder={t('ui.name.placeholder', { max: 16, name: m.pet.name })} value={m.pet.isCustom ? m.pet.name : ''} submitLabel={t('ui.save')} onSubmit={(value: string) => set({ name: value })} />
       <Text dimColor>{t('ui.character')}</Text>
@@ -255,9 +363,39 @@ export function renderCustomize({ Box, Text, Button, Input }: Els, m: any, ctl: 
       </Box>
       <Text dimColor>{t('ui.colors')}</Text>
       <Box gap={1} flexWrap="wrap">
-        {PRESETS.map((p: any) => choice('pal-' + p.id, t('palette.' + p.id), (p.body ?? null) === (m.pet.colors.body ?? null) && (p.accent ?? null) === (m.pet.colors.accent ?? null), () => set({ colors: { body: p.body, accent: p.accent } })))}
+        {/* A palette that is a reward and not earned yet is a dim button with a padlock that does nothing. */}
+        {PRESETS.map((p: any) => (m.palettes[p.id] === false
+          ? <Button key={'pal-' + p.id} dimColor onPress={() => {}}>{'🔒 ' + t('palette.' + p.id)}</Button>
+          : choice('pal-' + p.id, t('palette.' + p.id), (p.body ?? null) === (m.pet.colors.body ?? null) && (p.accent ?? null) === (m.pet.colors.accent ?? null), () => set({ colors: { body: p.body, accent: p.accent } }))))}
       </Box>
-      <Text dimColor>{t('ui.settings')}</Text>
+      <Text dimColor>{t('ui.accessory')}</Text>
+      <Box gap={1} flexWrap="wrap">
+        {choice('acc-none', t('ui.acc.none'), m.pet.worn === null, () => set({ prefs: { accessory: 'none' } }))}
+        {/* Every accessory is listed; one that is still locked is a dim button with a padlock that does nothing when pressed. */}
+        {m.accessories.map((a: any) => (a.unlocked
+          ? choice('acc-' + a.id, a.name, m.pet.worn === a.id, () => set({ prefs: { accessory: a.id } }))
+          : <Button key={'acc-' + a.id} dimColor onPress={() => {}}>{'🔒 ' + a.name}</Button>))}
+      </Box>
+      <Text dimColor>{t('ui.frame')}</Text>
+      <Box gap={1} flexWrap="wrap">
+        {choice('frame-none', t('ui.acc.none'), m.pet.frame === null, () => set({ prefs: { frame: 'none' } }))}
+        {m.frames.map((f: any) => (f.unlocked
+          ? choice('frame-' + f.id, f.name, m.pet.frame === f.id, () => set({ prefs: { frame: f.id } }))
+          : <Button key={'frame-' + f.id} dimColor onPress={() => {}}>{'🔒 ' + f.name}</Button>))}
+      </Box>
+    </Box>
+  )
+}
+
+/** The Settings tab: how the plugin behaves (what is shown, the sounds, the motion, the size of the band, the plan's limits, the break
+ *  reminder, the language). `play` plays a sound as it is chosen. */
+export function renderSettings({ Box, Text, Button }: Els, m: any, ctl: any, tabs: any, play: (sound: string, volume: string) => void) {
+  const set = (patch: any) => { void ctl.setPet(patch) }
+  const choice = (key: string, label: string, on: boolean, onPress: () => void) => <Button key={key} variant={on ? 'primary' : 'secondary'} onPress={onPress}>{label}</Button>
+  return (
+    <Box flexDirection="column" gap={1}>
+      {tabs}
+      <Text weight="bold">{tabTitle('settings')}</Text>
       <Box gap={1} flexWrap="wrap">
         <Button key="band" onPress={() => set({ prefs: { band: !m.pet.band } })}>{t(m.pet.band ? 'ui.set.band.on' : 'ui.set.band.off')}</Button>
         <Button key="mood" onPress={() => set({ prefs: { mood: !m.pet.mood } })}>{t(m.pet.mood ? 'ui.set.mood.on' : 'ui.set.mood.off')}</Button>
@@ -271,17 +409,32 @@ export function renderCustomize({ Box, Text, Button, Input }: Els, m: any, ctl: 
           </Box>
         </Box>
       ))}
-      <Text dimColor>{t('ui.motion')}</Text>
-      <Box gap={1}>
-        {(['full', 'calm', 'reduced'] as const).map(level => choice('motion-' + level, t('ui.motion.' + level), m.pet.motion === level, () => set({ prefs: { motion: level } })))}
-      </Box>
       <Text dimColor>{t('ui.volume')}</Text>
       <Box gap={1}>
         {VOLUMES.map((volume: string) => choice('v-' + volume, t('ui.volume.' + volume), m.pet.volume === volume, () => { set({ prefs: { volume } }); play(m.pet.sounds.finish === 'off' ? 'chime' : m.pet.sounds.finish, volume) }))}
       </Box>
+      <Text dimColor>{t('ui.motion')}</Text>
+      <Box gap={1}>
+        {(['full', 'calm', 'reduced'] as const).map(level => choice('motion-' + level, t('ui.motion.' + level), m.pet.motion === level, () => set({ prefs: { motion: level } })))}
+      </Box>
       <Text dimColor>{t('ui.bandSize')}</Text>
       <Box gap={1}>
         {(['small', 'medium', 'large'] as const).map(size => choice('band-' + size, t('ui.size.' + size), m.pet.bandSize === size, () => set({ prefs: { bandSize: size } })))}
+      </Box>
+      <Text dimColor>{t('ui.plan')}</Text>
+      <Box gap={1} flexWrap="wrap">
+        {(['auto', 'always', 'five_hour', 'seven_day', 'off'] as const).map(mode => choice('plan-' + mode, t('ui.plan.' + mode), m.pet.plan === mode, () => set({ prefs: { plan: mode } })))}
+      </Box>
+      <Text dimColor>{t('ui.breaks')}{m.pet.breakEvery ? ' · ' + t('ui.breaks.every', { time: minutesText(m.pet.breakEvery) }) : ''}</Text>
+      <Box gap={1} flexWrap="wrap">
+        {choice('breaks-off', t('ui.breaks.off'), m.pet.breakEvery === 0, () => set({ prefs: { breakEvery: 0 } }))}
+        {BREAK_PRESETS.map((minutes: number) => choice('breaks-' + minutes, minutesText(minutes), m.pet.breakEvery === minutes, () => set({ prefs: { breakEvery: minutes } })))}
+        <Button key="breaks-minus" onPress={() => set({ prefs: { breakEvery: m.pet.breakEvery - BREAK_STEP < BREAK_MIN ? 0 : m.pet.breakEvery - BREAK_STEP } })}>{'− ' + minutesText(BREAK_STEP)}</Button>
+        <Button key="breaks-plus" onPress={() => set({ prefs: { breakEvery: m.pet.breakEvery === 0 ? 60 : Math.min(BREAK_MAX, m.pet.breakEvery + BREAK_STEP) } })}>{'+ ' + minutesText(BREAK_STEP)}</Button>
+      </Box>
+      <Text dimColor>{t('ui.breaks.rest')}</Text>
+      <Box gap={1} flexWrap="wrap">
+        {REST_PRESETS.map((minutes: number) => choice('rest-' + minutes, minutesText(minutes), m.pet.breakRest === minutes, () => set({ prefs: { breakRest: minutes } })))}
       </Box>
       <Text dimColor>{t('ui.language')}</Text>
       <Box gap={1} flexWrap="wrap">

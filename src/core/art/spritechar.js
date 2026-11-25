@@ -14,7 +14,7 @@ const MAX_LOOK_X = { aquatic: 0 }
 const ALPHABET ='0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 /** @param {string} id a key of SPRITES @param {{ ground?: number, depth?: number }} [options] ground is the feet row in design units */
-export function defineSprite(id, { depth = 1.5 } = {}) {
+export function defineSprite(id, { depth = 1.5, crown = 'dome' } = {}) {
   const S = SPRITES[id]
   const cells = new Uint8Array(S.w * S.h)
   S.rows.forEach((row, y) => { for (let x = 0; x < S.w; x++) cells[y * S.w + x] = row[x] === '.' ? 0 : ALPHABET.indexOf(row[x]) + 1 })
@@ -24,6 +24,30 @@ export function defineSprite(id, { depth = 1.5 } = {}) {
   const ground = feet / K
   const oy = feet - S.h
   const pivotX = W / 2
+  // The head, for what the pet wears. Face pieces (glasses, a monocle, a mustache) follow the eyes. Hats sit on the dome of the head: the
+  // first row whose widest run of artwork is half as wide as the widest row, which leaves out a curl, an antenna, a tuft and the tip of
+  // a wizard's hat, and centered on that run. ('tip' puts them on the very top of the artwork instead.)
+  const faceU = (S.face.eyeL[0] + S.face.eyeR[0]) / 2
+  const run = v => {
+    let best = [0, 0]
+    let start = -1
+    for (let u = 0; u <= S.w; u++) {
+      const filled = u < S.w && cells[v * S.w + u] !== 0
+      if (filled && start < 0) start = u
+      if (!filled && start >= 0) { if (u - start > best[1]) best = [start, u - start]; start = -1 }
+    }
+    return best
+  }
+  const widest = Math.max(...Array.from({ length: S.h }, (_, v) => run(v)[1]))
+  let crownV = 0
+  let crownU = faceU
+  if (crown === 'tip') {
+    while (crownV < S.h - 1 && run(crownV)[1] === 0) crownV++
+    const [start, length] = run(crownV)
+    crownU = start + length / 2
+  } else {
+    for (let v = 0; v < S.h; v++) { const [start, length] = run(v); if (length >= widest * 0.5) { crownV = v; crownU = start + length / 2; break } }
+  }
 
   const draw = (canvas, pose) => {
     const sx = pose.sx ?? 1
@@ -66,6 +90,7 @@ export function defineSprite(id, { depth = 1.5 } = {}) {
       propCx: Math.min(W / K - 8, Math.max(8, (lx + rx) / 2)),
       propBottom: Math.max(bottom, my + 9),
       hands: [], // the artwork has no separate hands; props sit in front of its belly
+      head: { cx: toX(crownU), top: toY(crownV), faceX: toX(faceU), eyeY: toY((F.eyeL[1] + F.eyeR[1]) / 2), gap: ((F.eyeR[0] - F.eyeL[0]) / 2) * sx },
     }
   }
   return { draw, limb: () => {}, ground, shadow: ground + 2.9, depth }

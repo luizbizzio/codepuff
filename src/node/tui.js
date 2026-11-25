@@ -12,6 +12,7 @@ import { aggregate, activity, petAge, series } from '../core/aggregate.js'
 import { addDays, dayKey } from '../core/days.js'
 import { AGENT_LABELS, ago, statBars, statRows, statTiles } from '../core/format.js'
 import { focus } from '../core/petstate.js'
+import { paletteOpen, wornOf } from '../core/rewards.js'
 import { PRESETS } from '../core/color.js'
 import { CHARACTERS, DEFAULT_NAMES, NAME_MAX, cleanName, displayName } from '../core/settings.js'
 import { terminalFrame, toAnsi } from '../core/render/raster.js'
@@ -32,7 +33,7 @@ export async function runTui(store, { tab: startTab = 0, host: wantedHost } = {}
   const out = process.stdout
   if (!out.isTTY) {
     const pet = store.ensurePet()
-    const frame = terminalFrame({ character: pet.character, state: 'idle', reduced: true, columns: 40 })
+    const frame = terminalFrame({ character: pet.character, worn: wornOf(pet), state: 'idle', reduced: true, columns: 40 })
     out.write(toAnsi(frame.canvas, frame.palette, frame.box, frame.factor).join('\n') + '\n')
     return
   }
@@ -74,7 +75,7 @@ export async function runTui(store, { tab: startTab = 0, host: wantedHost } = {}
   const petPicture = (cols, rows, now, state, helpers) => {
     const key = [pet.character, pet.colors.body, pet.colors.accent, state, helpers].join('|')
     if (epoch.key !== key) epoch = { key, at: now }
-    const frame = terminalFrame({ character: pet.character, colors: pet.colors, state, helpers, elapsed: now - epoch.at, reduced: reduced(), columns: cols, rows })
+    const frame = terminalFrame({ character: pet.character, worn: wornOf(pet), colors: pet.colors, state, helpers, elapsed: now - epoch.at, reduced: reduced(), columns: cols, rows })
     return { lines: toAnsi(frame.canvas, frame.palette, frame.box, frame.factor), width: frame.columns, until: frame.until }
   }
 
@@ -177,8 +178,10 @@ export async function runTui(store, { tab: startTab = 0, host: wantedHost } = {}
   const cycleCharacter = d => save({ character: CHARACTERS[(CHARACTERS.indexOf(pet.character) + d + CHARACTERS.length) % CHARACTERS.length] })
   const toggleMotion = () => save({ prefs: { motion: pet.prefs.motion === 'reduced' ? 'calm' : 'reduced' } })
   const cyclePalette = d => {
-    const at = PRESETS.findIndex(p => (p.body ?? null) === (pet.colors.body ?? null) && (p.accent ?? null) === (pet.colors.accent ?? null))
-    const next = PRESETS[(at + d + PRESETS.length) % PRESETS.length]
+    // Only the palettes that can be used: the ones that are rewards are left out until they are earned.
+    const open = PRESETS.filter(p => paletteOpen(p.id, pet.milestones))
+    const at = open.findIndex(p => (p.body ?? null) === (pet.colors.body ?? null) && (p.accent ?? null) === (pet.colors.accent ?? null))
+    const next = open[(at + d + open.length) % open.length]
     save({ colors: { body: next.body, accent: next.accent } })
   }
 

@@ -7,7 +7,7 @@ import {
   LANGUAGES, LANGUAGE_CODES, cellWidth, chooseLanguage, detectLanguage, formatNumber, getLanguage, normalizeLocale, padCells, pluralCategory, setLanguage, t,
 } from '../src/core/i18n/index.js'
 import en from '../src/core/i18n/en.js'
-import { ago, duration, shortDay, statBars, statRows, statTiles } from '../src/core/format.js'
+import { ago, duration, resetIn, shortDay, statBars, statRows, statTiles, usd } from '../src/core/format.js'
 import { labelFor, STATES } from '../src/core/petstate.js'
 import { emptyStats } from '../src/core/aggregate.js'
 import { sanitizePet, defaultPet } from '../src/core/settings.js'
@@ -223,6 +223,30 @@ function files(dir, out = []) {
   return out
 }
 
+test('an amount of money follows the language: the decimal sign, the thousands separator and the symbol', () => {
+  assert.equal(usd(1.234), '≈ $1.23')
+  assert.equal(usd(1234.5), '≈ $1,234.50')
+  assert.equal(usd(0.004), '≈ $0.00')
+  assert.equal(usd(NaN), '≈ $0.00')
+  withLanguage('pt-BR', () => assert.equal(usd(1234.5), '≈ US$ 1.234,50'))
+  withLanguage('de', () => assert.equal(usd(7.05), '≈ 7,05 $'))
+  withLanguage('fr', () => assert.equal(usd(7.05), '≈ 7,05 $US'))
+  withLanguage('ja', () => assert.equal(usd(1234.5), '≈ $1,234.50'))
+})
+
+test('a plan reset is told in minutes, hours and minutes, and from a day on in days and hours', () => {
+  const H = 3_600_000
+  assert.equal(resetIn(59 * 60_000), '59 min')
+  assert.equal(resetIn(5 * H + 12 * 60_000), '5h 12m')
+  assert.equal(resetIn(23 * H + 59 * 60_000), '23h 59m')
+  assert.equal(resetIn(24 * H), '1d 0h')
+  assert.equal(resetIn(153 * H), '6d 9h', 'never "153h"')
+  assert.equal(resetIn(0), '—')
+  withLanguage('pt-BR', () => assert.equal(resetIn(153 * H), '6d 9h'))
+  withLanguage('de', () => assert.equal(resetIn(153 * H), '6 T. 9 Std.'))
+  withLanguage('ja', () => assert.equal(resetIn(153 * H), '6日9時間'))
+})
+
 test('every literal key the sources pass to t() exists in the catalog, and dynamic ones have all their cases', () => {
   const used = new Set()
   const dynamic = []
@@ -235,8 +259,13 @@ test('every literal key the sources pass to t() exists in the catalog, and dynam
   for (const key of used) if (!key.endsWith('.')) assert.ok(key in en, 'missing in en.js: ' + key)
   // The prefix families built at run time.
   const family = (prefix, ids) => { for (const id of ids) assert.ok(prefix + id in en, 'missing in en.js: ' + prefix + id) }
-  family('state.', ['idle', 'thinking', 'reading', 'searching', 'coding', 'running', 'sad', 'git', 'mcp', 'testing', 'web', 'planning', 'investigating', 'waiting', 'finished'])
-  family('reaction.', ['petted', 'giggle', 'delighted', 'hurt'])
+  family('state.', ['idle', 'bored', 'coffee', 'sleeping', 'thinking', 'reading', 'searching', 'coding', 'running', 'sad', 'git', 'mcp', 'testing', 'web', 'planning', 'investigating', 'waiting', 'finished'])
+  family('reaction.', ['petted', 'giggle', 'delighted', 'hurt', 'morning', 'afternoon', 'evening', 'night', 'stretch'])
+  family('acc.', ['flower', 'bow', 'glasses', 'cap', 'party', 'tophat', 'sunglasses', 'crown', 'halo', 'beret', 'chef', 'monocle', 'bunny', 'pirate', 'cowboy', 'viking', 'graduation'])
+  family('frame.', ['rainbow', 'pixel', 'neon', 'gold', 'ocean', 'sunset', 'aurora'])
+  family('ui.breaks.', ['off', 'every', 'rest'])
+  family('ach.', ['tools', 'streak', 'prompts', 'tests', 'commits', 'files', 'lines', 'days', 'time', 'helpers', 'projects'])
+  family('tier.', ['bronze', 'silver', 'gold', 'diamond'])
   family('plan.', ['five_hour', 'seven_day', 'spend_limit'])
   family('toast.', ['reset5h', 'resetWeek'])
   family('stats.cat.', ['read', 'search', 'edit', 'shell', 'web', 'agent', 'plan', 'mcp', 'other'])
@@ -246,12 +275,14 @@ test('every literal key the sources pass to t() exists in the catalog, and dynam
   family('ui.motion.', ['full', 'calm', 'reduced'])
   family('ui.volume.', ['low', 'medium', 'high'])
   family('ui.size.', ['small', 'medium', 'large'])
-  family('palette.', ['default', 'sky', 'marshmallow', 'mint', 'sunset', 'lavender', 'lemon', 'ocean', 'berry', 'ember', 'graphite', 'custom'])
+  family('ui.plan.', ['auto', 'always', 'five_hour', 'seven_day', 'off'])
+  family('cmd.plan.', ['auto', 'always', 'five_hour', 'seven_day', 'off'])
+  family('palette.', ['default', 'sky', 'marshmallow', 'mint', 'sunset', 'lavender', 'lemon', 'ocean', 'berry', 'ember', 'graphite', 'aurora', 'cotton', 'galaxy', 'custom'])
   family('month.', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
-  family('milestone.', ['tools', 'streak', 'prompts', 'tests', 'commits'])
+  family('milestone.', ['tools', 'streak', 'prompts', 'tests', 'commits', 'files', 'lines', 'days', 'time', 'helpers', 'projects'])
   assert.ok(dynamic.length > 0)
   // Nothing in the catalog is unused (a dead sentence is a sentence somebody translates for nothing); the families above are checked by name.
-  const families = ['state.', 'reaction.', 'plan.', 'toast.', 'stats.cat.', 'ui.period.', 'ui.sound.', 'sound.', 'ui.motion.', 'ui.volume.', 'ui.size.', 'palette.', 'month.', 'milestone.']
+  const families = ['acc.', 'frame.', 'ach.', 'tier.', 'ui.breaks.', 'state.', 'reaction.', 'plan.', 'toast.', 'stats.cat.', 'ui.period.', 'ui.sound.', 'sound.', 'ui.motion.', 'ui.volume.', 'ui.size.', 'ui.plan.', 'cmd.plan.', 'palette.', 'month.', 'milestone.']
   const text = [...files(join(ROOT, 'src')), ...files(join(ROOT, 'hooks')), join(ROOT, 'src', 'core', 'i18n', 'index.js')].map(file => readFileSync(file, 'utf8')).join(' ')
   const unused = Object.keys(en).filter(key => !text.includes("'" + key + "'") && !families.some(prefix => key.startsWith(prefix)))
   assert.deepEqual(unused, [], 'keys nobody uses')

@@ -15,6 +15,9 @@ const ROOT = join(import.meta.dirname, '..')
 // [state, name shown, when it appears]
 const STATES = [
   ['idle', 'Idle', 'Nothing is happening: the agent is not working.'],
+  ['bored', 'Bored', 'Nothing has happened for about five minutes: it looks around, yawns, taps a foot.'],
+  ['coffee', 'Coffee break', 'Nothing has happened for about ten minutes: it has a coffee, steam rising.'],
+  ['sleeping', 'Napping', 'Nothing has happened for a quarter of an hour: it takes a nap.'],
   ['thinking', 'Thinking', 'The agent is working on a response and no tool call is in flight.'],
   ['reading', 'Reading', 'The agent is reading files.'],
   ['searching', 'Searching', 'The agent is searching the project.'],
@@ -38,6 +41,11 @@ const STATES = [
   ['petted', 'Petted', 'You pressed the pet.'],
   ['giggle', 'Giggle', 'You pressed the pet several times.'],
   ['delighted', 'Delighted', 'You pressed the pet a lot, or thanked it.'],
+  ['morning', 'Good morning', 'A greeting when a session starts (or you come back after hours away) in the morning: a stretch, a yawn, a wave under the sun.'],
+  ['afternoon', 'Good afternoon', 'The same greeting in the afternoon: a hop and a wave, the sun high.'],
+  ['evening', 'Good evening', 'The same greeting in the evening: a calm wave under the moon.'],
+  ['night', 'Late night', 'The same greeting late at night: sleepy, a big yawn under the stars, then it perks up for you.'],
+  ['stretch', 'Stretch', 'The break reminder (if you turned it on): after a long stretch of work it stretches and suggests a pause.'],
   ['hurt', 'Hurt', 'Someone was rude to it. Hearts recover with time and kind words.'],
 ]
 const GRID = STATES.filter(([state]) => state !== 'hurt')
@@ -68,7 +76,7 @@ ${extra}
 
 ## Every animation
 
-All the pictures are animated. Each one shows when it appears, for ${name} and for every other character: the states follow what the agent really does, and the last four are reactions to you.
+All the pictures are animated. Each one shows when it appears, for ${name} and for every other character: the states follow what the agent really does (and, when nothing is happening, how long it has been quiet), and the last ones are reactions: to you, and to the clock.
 
 | Picture | Animation | When it appears |
 | --- | --- | --- |

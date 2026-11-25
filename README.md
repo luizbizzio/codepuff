@@ -5,7 +5,7 @@
 <br>
 
 [![CI](https://github.com/luizbizzio/codepuff/actions/workflows/ci.yml/badge.svg)](https://github.com/luizbizzio/codepuff/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-1.0.0-7253b9.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.0-7253b9.svg)](CHANGELOG.md)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-339933.svg)](https://nodejs.org)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](package.json)
@@ -24,7 +24,7 @@ failing. It celebrates only when a test run really passed, and it keeps a runnin
 both agents.
 
 <p align="center">
-  <img src="docs/images/band.png" alt="The CodePuff band above the Claude Code prompt: the pet, a two day streak, 58 prompts, five hearts, the status, the plan limit and the success ring." width="820">
+  <img src="docs/images/band.png" alt="The CodePuff band above the Claude Code prompt: the pet, the streak, the prompts, the status, the hearts and the success ring, with the plan limits under it." width="820">
 </p>
 
 <p align="center"><sub>The compact band above the Claude Code prompt (large size, English).</sub></p>
@@ -53,7 +53,8 @@ both agents.
 
 - **Honest.** Every animation comes from a real event. The success dance needs a test run that exited with code 0; the error face needs a tool that really failed. When CodePuff cannot know something, it says so instead of guessing.
 - **Alive.** Thinking, reading, searching, editing, testing, delegating: each has its own scene, and long waits keep changing (a glance, a blink, a bright idea, and a quirk of each character), so it never looks frozen.
-- **Yours.** Eight characters, ten palettes or your own colors, your own name, quiet sounds, three levels of motion, and 14 languages picked automatically from your computer.
+- **Yours.** Eight characters, fourteen palettes (some of them earned) or your own colors, accessories and frames, your own name, quiet sounds, three levels of motion, and 14 languages picked automatically from your computer.
+- **Playful.** Game-style achievement badges that level up from bronze to diamond and unlock accessories, colors and frames; greetings for the time of day; a pet that gets bored, has a coffee and naps; and, if you want it, a reminder to take a break.
 - **Private.** One local folder. No account, no server, no telemetry, no model calls, no network code at all. Only counters are stored: never your prompts, code or paths.
 - **Light.** Zero dependencies and nothing to build. Each hook is a tiny process that writes one small file.
 
@@ -94,35 +95,47 @@ Foxy in every state, as the animated pictures the band draws:
 <table>
   <tr>
     <td align="center"><img src="docs/images/states/fox/idle.svg" alt="Idle" width="120"><br><sub>Idle</sub></td>
+    <td align="center"><img src="docs/images/states/fox/bored.svg" alt="Bored" width="120"><br><sub>Bored</sub></td>
+    <td align="center"><img src="docs/images/states/fox/coffee.svg" alt="Coffee break" width="120"><br><sub>Coffee break</sub></td>
+    <td align="center"><img src="docs/images/states/fox/sleeping.svg" alt="Napping" width="120"><br><sub>Napping</sub></td>
     <td align="center"><img src="docs/images/states/fox/thinking.svg" alt="Thinking" width="120"><br><sub>Thinking</sub></td>
     <td align="center"><img src="docs/images/states/fox/reading.svg" alt="Reading" width="120"><br><sub>Reading</sub></td>
+  </tr>
+  <tr>
     <td align="center"><img src="docs/images/states/fox/searching.svg" alt="Searching" width="120"><br><sub>Searching</sub></td>
     <td align="center"><img src="docs/images/states/fox/investigating.svg" alt="Investigating" width="120"><br><sub>Investigating</sub></td>
     <td align="center"><img src="docs/images/states/fox/coding.svg" alt="Coding" width="120"><br><sub>Coding</sub></td>
-  </tr>
-  <tr>
     <td align="center"><img src="docs/images/states/fox/running.svg" alt="Running" width="120"><br><sub>Running</sub></td>
     <td align="center"><img src="docs/images/states/fox/git.svg" alt="Git" width="120"><br><sub>Git</sub></td>
     <td align="center"><img src="docs/images/states/fox/mcp.svg" alt="Connected tool" width="120"><br><sub>Connected tool</sub></td>
+  </tr>
+  <tr>
     <td align="center"><img src="docs/images/states/fox/testing.svg" alt="Testing" width="120"><br><sub>Testing</sub></td>
     <td align="center"><img src="docs/images/states/fox/web.svg" alt="Web" width="120"><br><sub>Web</sub></td>
     <td align="center"><img src="docs/images/states/fox/delegating.svg" alt="Subagents" width="120"><br><sub>Subagents</sub></td>
-  </tr>
-  <tr>
     <td align="center"><img src="docs/images/states/fox/planning.svg" alt="Planning" width="120"><br><sub>Planning</sub></td>
     <td align="center"><img src="docs/images/states/fox/success.svg" alt="Success" width="120"><br><sub>Success</sub></td>
     <td align="center"><img src="docs/images/states/fox/error.svg" alt="Error" width="120"><br><sub>Error</sub></td>
+  </tr>
+  <tr>
     <td align="center"><img src="docs/images/states/fox/permission.svg" alt="Needs you" width="120"><br><sub>Needs you</sub></td>
     <td align="center"><img src="docs/images/states/fox/waiting.svg" alt="Waiting" width="120"><br><sub>Waiting</sub></td>
     <td align="center"><img src="docs/images/states/fox/finished.svg" alt="Finished" width="120"><br><sub>Finished</sub></td>
-  </tr>
-  <tr>
     <td align="center"><img src="docs/images/states/fox/tired.svg" alt="Tired" width="120"><br><sub>Tired</sub></td>
     <td align="center"><img src="docs/images/states/fox/sad.svg" alt="Sad" width="120"><br><sub>Sad</sub></td>
     <td align="center"><img src="docs/images/states/fox/disconnected.svg" alt="Disconnected" width="120"><br><sub>Disconnected</sub></td>
+  </tr>
+  <tr>
     <td align="center"><img src="docs/images/states/fox/petted.svg" alt="Petted" width="120"><br><sub>Petted</sub></td>
     <td align="center"><img src="docs/images/states/fox/giggle.svg" alt="Giggle" width="120"><br><sub>Giggle</sub></td>
     <td align="center"><img src="docs/images/states/fox/delighted.svg" alt="Delighted" width="120"><br><sub>Delighted</sub></td>
+    <td align="center"><img src="docs/images/states/fox/morning.svg" alt="Good morning" width="120"><br><sub>Good morning</sub></td>
+    <td align="center"><img src="docs/images/states/fox/afternoon.svg" alt="Good afternoon" width="120"><br><sub>Good afternoon</sub></td>
+    <td align="center"><img src="docs/images/states/fox/evening.svg" alt="Good evening" width="120"><br><sub>Good evening</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/images/states/fox/night.svg" alt="Late night" width="120"><br><sub>Late night</sub></td>
+    <td align="center"><img src="docs/images/states/fox/stretch.svg" alt="Stretch" width="120"><br><sub>Stretch</sub></td>
   </tr>
 </table>
 
@@ -155,7 +168,7 @@ label always says which agent and which project it is.
   </tr>
   <tr>
     <td align="center"><sub><b>Statistics</b>: a platform, a period, the numbers that matter, and every number one button away.</sub></td>
-    <td align="center"><sub><b>Customize</b>: character, colors, sounds, motion, size and language.</sub></td>
+    <td align="center"><sub><b>Customize</b>: name, character, colors, accessory and band frame. Sounds, motion, size and language are in the <b>Settings</b> tab.</sub></td>
   </tr>
 </table>
 
@@ -172,10 +185,17 @@ tell the difference, then dropped: only a number is kept, and one switch turns t
 Short, original **sounds** play when the agent asks you something, when a turn finishes, and when your 5-hour or weekly limit resets.
 Each can be changed or silenced, and they start quiet.
 
+### Accessories, achievements and breaks
+
+Every level of every achievement unlocks something: an **accessory** for the pet (17, from a flower to a crown and a pirate hat), a
+color **palette** (some of the colors have to be earned) or a **frame** for the compact band (and the pet card). Each is tied to a real count: tasks, prompts, passing tests, commits, days in a row, files changed, lines, active days, hours of work, helpers called, projects. The **Achievements** tab has a
+game-style badge for each thing that is counted, which levels up from bronze to silver, gold and diamond as you go, with your progress toward the next level. When nothing happens the pet gets bored, has a coffee and naps, and it greets you for the time of day. If you like, it also
+reminds you to take a **break** after a long stretch of work, and you can save a **pet card** to share. See [Features](docs/FEATURES.md).
+
 ### Fourteen languages
 
 Everything CodePuff says is translated and follows your computer's language by itself: English, Portuguese (Brazil), Spanish, French,
-German, Italian, Dutch, Polish, Turkish, Russian, Japanese, Korean, Simplified Chinese and Traditional Chinese. Change it in Customize,
+German, Italian, Dutch, Polish, Turkish, Russian, Japanese, Korean, Simplified Chinese and Traditional Chinese. Change it in Settings,
 with `/codepuff language`, or `codepuff set language`. Details in [docs/FEATURES.md](docs/FEATURES.md#languages).
 
 ## The pets
@@ -218,8 +238,8 @@ used automatically. What was verified on which system is listed in [docs/STATUS.
 
 Everything stays on your computer, in one folder (`~/.codepuff`). No account, no server, no model calls, no telemetry. Only
 **counters** are stored: never your prompts, code, commands, file paths or tool output (tested with sentinel strings). The single place
-a prompt is read is the hearts: its text is judged in memory, then dropped. Switch that off (*Hearts react to my messages* in
-Customize, or `/codepuff mood off`) and nothing is read at all. Export, import, reset or delete your data any time with `codepuff data`.
+a prompt is read is the hearts: its text is judged in memory, then dropped. Switch that off (*Hearts* in
+Settings, or `/codepuff mood off`) and nothing is read at all. Export, import, reset or delete your data any time with `codepuff data`.
 See [SECURITY.md](SECURITY.md).
 
 ## FAQ
@@ -251,9 +271,9 @@ one way only (the plugin, or `codepuff install codex`), or every event is counte
 | [Development](docs/DEVELOPMENT.md) | Tests, tools, CI, the art and sound pipelines |
 | [Changelog](CHANGELOG.md), [Contributing](CONTRIBUTING.md), [Security](SECURITY.md) | Releases, how to help, reporting problems |
 
-## About version 1.0
+## About this version
 
-1.0.0 means the engine, the Claude Code mod, the terminal app and the installers are complete, documented and covered by tests, on
+1.1.0 builds on 1.0.0: the engine, the Claude Code mod, the terminal app and the installers are complete, documented and covered by tests, on
 Windows, macOS and Linux in CI. It does not mean everything was verified everywhere: the Claude Code mod has only been run by hand
 on Windows, the translations were written by the project rather than by native speakers, and Codex support works within what the
 Codex hooks report. [docs/STATUS.md](docs/STATUS.md) lists exactly what was and was not checked.

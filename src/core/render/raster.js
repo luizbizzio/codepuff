@@ -31,15 +31,35 @@ const ESSENTIAL = new Set(['e404', 'thought', 'excl', 'alert', 'spinner', 'sweat
  * the body at rest, no empty margins. The band shows the picture at a fixed height, so a tight box means a bigger pet in
  * the same space. With `helpers` the box also holds the subagent helpers at the edges.
  */
-export function bandBox(character, helpers = false) {
-  const key = character + ':' + helpers
+export function bandBox(character, helpers = false, worn = null) {
+  const key = character + ':' + helpers + ':' + (worn ?? '')
   const known = bandBoxes.get(key)
   if (known) return known
+  // What is worn does not move between frames (the hop and the stretch are done by the picture, not drawn), so the box of a pet that wears
+  // something is the box without it, grown by what the accessory covers at rest. (Measuring every frame of every state again for each
+  // accessory would take a fraction of a second whenever one is put on.)
+  if (worn) {
+    const base = bandBox(character, helpers, null)
+    const rest = { ...animation('idle', { character }).frames[0].pose, dy: 0, sx: 1, sy: 1, shake: 0, fx: [], prop: null, hands: 'rest', helpers: 0 }
+    const bare = drawScene(character, rest)
+    const dressed = drawScene(character, { ...rest, worn })
+    let x0 = base.x; let x1 = base.x + base.w - 1; let y0 = base.y; let y1 = base.y + base.h - 1
+    for (let y = 0; y < dressed.h; y++) {
+      for (let x = 0; x < dressed.w; x++) {
+        if (dressed.px[y * dressed.w + x] === bare.px[y * bare.w + x]) continue
+        x0 = Math.min(x0, x - 2); x1 = Math.max(x1, x + 2); y0 = Math.min(y0, y - 3); y1 = Math.max(y1, y + 1)
+      }
+    }
+    x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(STAGE.w - 1, x1); y1 = Math.min(STAGE.h - 1, y1)
+    const grown = { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 }
+    bandBoxes.set(key, grown)
+    return grown
+  }
   // Sideways the box holds everything (the band is as wide as the window, so width costs nothing); vertically it holds the
   // body and what it holds, with the effects that say what it is doing (the decorations that rise higher are simply cut off).
   let x0 = STAGE.w; let x1 = -1; let y0 = STAGE.h; let y1 = -1
   for (const state of [...STATES, ...REACTIONS]) {
-    for (const { pose } of animation(state, { helpers: helpers ? 3 : 0, character }).frames) {
+    for (const { pose } of animation(state, { helpers: helpers ? 3 : 0, character, worn }).frames) {
       const at = { ...pose, dy: 0, sx: 1, sy: 1, shake: 0 }
       const withFx = drawScene(character, { ...at, fx: pose.fx.filter(item => item.id !== 'confetti') })
       // Vertically the box holds the effects that say what the pet is doing (a thought cloud, a badge), and drops the
@@ -205,18 +225,18 @@ const rectsMarkup = (list, palette) => {
  * pose to pose, so motion is smooth and the picture stays small.
  * @param {{ character: string, colors?: { body?: string | null, accent?: string | null }, state: string, helpers?: number, scale?: number, reduced?: boolean, background?: string, crop?: 'band', height?: number, hover?: boolean }} options
  */
-function buildSvg({ character, colors = {}, state, helpers = 0, scale = 4, reduced = false, motion = 'calm', background, crop, height, hover = false, title }) {
+function buildSvg({ character, worn = null, colors = {}, state, helpers = 0, scale = 4, reduced = false, motion = 'calm', background, crop, height, hover = false, title }) {
   // Full motion sways about twice as far to the sides as calm does.
   const energy = motion === 'full' ? 1.8 : 1
-  const anim = animation(state, { helpers, character })
+  const anim = animation(state, { helpers, character, worn })
   const palette = buildPalette(character, colors ?? {}, { gray: anim.gray ? 0.8 : 0 })
-  const box = crop === 'band' ? bandBox(character, helpers > 0) : STAGE
+  const box = crop === 'band' ? bandBox(character, helpers > 0, worn) : STAGE
   if (height) scale = height / box.h
   const total = anim.total
   const rest = pose => ({ ...pose, dy: 0, sx: 1, sy: 1, shake: 0 })
 
   // Parts that move on their own (a tail, an antenna): cut out of the body at rest, drawn apart and swung (see parts.js).
-  const bare = drawScene(character, { ...rest(anim.frames[0].pose), fx: [], prop: null, hands: 'rest', helpers: 0 }, 'over')
+  const bare = drawScene(character, { ...rest(anim.frames[0].pose), fx: [], prop: null, hands: 'rest', helpers: 0, worn: null }, 'over')
   const parts = partsOf(character).map(part => {
     const canvas = new Canvas()
     const [x0, y0, x1, y1] = part.rect
@@ -327,7 +347,7 @@ const svgCache = new Map()
 
 export function petSvg(options) {
   // Building a picture draws every frame of the animation, so the same request is answered from memory.
-  const key = JSON.stringify([options.character, options.colors?.body, options.colors?.accent, options.state, options.helpers, options.scale, options.reduced, options.motion, options.background, options.crop, options.height, options.hover, options.title])
+  const key = JSON.stringify([options.character, options.worn, options.colors?.body, options.colors?.accent, options.state, options.helpers, options.scale, options.reduced, options.motion, options.background, options.crop, options.height, options.hover, options.title])
   const known = svgCache.get(key)
   if (known) return known
   const svg = buildSvg(options)
@@ -339,8 +359,8 @@ export function petSvg(options) {
 // ---- frame stepping (terminals) --------------------------------------------------------------------------------
 
 /** What a terminal needs to draw one moment of one state. */
-export function terminalFrame({ character, colors = {}, state, helpers = 0, elapsed = 0, reduced = false, columns = Infinity, rows = Infinity }) {
-  const anim = animation(state, { helpers, character })
+export function terminalFrame({ character, worn = null, colors = {}, state, helpers = 0, elapsed = 0, reduced = false, columns = Infinity, rows = Infinity }) {
+  const anim = animation(state, { helpers, character, worn })
   const palette = buildPalette(character, colors, { gray: anim.gray ? 0.8 : 0 })
   const step = reduced ? { index: anim.still, pose: anim.frames[anim.still].pose, until: Infinity } : frameAt(anim, elapsed)
   const canvas = drawScene(character, step.pose)

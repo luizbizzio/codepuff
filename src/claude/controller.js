@@ -8,7 +8,11 @@
 import { aggregate, activity, petAge, series } from '../core/aggregate.js'
 import { heartsOf } from '../core/mood.js'
 import { addDays, dayKey } from '../core/days.js'
-import { AGENT_LABELS, ago, shortDay, statBars, statRows, statTiles } from '../core/format.js'
+import { ACCESSORIES, FRAMES, PALETTE_REWARDS, frameOf, rewardFor, wornOf } from '../core/rewards.js'
+import { cardSvg } from '../core/card.js'
+import { AGENT_LABELS, ago, duration, shortDay, statBars, statRows, statTiles, usd } from '../core/format.js'
+import { MILESTONES, lifeOf } from '../core/milestones.js'
+import { TIER_NAMES } from '../core/render/badge.js'
 import { buildBackup, mergeRecords, parseBackup } from '../core/backup.js'
 import { sessionKey } from '../core/hash.js'
 import { chooseLanguage, getLanguage, setLanguage, t } from '../core/i18n/index.js'
@@ -20,11 +24,16 @@ import { newRecord, reduce } from '../core/session.js'
 import { BAND_SIZES, defaultPet, displayName, restoreAppearance, sanitizePet } from '../core/settings.js'
 import { createAffection } from './affection.js'
 import { runCommand } from './commands.js'
-import { AGENT_FILTERS, BLOCKS, PERIODS, PAT_COMBO_MS, REACTION_LENGTH, SAD_AT, SCOPES, reactionLevel } from './constants.js'
+import { AGENT_FILTERS, BLOCKS, PERIODS, PAT_COMBO_MS, REACTION_LENGTH, SAD_AT, SCOPES, greetingAt, reactionLevel } from './constants.js'
 import { createMoments } from './moments.js'
 import { TIRED_AT, resetText, planWindows, resetsBetween, tiredOf } from './usage.js'
 
 export { AGENT_FILTERS, SCOPES, TIRED_AT }
+
+/** An absence this long gets a greeting when it ends. (What ends a stretch of work for the break reminder is the pet's setting, `breakRest`.) */
+const GREET_AFTER = 3 * 3_600_000
+/** The reactions that come from the clock, not from you: they give way to anything the agent is doing. */
+const AMBIENT = ['morning', 'afternoon', 'evening', 'night', 'stretch']
 
 /** The earliest day any record of this agent (or of both) has numbers for. */
 const firstDay = (records, agent) => records.filter(r => agent === 'all' || r.agent === agent).flatMap(r => Object.keys(r.days ?? {})).sort()[0]
@@ -47,15 +56,19 @@ const stamp = now => new Date(now).toISOString().replace(/[:.]/g, '-')
  * @param {{ host?: 'claude' | 'codex', locale?: string }} [options] `locale` is the system's language (a supported code, found by the host: see i18n/detect), used when the pet's language is "auto"; which agent this controller lives in: its platform is listed first and "This session"
  *   is only offered for it (the mod runs in Claude Code, so the default is `claude`)
  */
-export function createController(io, { host = 'claude', locale = 'en' } = {}) {
+export function createController(io, { host = 'claude', locale = 'en', greet = false } = {}) {
   const s = {
     dir: '', sid: '', cwd: '', pet: null, rec: null,
     others: new Map(), // file -> { key, rec }
     dirty: false, ui: { tab: 'stats', scope: 'session', agent: host, details: false }, react: 0, pats: [], reaction: 'petted', cues: [], cueAt: {}, toasts: [], milestoneAt: 0, petText: '', writes: Promise.resolve(),
     health: { storage: 'ok', git: 'ok' }, lastRefresh: 0, usage: null, locale,
+    // The stretch of work the pet is watching for the break reminder: when it began and when it was last seen at it (a pause of ten minutes ends it).
+    work: { since: 0, last: 0 },
     listeners: new Set(),
   }
   const now = () => io.now()
+  /** How long a pause has to be to end a stretch of work (the break reminder's rest, in milliseconds). */
+  const restMs = () => (s.pet?.prefs.breakRest ?? 10) * 60_000
   /** Makes the pet's language (or the system's, for "auto") the one every label is built in. Cheap, so it is done wherever text is made. */
   const applyLanguage = () => setLanguage(chooseLanguage(s.pet?.prefs.language, s.locale))
   const file = (...p) => join(s.dir, ...p)
@@ -185,6 +198,8 @@ export function createController(io, { host = 'claude', locale = 'en' } = {}) {
       await loadOwn()
       await refreshOthers()
       moments.checkMilestones(true)
+      // A greeting that fits the time of day, when the host asks for one (the mod does; a test or the terminal app does not).
+      if (greet) { s.react = now(); s.reaction = greetingAt(new Date(now()).getHours()) }
       changed()
     },
 
@@ -195,6 +210,11 @@ export function createController(io, { host = 'claude', locale = 'en' } = {}) {
         const ev = normalizeHook('claude', { ...payload, hook_event_name: name, session_id: payload?.session_id ?? s.sid, cwd: payload?.cwd ?? s.cwd }, now())
         if (!ev) return
         if (!s.rec) s.rec = newRecord(ev)
+        // Back after a long absence: a greeting for the time of day. And the stretch of work goes on, or begins again after a pause.
+        const at = now()
+        if (greet && ev.kind === 'prompt' && s.rec.last && at - s.rec.last > GREET_AFTER) { s.react = at; s.reaction = greetingAt(new Date(at).getHours()) }
+        if (!s.work.last || at - s.work.last > restMs()) s.work = { since: at, last: at }
+        else s.work.last = at
         reduce(s.rec, ev)
         if (ev.kind === 'prompt') affection.feel(payload?.prompt, now())
         // The moments that make a sound, read from the events themselves: the agent asks the user something (a permission or a
@@ -232,19 +252,49 @@ export function createController(io, { host = 'claude', locale = 'en' } = {}) {
     nextTick(at = now()) {
       const live = s.rec?.live
       const marks = [s.react + REACTION_LENGTH[s.reaction]]
-      if (s.rec && live) marks.push(live.err + WINDOWS.error, live.ok + WINDOWS.success, live.te + WINDOWS.finished, live.te + WINDOWS.waiting, s.rec.last + WINDOWS.stale, live.err + WINDOWS.investigate)
+      if (s.rec && live) marks.push(live.err + WINDOWS.error, live.ok + WINDOWS.success, live.te + WINDOWS.finished, live.te + WINDOWS.waiting, s.rec.last + WINDOWS.bored, s.rec.last + WINDOWS.coffee, s.rec.last + WINDOWS.stale, live.err + WINDOWS.investigate)
       const next = marks.filter(t => t > at)
       return next.length ? Math.min(...next) - at : undefined
     },
 
     /** The plan's usage as the host reports it (`$.session.usage()`): the rate-limit windows. Read only; nothing is stored. */
     setUsage(usage) {
-      const next = usage ? { at: now(), limits: Array.isArray(usage.rateLimits) ? usage.rateLimits : [], cost: usage.cost ?? null } : null
+      const next = usage ? { at: now(), limits: Array.isArray(usage.rateLimits) ? usage.rateLimits : [], cost: usage.cost ?? null, context: Number.isFinite(usage.context?.percent) ? usage.context.percent : null } : null
       // A window that reset since the last reading is a moment worth a sound (and a word).
       applyLanguage()
       for (const moment of resetsBetween(s.usage, next, now())) { moments.cue(moment); s.toasts.push(resetText(moment)) }
       s.usage = next
       changed()
+    },
+
+    /** The break reminder: once a stretch of work has gone on as long as the pet was asked to allow, it suggests a pause (a message and a stretch),
+     *  and asks again after another stretch. Called now and then by the host. Returns whether it spoke. */
+    checkBreak() {
+      const every = s.pet?.prefs.breakEvery
+      if (!every || !s.work.last) return false
+      const at = now()
+      if (at - s.work.last > restMs() || at - s.work.since < every * 60_000) return false
+      applyLanguage()
+      s.toasts.push(t('toast.break', { time: duration(at - s.work.since) }))
+      s.work.since = at
+      s.react = at; s.reaction = 'stretch'
+      changed()
+      return true
+    },
+
+    /** Saves the pet card (an SVG with the pet and a few of its numbers) to the data folder, and says where (a message, and the pane shows the path).
+     *  `notify: false` is for the command, which answers in its own words. */
+    async saveCard({ notify = true } = {}) {
+      applyLanguage()
+      const m = api.model()
+      const all = aggregate(records(), { now: now() })
+      const svg = cardSvg({ name: m.pet.name, character: m.pet.character, colors: m.pet.colors, worn: m.pet.worn, frame: m.pet.frame, motion: m.pet.motion, hearts: m.pet.hearts, streak: m.life.current, ageDays: m.age.days, prompts: all.prompts, tools: all.tools.total, done: m.achievements.done, total: m.achievements.total })
+      const slug = m.pet.name.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'pet'
+      const target = file('cards', 'codepuff-' + slug + '.svg')
+      await io.write(target, svg)
+      if (notify) s.toasts.push(t('cmd.card.saved', { file: target }))
+      changed()
+      return { file: target }
     },
 
     /** A purely visual reaction to a click or tap. Nothing is sent to the agent and no statistic changes. */
@@ -270,9 +320,14 @@ export function createController(io, { host = 'claude', locale = 'en' } = {}) {
       const hearts = heartsOf(pet.affection.score)
       if (pet.prefs.mood && hearts <= SAD_AT && ['idle', 'waiting', 'finished', 'success', 'tired'].includes(mine.state)) mine = { ...mine, state: 'sad', label: labelFor('sad') }
       // A click makes the pet happy for a moment, unless the agent needs the user (that always wins).
-      if (at - s.react < REACTION_LENGTH[s.reaction] && mine.state !== 'permission') mine = { ...mine, state: s.reaction, label: t('reaction.' + s.reaction) }
+      // (A greeting or a stretch is only for when the pet has nothing else to do: work, a failure and a celebration come first.)
+      const ambient = AMBIENT.includes(s.reaction) && (mine.running || ['error', 'success', 'finished'].includes(mine.state))
+      if (at - s.react < REACTION_LENGTH[s.reaction] && mine.state !== 'permission' && !ambient) mine = { ...mine, state: s.reaction, label: t('reaction.' + s.reaction) }
       const others = focus(all.filter(r => r !== s.rec), at)
       const life = activity(all, { today })
+      // What the milestones count, over everything this pet has seen (both agents).
+      const counts = lifeOf(all, at)
+      const planNow = planWindows(s.usage, at)
       const age = petAge(pet.createdAt, at)
       // Platform first (this host's own, then the other, then both), then the period. "This session" only exists for the host's
       // own platform: for the other agent or for both there is no one session to speak of.
@@ -283,23 +338,62 @@ export function createController(io, { host = 'claude', locale = 'en' } = {}) {
       const stats = scope === 'session'
         ? aggregate(s.rec ? [s.rec] : [], { now: at })
         : aggregate(all, { agent, now: at, ...range })
+      // The session's cost, as the host's /cost totals it: an estimate, never the bill. Only for this session of this host, and only when
+      // the host keeps a ledger at all (a missing figure is left out, never shown as zero).
+      const costKnown = Number.isFinite(s.usage?.cost?.usd)
+      const costUsd = scope === 'session' && agent === host && costKnown ? s.usage.cost.usd : null
+      const tiles = statTiles(stats)
+      const rows = statRows(stats)
+      if (costUsd !== null) {
+        tiles.push({ id: 'cost', label: t('stats.tile.cost'), value: usd(costUsd), note: t('stats.tile.cost.note') })
+        rows.splice(rows.findIndex(row => row.id === 'time') + 1, 0, { id: 'cost', label: t('stats.row.cost'), value: usd(costUsd) })
+      }
       const week = series(all, { days: 14, today, agent })
       const peak = Math.max(1, ...week.map(d => d.tools))
       const todayStats = aggregate(all, { since: today, until: today, now: at })
       // How this session's tasks went, as the agent reported them (every tool call's success or failure).
       const session = s.rec ? aggregate([s.rec], { now: at }).tools : { ok: 0, failed: 0 }
       return {
-        pet: { name: displayName(pet), isCustom: !!pet.name, character: pet.character, colors: pet.colors, motion: pet.prefs.motion, line: pet.prefs.line, band: pet.prefs.band, hearts: heartsOf(pet.affection.score), heartScore: pet.affection.score, mood: pet.prefs.mood, sounds: pet.prefs.sounds, volume: pet.prefs.volume, bandSize: pet.prefs.bandSize, bandHeight: BAND_SIZES[pet.prefs.bandSize], language: pet.prefs.language, createdAt: pet.createdAt },
+        pet: { name: displayName(pet), isCustom: !!pet.name, character: pet.character, colors: pet.colors, motion: pet.prefs.motion, line: pet.prefs.line, band: pet.prefs.band, hearts: heartsOf(pet.affection.score), heartScore: pet.affection.score, mood: pet.prefs.mood, accessory: pet.prefs.accessory, worn: wornOf(pet), frame: frameOf(pet), breakEvery: pet.prefs.breakEvery, breakRest: pet.prefs.breakRest, bandFrame: frameOf(pet), sounds: pet.prefs.sounds, volume: pet.prefs.volume, bandSize: pet.prefs.bandSize, bandHeight: BAND_SIZES[pet.prefs.bandSize], language: pet.prefs.language, plan: pet.prefs.plan, createdAt: pet.createdAt },
         language: getLanguage(),
+        // What the pet can wear and what unlocks it, and every milestone with whether it has been reached.
+        // Everything that can be earned (an accessory, a palette, a card frame) and whether it has been.
+        accessories: ACCESSORIES.map(item => ({ id: item.id, name: t('acc.' + item.id), unlocked: (pet.milestones ?? []).includes(item.unlock) })),
+        frames: FRAMES.map(item => ({ id: item.id, name: t('frame.' + item.id), unlocked: (pet.milestones ?? []).includes(item.unlock) })),
+        palettes: Object.fromEntries(PALETTE_REWARDS.map(item => [item.id, (pet.milestones ?? []).includes(item.unlock)])),
+        achievements: {
+          done: MILESTONES.filter(m => (pet.milestones ?? []).includes(m.id)).length,
+          total: MILESTONES.length,
+          // One card for each thing that is counted: it levels up (bronze, silver, gold, diamond) as the count passes each goal. `tier` is
+          // the metal reached so far (null before the first), `current` and `target` the count toward the next goal.
+          groups: [...new Set(MILESTONES.map(m => m.kind))].map(kind => {
+            const steps = MILESTONES.filter(m => m.kind === kind)
+            const reachedSteps = steps.filter(m => (pet.milestones ?? []).includes(m.id))
+            const top = reachedSteps.at(-1) ?? null
+            const next = steps.find(m => !reachedSteps.includes(m)) ?? null
+            const reward = next ? rewardFor(next.id) : null
+            const count = steps[0].count(counts)
+            return {
+              kind, title: t('ach.' + kind), tier: top ? top.tier : null, tierName: top ? t('tier.' + TIER_NAMES[top.tier]) : null,
+              levels: steps.map(m => ({ id: m.id, tier: m.tier, n: m.n, reached: reachedSteps.includes(m) })),
+              complete: !next, current: next ? Math.min(next.n, count) : steps.at(-1).n, target: next ? next.n : steps.at(-1).n,
+              nextName: next ? t('tier.' + TIER_NAMES[next.tier]) : null, reward: reward ? t(reward.key) : null,
+            }
+          }),
+        },
         age, life: { current: life.current, longest: life.longest, last: life.last, days: life.total },
         me: mine,
         outcome: { ok: session.ok, failed: session.failed },
         tired,
-        plan: planWindows(s.usage, at),
+        plan: planNow,
+        // The one-line status under the prompt: what the pet is doing, then what is worth a glance (the context, the plan's limits, the cost).
+        statusLine: [displayName(pet) + ' · ' + mine.label, ...(Number.isFinite(s.usage?.context) ? [t('line.context', { n: Math.round(s.usage.context) })] : []), ...planNow.filter(w => w.id === 'five_hour' || w.id === 'seven_day').map(w => `${w.label} ${w.percent}%`), ...(costKnown ? [usd(s.usage.cost.usd, false)] : [])].join(' · '),
+        // This session's cost for the compact band, told plain ("$0.14": the statistics say it is an estimate); null when the host reports none.
+        sessionCost: costKnown ? usd(s.usage.cost.usd, false) : null,
         others: others.current.agent ? [others.current, ...others.others].slice(0, 3) : [],
         otherCount: others.current.agent ? 1 + others.others.length : 0,
         today: { prompts: todayStats.prompts, tools: todayStats.tools.total, tests: todayStats.tests.run, passed: todayStats.tests.passed, commits: todayStats.git.commits },
-        stats: { rows: statRows(stats), tiles: statTiles(stats), bars: statBars(stats), ok: stats.tools.ok, failed: stats.tools.failed },
+        stats: { rows, tiles, bars: statBars(stats), ok: stats.tools.ok, failed: stats.tools.failed },
         // Which days these numbers cover, in a few words (the buttons already say "7 days" or "This session").
         rangeLabel: scope === 'session' ? [s.rec?.pname, s.rec ? t('ui.range.started', { ago: ago(s.rec.started, at) }) : t('ui.range.nothing')].filter(Boolean).join(' · ') : scope === 'all' ? (firstDay(all, agent) ? t('ui.range.since', { day: shortDay(firstDay(all, agent)) }) : t('ui.range.none')) : `${shortDay(range.since)} – ${shortDay(today)}`,
         host,
@@ -318,7 +412,7 @@ export function createController(io, { host = 'claude', locale = 'en' } = {}) {
 
     setUi(patch) {
       const next = { ...s.ui, ...patch }
-      if (!['stats', 'look'].includes(next.tab)) next.tab = 'stats'
+      if (!['stats', 'look', 'achievements', 'settings'].includes(next.tab)) next.tab = 'stats'
       if (!SCOPES.includes(next.scope)) next.scope = 'session'
       if (!AGENT_FILTERS.includes(next.agent)) next.agent = host
       // "This session" belongs to the host's own platform only.

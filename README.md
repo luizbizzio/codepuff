@@ -61,7 +61,7 @@ both agents.
 
 ### Claude Code
 
-Inside Claude Code, send these **one at a time**, then open a new session:
+Inside Claude Code, send these **one at a time**, then open a new session (or run `/reload-plugins`):
 
 ```text
 /plugin marketplace add luizbizzio/codepuff

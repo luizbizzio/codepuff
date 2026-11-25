@@ -2,7 +2,27 @@
 
 The short version is in the [README](../README.md). This page has the other ways, and what to do when something does not work.
 
-## The easiest way
+## Other ways to install
+
+**Claude Code, in a terminal** (pasting works here; `claude` must be on your PATH), then open a new session:
+
+```text
+claude plugin marketplace add luizbizzio/codepuff
+claude plugin install codepuff@codepuff
+```
+
+**Claude Code, with buttons** (desktop app): click **+** next to the prompt, then **Plugins**, then **Add marketplace**, paste `luizbizzio/codepuff` and add the `codepuff` plugin.
+
+**Codex, two commands instead of npx:**
+
+```text
+codex plugin marketplace add luizbizzio/codepuff
+codex plugin add codepuff@codepuff
+```
+
+Trust the hooks afterwards, as in the README (**Review hooks**, then **Trust all**).
+
+## The easiest way for both
 
 ```text
 npx github:luizbizzio/codepuff setup

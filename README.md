@@ -59,66 +59,27 @@ both agents.
 
 ## Install
 
-> **Claude Code gives the fuller experience:** the pet lives right above the prompt, and success, failures, tests and commits are all counted. **Codex works too**, but its pet shows in a terminal next to it (Codex has no screen for plugins), and Codex does not report how a tool call ended. See [what each one shows](#claude-code-and-codex).
-
 ### Claude Code &nbsp;<sub>no Node.js needed</sub>
 
-Inside Claude Code, send these two commands **one at a time** (⚠ pasting both together may be sent as a normal message instead of running):
+Inside Claude Code, send these **one at a time**, then open a new session:
 
 ```text
 /plugin marketplace add luizbizzio/codepuff
+```
+
+```text
 /plugin install codepuff@codepuff
 ```
 
-Then open a **new session**. The pet is above the prompt, and `/codepuff` opens its pane.
+### Codex &nbsp;<sub>needs <a href="https://nodejs.org">Node.js</a> 20+</sub>
 
-<details>
-<summary>Other ways: terminal, or buttons in the desktop app</summary>
+**1.** In a terminal: `npx github:luizbizzio/codepuff setup --only codex`
 
-<br>
+**2.** In Codex, open **Review hooks** (CLI: `/hooks`) and click **Trust all**. ⚠ Nothing works before this.
 
-**In a terminal** (pasting works here), then open a new Claude Code session:
+**3.** To see the pet, run `npx github:luizbizzio/codepuff pet` in a second terminal.
 
-```text
-claude plugin marketplace add luizbizzio/codepuff
-claude plugin install codepuff@codepuff
-```
-
-**With buttons** (desktop app): click **+** next to the prompt, then **Plugins**, then **Add marketplace**, paste `luizbizzio/codepuff` and add the `codepuff` plugin.
-
-</details>
-
-### Codex &nbsp;<sub>needs <a href="https://nodejs.org">Node.js</a> 20 or newer</sub>
-
-**1.** In a terminal:
-
-```text
-npx github:luizbizzio/codepuff setup --only codex
-```
-
-**2.** Open Codex, go to **Review hooks** (CLI: `/hooks`) and click **Trust all**. ⚠ Codex does not run new hooks until you do this, so nothing works before it.
-
-**3.** To see the pet, run this in a second terminal next to Codex (the pet appears in that terminal, not inside the Codex app):
-
-```text
-npx github:luizbizzio/codepuff pet
-```
-
-<details>
-<summary>Other way to do step 1: two commands instead of npx</summary>
-
-<br>
-
-```text
-codex plugin marketplace add luizbizzio/codepuff
-codex plugin add codepuff@codepuff
-```
-
-</details>
-
-### Both, and checking
-
-Do each section above, or run `npx github:luizbizzio/codepuff setup` (Codex still needs step 2). To check that it works ✔: `npx github:luizbizzio/codepuff doctor`. Updating, uninstalling, installing from a clone and troubleshooting: [docs/INSTALL.md](docs/INSTALL.md).
+<sub>Claude Code is the fuller experience: the pet sits above the prompt and tool results are counted. Codex has no screen for plugins, so its pet shows in that terminal, and Codex does not report how a tool call ended ([details](#claude-code-and-codex)). Other ways to install, checking it ✔ (`doctor`), updating and uninstalling: [docs/INSTALL.md](docs/INSTALL.md).</sub>
 
 ## What you see
 

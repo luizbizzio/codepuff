@@ -11,7 +11,7 @@ claude plugin marketplace add luizbizzio/codepuff
 claude plugin install codepuff@codepuff
 ```
 
-**Claude Code, with buttons** (desktop app): click **+** next to the prompt, then **Plugins**, then **Add marketplace**, paste `luizbizzio/codepuff` and add the `codepuff` plugin.
+**Not through the Claude app's Plugins screen.** The **Add marketplace** button (Settings, then Plugins) is a different path from the `/plugin` commands, and it can refuse CodePuff with "1 plugin failed validation" (the Claude app applies its own checks to a plugin that runs code). Install it with the two commands above instead; they work in the terminal and in the Claude Code tab of the desktop app.
 
 **Codex, two commands instead of npx:**
 

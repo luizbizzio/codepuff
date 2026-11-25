@@ -262,7 +262,7 @@ test('every literal key the sources pass to t() exists in the catalog, and dynam
   family('state.', ['idle', 'bored', 'coffee', 'sleeping', 'thinking', 'reading', 'searching', 'coding', 'running', 'sad', 'git', 'mcp', 'testing', 'web', 'planning', 'investigating', 'waiting', 'finished'])
   family('reaction.', ['petted', 'giggle', 'delighted', 'hurt', 'morning', 'afternoon', 'evening', 'night', 'stretch'])
   family('acc.', ['flower', 'bow', 'glasses', 'cap', 'party', 'tophat', 'sunglasses', 'crown', 'halo', 'beret', 'chef', 'monocle', 'bunny', 'pirate', 'cowboy', 'viking', 'graduation'])
-  family('frame.', ['rainbow', 'pixel', 'neon', 'gold', 'ocean', 'sunset', 'aurora'])
+  family('frame.', ['rainbow', 'pixel', 'neon', 'gold', 'ocean', 'sunset', 'aurora', 'crystal'])
   family('ui.breaks.', ['off', 'every', 'rest'])
   family('ach.', ['tools', 'streak', 'prompts', 'tests', 'commits', 'files', 'lines', 'days', 'time', 'helpers', 'projects'])
   family('tier.', ['bronze', 'silver', 'gold', 'diamond'])

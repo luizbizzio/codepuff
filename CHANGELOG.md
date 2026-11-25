@@ -7,7 +7,7 @@ All notable changes. The format follows [Keep a Changelog](https://keepachangelo
 Achievements, rewards and a pet with more to do. [docs/STATUS.md](docs/STATUS.md) says what was verified and what was not.
 
 ### Added
-- **Achievements.** A tab of its own with eleven cards, one for each thing that is counted (tasks, days in a row, prompts, passing test runs, commits, files changed, lines added in commits, active days, hours of work, helpers called, projects). Each is a pixel-art medal that levels up (bronze, silver, gold, diamond) with a progress bar, and **every one of the 33 levels unlocks something**: 17 accessories, 9 color palettes (the rest of the colors are free) or 7 band frames. What a pet had reached before is unlocked quietly, without a pile of messages.
+- **Achievements.** A tab of its own with eleven cards, one for each thing that is counted (tasks, days in a row, prompts, passing test runs, commits, files changed, lines added in commits, active days, hours of work, helpers called, projects). Each is a pixel-art medal that levels up (bronze, silver, gold, diamond) with a progress bar, and **every one of the 33 levels unlocks something**: 17 accessories, 9 color palettes (the rest of the colors are free) or 7 band frames (plus the rainbow frame, free from the start). What a pet had reached before is unlocked quietly, without a pile of messages.
 - **Accessories** (flower, bow, glasses, cap, party hat, top hat, sunglasses, crown, halo, beret, chef hat, monocle, bunny ears, pirate hat, cowboy hat, Viking helmet, graduation cap), worn on every character in every state, placed on the dome of each head and on its eyes. `/codepuff accessory`, `codepuff set accessory`.
 - **Band Frame.** The chosen frame (rainbow, pixel, neon, gold, ocean, sunset, aurora) goes around the compact band and the pet card. `/codepuff frame`, `codepuff set frame`.
 - **Pet card.** An animated SVG with the pet, its name, how long you have been together, the streak, the hearts and a few totals (no project names, paths or prompts): the 📸 button at the right of the tabs, `/codepuff card`, `codepuff card`.
@@ -26,6 +26,7 @@ Achievements, rewards and a pet with more to do. [docs/STATUS.md](docs/STATUS.md
 - Six of the older color palettes (sunset, lemon, ocean, berry, ember, graphite) are now earned with achievements; original, sky, marshmallow, mint and lavender are free. A custom color is always free.
 
 ### Fixed
+- The sound and the message for a limit that resets were missed when the host reported nothing, or the old figure, around the reset time, and when the pet was closed meanwhile. The reset is now announced when its time comes, and once on opening after one that came while it was closed.
 - The compact band could not be made shorter than the text beside the pet.
 - The frame on the band no longer moves the picture (the band fills the width with or without it).
 

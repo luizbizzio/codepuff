@@ -376,6 +376,7 @@ export default {
   'frame.ocean': 'Океан',
   'frame.sunset': 'Закат',
   'frame.aurora': 'Северное сияние',
+  'frame.crystal': 'Кристалл',
   'ui.frame': 'Рамка полосы',
   'cmd.frame.set': 'Рамка полосы: {name}.',
   'cmd.frame.none': 'Без рамки полосы.',

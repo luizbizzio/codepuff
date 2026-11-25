@@ -376,6 +376,7 @@ export default {
   'frame.ocean': 'Oceaan',
   'frame.sunset': 'Zonsondergang',
   'frame.aurora': 'Poollicht',
+  'frame.crystal': 'Kristal',
   'ui.frame': 'Balkrand',
   'cmd.frame.set': 'Balkrand: {name}.',
   'cmd.frame.none': 'Geen balkrand.',

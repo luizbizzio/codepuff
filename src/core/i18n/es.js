@@ -376,6 +376,7 @@ export default {
   'frame.ocean': 'Océano',
   'frame.sunset': 'Atardecer',
   'frame.aurora': 'Aurora',
+  'frame.crystal': 'Cristal',
   'ui.frame': 'Marco de la banda',
   'cmd.frame.set': 'Marco de la banda: {name}.',
   'cmd.frame.none': 'Sin marco en la banda.',

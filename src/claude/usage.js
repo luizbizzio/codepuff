@@ -31,6 +31,35 @@ export function resetsBetween(before, after, at) {
   return out
 }
 
+/**
+ * The windows being waited on: for each of the 5-hour and weekly limits that has been used, when it is due to reset. A reset is announced
+ * when that time comes, whatever the host reports then (it may say nothing, or still show the old figure, for a while), and also when
+ * the pet is opened after it. `watch` is `{ reset5h: { at, percent }, resetWeek: { at, percent } }`.
+ * @returns {{ due: ('reset5h' | 'resetWeek')[], watch: object }}
+ */
+export function trackResets(watch, usage, at) {
+  const next = {}
+  const due = []
+  for (const [moment, item] of Object.entries(watch ?? {})) {
+    if (!RESET_MOMENT_KINDS.includes(moment) || !Number.isFinite(item?.at) || !Number.isFinite(item?.percent)) continue
+    if (item.at <= at) due.push(moment)
+    else next[moment] = item
+  }
+  for (const limit of usage?.limits ?? []) {
+    const moment = RESET_MOMENT[limit?.kind]
+    const ends = limit?.resetsAt ? Date.parse(limit.resetsAt) : NaN
+    if (!moment || !Number.isFinite(limit.percentUsed) || limit.percentUsed < 1 || !Number.isFinite(ends) || ends <= at) continue
+    const was = next[moment]
+    next[moment] = { at: ends, percent: Math.max(limit.percentUsed, was && was.at === ends ? was.percent : 0) }
+  }
+  return { due, watch: next }
+}
+
+/** What was waited on when the pet was last open, for a window that ended since: only one that was nearly used up is worth announcing late. */
+export const keepWatched = (watch, at) => Object.fromEntries(Object.entries(watch && typeof watch === 'object' ? watch : {}).filter(([, item]) => item && (item.at > at || item.percent >= TIRED_AT)))
+
+const RESET_MOMENT_KINDS = Object.values(RESET_MOMENT)
+
 const PLAN_KINDS = ['five_hour', 'seven_day', 'spend_limit']
 
 /**

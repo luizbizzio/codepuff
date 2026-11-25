@@ -376,6 +376,7 @@ export default {
   'frame.ocean': '海',
   'frame.sunset': '夕焼け',
   'frame.aurora': 'オーロラ',
+  'frame.crystal': 'クリスタル',
   'ui.frame': 'バンドの枠',
   'cmd.frame.set': 'バンドの枠: {name}。',
   'cmd.frame.none': 'バンドの枠なし。',

@@ -10,18 +10,18 @@ import { drawScene } from '../src/core/art/scene.js'
 import { animation } from '../src/core/art/anim.js'
 
 test('every level of every achievement unlocks exactly one thing, and every thing exists', () => {
-  assert.equal(REWARDS.length, MILESTONES.length, 'one reward for each level')
+  assert.equal(REWARDS.length, MILESTONES.length, 'one reward for each level (the free rainbow frame is not one of them)')
   assert.deepEqual([...REWARDS.map(r => r.unlock)].sort(), MILESTONES.map(m => m.id).sort(), 'each level once')
   assert.equal(new Set(REWARDS.map(r => r.type + ':' + r.id)).size, REWARDS.length, 'no reward is given twice')
   const rest = animation('idle', { character: 'classic' }).frames[0].pose
-  for (const reward of REWARDS) {
-    assert.ok(en[rewardFor(reward.unlock).key], reward.id + ' has a name')
+  for (const reward of [...REWARDS, ...FRAMES.filter(f => f.unlock === null)]) {
+    if (reward.unlock) assert.ok(en[rewardFor(reward.unlock).key], reward.id + ' has a name')
     if (reward.type === 'accessory') assert.ok(drawScene('classic', { ...rest, worn: reward.id }).px.some((role, i) => role !== drawScene('classic', rest).px[i]), reward.id + ' can be drawn')
     if (reward.type === 'palette') assert.ok(PRESETS.some(p => p.id === reward.id), reward.id + ' is a palette')
     if (reward.type === 'frame') assert.notEqual(cardSvg({ name: 'x', character: 'fox', frame: reward.id, hearts: 5, streak: 1, ageDays: 1, prompts: 1, tools: 1, done: 0, total: 1 }), cardSvg({ name: 'x', character: 'fox', hearts: 5, streak: 1, ageDays: 1, prompts: 1, tools: 1, done: 0, total: 1 }), reward.id + ' changes the card')
   }
   // Each of the three kinds is well represented.
-  assert.deepEqual([ACCESSORY_IDS.length, PALETTE_REWARDS.length, FRAMES.length], [17, 9, 7])
+  assert.deepEqual([ACCESSORY_IDS.length, PALETTE_REWARDS.length, FRAMES.length], [17, 9, 8], 'eight frames: rainbow is free, seven are earned')
 })
 
 test('a reward is only in use once its milestone is reached; palettes that are not rewards are always open', () => {
@@ -30,7 +30,11 @@ test('a reward is only in use once its milestone is reached; palettes that are n
   assert.deepEqual(unlockedOf('palette', ['tools-500']), ['sunset'])
   assert.equal(wornOf({ milestones: ['tools-100'], prefs: { accessory: 'flower' } }), 'flower')
   assert.equal(wornOf({ milestones: [], prefs: { accessory: 'flower' } }), null, 'chosen but not earned')
-  assert.equal(frameOf({ milestones: ['tools-5000'], prefs: { frame: 'rainbow' } }), 'rainbow')
+  assert.equal(frameOf({ milestones: [], prefs: { frame: 'rainbow' } }), 'rainbow', 'rainbow is free from the start')
+  assert.equal(frameOf({ milestones: null, prefs: { frame: 'rainbow' } }), 'rainbow')
+  assert.deepEqual(unlockedOf('frame', []), ['rainbow'])
+  assert.equal(frameOf({ milestones: ['tools-5000'], prefs: { frame: 'crystal' } }), 'crystal')
+  assert.equal(frameOf({ milestones: [], prefs: { frame: 'crystal' } }), null, 'an earned one is locked until then')
   assert.equal(frameOf({ milestones: ['tools-5000'], prefs: { frame: 'gold' } }), null)
   assert.equal(paletteOpen('mint', []), true, 'free')
   assert.equal(paletteOpen('sunset', []), false, 'a reward')

@@ -376,6 +376,7 @@ export default {
   'frame.ocean': 'Oceano',
   'frame.sunset': 'Pôr do sol',
   'frame.aurora': 'Aurora',
+  'frame.crystal': 'Cristal',
   'ui.frame': 'Moldura da faixa',
   'cmd.frame.set': 'Moldura da faixa: {name}.',
   'cmd.frame.none': 'Sem moldura na faixa.',

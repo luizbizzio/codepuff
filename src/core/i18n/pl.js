@@ -376,6 +376,7 @@ export default {
   'frame.ocean': 'Ocean',
   'frame.sunset': 'Zachód słońca',
   'frame.aurora': 'Zorza',
+  'frame.crystal': 'Kryształ',
   'ui.frame': 'Ramka paska',
   'cmd.frame.set': 'Ramka paska: {name}.',
   'cmd.frame.none': 'Brak ramki paska.',

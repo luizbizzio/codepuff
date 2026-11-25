@@ -141,7 +141,7 @@ When it is **waiting for your next prompt** the pet always has a happy face.
 
 On the desktop the pet can play a short sound at four moments: when Claude **asks you something** (a permission or a
 question), when a turn **finishes**, and when your plan's **5-hour** or **weekly** limit **resets** (as Claude Code reports
-the limits; a toast says so too). All are on by default. For each, pick one of five sounds (chime, bell, pop, ding, tada) or
+the limits; a toast says so too: it is heard when the reset time comes, even if the host says nothing about the limit then, and once when the pet is opened after a reset that came while it was closed and the limit had been nearly used up). All are on by default. For each, pick one of five sounds (chime, bell, pop, ding, tada) or
 off in Settings (the sound plays as you pick it; the first time, a toast says they exist), or with
 `/codepuff sound <question|finish|reset5h|resetWeek> <off|chime|bell|pop|ding|tada>` or `codepuff set sound ...`. The volume
 is low (the default), medium or high: `/codepuff volume low`. The clips are synthesized by `scripts/make-sounds.mjs`, so they
@@ -160,7 +160,7 @@ The **Achievements** tab (next to Statistics and Customize) has one card for eac
 | <img src="images/achievements/tools-100.svg" alt="bronze badge" width="48"> | 100 tasks done together! | bronze | Flower (accessory) |
 | <img src="images/achievements/tools-500.svg" alt="silver badge" width="48"> | 500 tasks done together! | silver | Sunset (palette) |
 | <img src="images/achievements/tools-1000.svg" alt="gold badge" width="48"> | 1000 tasks done together! | gold | Sunglasses (accessory) |
-| <img src="images/achievements/tools-5000.svg" alt="diamond badge" width="48"> | 5000 tasks done together! | diamond | Rainbow (frame) |
+| <img src="images/achievements/tools-5000.svg" alt="diamond badge" width="48"> | 5000 tasks done together! | diamond | Crystal (frame) |
 | <img src="images/achievements/streak-3.svg" alt="bronze badge" width="48"> | 3-day streak! | bronze | Bow (accessory) |
 | <img src="images/achievements/streak-7.svg" alt="silver badge" width="48"> | 7-day streak! | silver | Lemon (palette) |
 | <img src="images/achievements/streak-30.svg" alt="gold badge" width="48"> | 30-day streak! | gold | Crown (accessory) |
@@ -197,7 +197,7 @@ In Customize everything that can be earned is listed, and what is not earned yet
 
 * **Accessories** (17: flower, bow, glasses, cap, party hat, top hat, sunglasses, crown, halo, beret, chef hat, monocle, bunny ears, pirate hat, cowboy hat, Viking helmet, graduation cap): put one on under *Accessory*, or with `/codepuff accessory <id|none>`. It sits on the head or the face of every character, in every state (the band, the pane and the terminal app all show it).
 * **Color palettes** (9 of the 14 have to be earned: sunset, lemon, ocean, berry, ember, aurora, cotton candy, graphite and galaxy; original, sky, marshmallow, mint and lavender are free from the start): under *Colors*, or `/codepuff palette <id>`. A custom color in hex is always free.
-* **Band frames** (7: rainbow, pixel, neon, gold, ocean, sunset, aurora): under *Band Frame*, or `/codepuff frame <id|none>`. The one you pick frames the compact band at once (there is no other switch: choose *None* to turn it off), and it is also the frame of the pet card (below). The band is made of the host's boxes, which have one solid color for their border, so there it shows the frame's main color and background rather than a gradient.
+* **Band frames** (8: **rainbow**, free from the start, then pixel, neon, gold, ocean, sunset, aurora and crystal, earned with achievements): under *Band Frame*, or `/codepuff frame <id|none>`. The one you pick frames the compact band at once (there is no other switch: choose *None* to turn it off), and it is also the frame of the pet card (below). The band is made of the host's boxes, which have one solid color for their border, so there it shows the frame's main color and background rather than a gradient.
 
 A toast tells you when something unlocks. `/codepuff achievements` prints the achievements as text. What a pet had reached before a reward existed is unlocked from the start, without a toast.
 

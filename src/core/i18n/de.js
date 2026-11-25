@@ -376,6 +376,7 @@ export default {
   'frame.ocean': 'Ozean',
   'frame.sunset': 'Sonnenuntergang',
   'frame.aurora': 'Polarlicht',
+  'frame.crystal': 'Kristall',
   'ui.frame': 'Bandrahmen',
   'cmd.frame.set': 'Bandrahmen: {name}.',
   'cmd.frame.none': 'Kein Bandrahmen.',

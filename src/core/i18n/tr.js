@@ -376,6 +376,7 @@ export default {
   'frame.ocean': 'Okyanus',
   'frame.sunset': 'Gün batımı',
   'frame.aurora': 'Aurora',
+  'frame.crystal': 'Kristal',
   'ui.frame': 'Şerit çerçevesi',
   'cmd.frame.set': 'Şerit çerçevesi: {name}.',
   'cmd.frame.none': 'Şerit çerçevesi yok.',

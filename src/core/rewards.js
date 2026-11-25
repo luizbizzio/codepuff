@@ -3,7 +3,7 @@
 
 /** [the milestone it comes with, what kind of reward it is, which one] */
 const MAP = [
-  ['tools-100', 'accessory', 'flower'], ['tools-500', 'palette', 'sunset'], ['tools-1000', 'accessory', 'sunglasses'], ['tools-5000', 'frame', 'rainbow'],
+  ['tools-100', 'accessory', 'flower'], ['tools-500', 'palette', 'sunset'], ['tools-1000', 'accessory', 'sunglasses'], ['tools-5000', 'frame', 'crystal'],
   ['streak-3', 'accessory', 'bow'], ['streak-7', 'palette', 'lemon'], ['streak-30', 'accessory', 'crown'],
   ['prompts-100', 'accessory', 'party'], ['prompts-500', 'accessory', 'tophat'],
   ['tests-10', 'accessory', 'glasses'], ['tests-100', 'palette', 'ocean'],
@@ -19,7 +19,10 @@ const MAP = [
 /** @type {{ unlock: string, type: 'accessory' | 'palette' | 'frame', id: string }[]} */
 export const REWARDS = MAP.map(([unlock, type, id]) => ({ unlock, type, id }))
 
-const ofType = type => REWARDS.filter(reward => reward.type === type)
+/** What is open from the start (no milestone, `unlock: null`): the rainbow frame, so a pet can be framed from the first day. */
+const FREE = [['frame', 'rainbow']].map(([type, id]) => ({ unlock: null, type, id }))
+
+const ofType = type => [...FREE, ...REWARDS].filter(reward => reward.type === type)
 
 /** The accessories (worn on the head or the face), the palettes that have to be earned, and the card frames. */
 export const ACCESSORIES = ofType('accessory').map(({ id, unlock }) => ({ id, unlock }))
@@ -30,8 +33,11 @@ export const FRAME_IDS = FRAMES.map(item => item.id)
 
 const has = (milestones, id) => Array.isArray(milestones) && milestones.includes(id)
 
+/** Whether a reward can be used: the free ones always, the others once the milestone for them is reached. */
+export const isOpen = (reward, milestones) => reward.unlock === null || has(milestones, reward.unlock)
+
 /** The ids of one kind of reward that the reached milestones have unlocked (`milestones` is the pet's list of reached ids, or null before the first look). */
-export const unlockedOf = (type, milestones) => ofType(type).filter(reward => has(milestones, reward.unlock)).map(reward => reward.id)
+export const unlockedOf = (type, milestones) => ofType(type).filter(reward => isOpen(reward, milestones)).map(reward => reward.id)
 
 /** What the pet wears: the accessory it was given, if the milestone for it has been reached (else nothing). */
 export const wornOf = pet => (unlockedOf('accessory', pet?.milestones).includes(pet?.prefs?.accessory) ? pet.prefs.accessory : null)
@@ -42,7 +48,7 @@ export const frameOf = pet => (unlockedOf('frame', pet?.milestones).includes(pet
 /** Whether a palette can be used: the ones that are not rewards always can, the others once earned. */
 export const paletteOpen = (id, milestones) => {
   const reward = PALETTE_REWARDS.find(item => item.id === id)
-  return !reward || has(milestones, reward.unlock)
+  return !reward || isOpen(reward, milestones)
 }
 
 /** The reward a milestone unlocks, with the catalog key of its name. */

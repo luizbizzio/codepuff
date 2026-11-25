@@ -376,6 +376,7 @@ export default {
   'frame.ocean': '海洋',
   'frame.sunset': '日落',
   'frame.aurora': '極光',
+  'frame.crystal': '水晶',
   'ui.frame': '列邊框',
   'cmd.frame.set': '列邊框：{name}。',
   'cmd.frame.none': '無列邊框。',

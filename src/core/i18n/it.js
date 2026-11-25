@@ -376,6 +376,7 @@ export default {
   'frame.ocean': 'Oceano',
   'frame.sunset': 'Tramonto',
   'frame.aurora': 'Aurora',
+  'frame.crystal': 'Cristallo',
   'ui.frame': 'Cornice della banda',
   'cmd.frame.set': 'Cornice della banda: {name}.',
   'cmd.frame.none': 'Nessuna cornice sulla banda.',

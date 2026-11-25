@@ -552,9 +552,12 @@ test('palettes and band frames are rewards too: locked until earned, chosen with
   assert.equal(model().pet.colors.body, null, 'nothing changed')
   assert.match((await ctl.command('palette mint')).text, /Mint/)
   assert.ok(!(await ctl.command('palettes')).text.includes('sunset'), 'the list offers only what can be used')
-  assert.match((await ctl.command('frame rainbow')).text, /Rainbow is still locked: 5,000 tasks done together!/)
-  assert.match((await ctl.command('frame nope')).text, /Available now: -\./)
+  assert.match((await ctl.command('frame crystal')).text, /Crystal is still locked: 5,000 tasks done together!/)
+  assert.match((await ctl.command('frame nope')).text, /Available now: rainbow\./)
   assert.equal(model().pet.frame, null)
+  assert.match((await ctl.command('frame rainbow')).text, /Band frame: Rainbow/, 'rainbow is free from the start')
+  assert.equal(model().pet.frame, 'rainbow')
+  await ctl.command('frame none')
   // Earn silver for tasks: the Sunset palette opens (and a message says so), and the card frame comes with the diamond.
   const mark = JSON.parse(files.get('/data/.codepuff/pet.json'))
   files.set('/data/.codepuff/pet.json', JSON.stringify({ ...mark, milestones: ['tools-100', 'tools-500', 'tools-5000'], seen: [...mark.seen, 'milestones-2'] }))
@@ -562,8 +565,8 @@ test('palettes and band frames are rewards too: locked until earned, chosen with
   assert.equal(model().palettes.sunset, true)
   assert.match((await ctl.command('palette sunset')).text, /Sunset/)
   assert.equal(model().pet.colors.body, '#ff9a6b')
-  assert.match((await ctl.command('frame rainbow')).text, /Band frame: Rainbow/)
-  assert.equal(model().pet.frame, 'rainbow')
+  assert.match((await ctl.command('frame crystal')).text, /Band frame: Crystal/)
+  assert.equal(model().pet.frame, 'crystal')
   assert.match((await ctl.command('frame none')).text, /No band frame/)
   assert.equal(model().pet.frame, null)
   await ctl.setPet({ prefs: { frame: 'gold' } })
@@ -871,6 +874,34 @@ test('plan resets: a sound and a word when the 5-hour or the weekly limit resets
   ctl.setUsage(usage(1, clock.at + 5 * HOUR, 0.5, clock.at + 168 * HOUR))
   ctl.setUsage(usage(0, clock.at + 5 * HOUR, 0, clock.at + 168 * HOUR))
   assert.ok(!ctl.takeCues().some(c => c.moment === 'resetWeek'), 'a sound set to off is not played')
+})
+
+test('plan resets: heard when the time comes even if the host reports nothing then, and when the pet is opened after it', async () => {
+  const { io, clock } = fakeHost()
+  const ctl = createController(io)
+  await ctl.init({ sid: 'a', cwd: '/w' })
+  ctl.takeCues(); ctl.takeToasts()
+  const iso = ms => new Date(ms).toISOString()
+  const HOUR = 3_600_000
+  ctl.setUsage({ rateLimits: [{ kind: 'five_hour', percentUsed: 97, resetsAt: iso(clock.at + HOUR) }], cost: null })
+  clock.at += 0.5 * HOUR
+  ctl.setUsage({ rateLimits: [{ kind: 'five_hour', percentUsed: 99, resetsAt: iso(clock.at + 0.5 * HOUR) }], cost: null })
+  assert.deepEqual(ctl.takeCues(), [], 'not yet')
+  clock.at += 0.6 * HOUR
+  ctl.setUsage({ rateLimits: [], cost: null }) // the host says nothing about the window now
+  assert.deepEqual(ctl.takeCues().map(c => c.moment), ['reset5h'], 'the time came: heard')
+  assert.equal(ctl.takeToasts().filter(x => /5-hour limit has reset/.test(x)).length, 1, 'and said once')
+  ctl.setUsage({ rateLimits: [{ kind: 'five_hour', percentUsed: 0, resetsAt: iso(clock.at + 5 * HOUR) }], cost: null })
+  assert.deepEqual(ctl.takeCues(), [], 'not twice')
+  // Closed while nearly out, opened after the reset: heard once at the first reading.
+  ctl.setUsage({ rateLimits: [{ kind: 'five_hour', percentUsed: 96, resetsAt: iso(clock.at + HOUR) }], cost: null })
+  await new Promise(resolve => setImmediate(resolve))
+  clock.at += 2 * HOUR
+  const again = createController(io)
+  await again.init({ sid: 'b', cwd: '/w' })
+  again.takeCues()
+  again.setUsage({ rateLimits: [{ kind: 'five_hour', percentUsed: 0, resetsAt: iso(clock.at + 5 * HOUR) }], cost: null })
+  assert.deepEqual(again.takeCues().map(c => c.moment), ['reset5h'], 'the reset that came while it was closed')
 })
 
 test('hosted by Codex the order flips: Codex first, then Claude Code, then Combined, and this session belongs to Codex', async () => {

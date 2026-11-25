@@ -376,6 +376,7 @@ export default {
   'frame.ocean': '바다',
   'frame.sunset': '노을',
   'frame.aurora': '오로라',
+  'frame.crystal': '크리스탈',
   'ui.frame': '밴드 테두리',
   'cmd.frame.set': '밴드 테두리: {name}.',
   'cmd.frame.none': '밴드 테두리 없음.',

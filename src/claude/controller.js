@@ -8,7 +8,7 @@
 import { aggregate, activity, petAge, series } from '../core/aggregate.js'
 import { heartsOf } from '../core/mood.js'
 import { addDays, dayKey } from '../core/days.js'
-import { ACCESSORIES, FRAMES, PALETTE_REWARDS, frameOf, rewardFor, wornOf } from '../core/rewards.js'
+import { ACCESSORIES, FRAMES, PALETTE_REWARDS, frameOf, isOpen, rewardFor, wornOf } from '../core/rewards.js'
 import { cardSvg } from '../core/card.js'
 import { AGENT_LABELS, ago, duration, shortDay, statBars, statRows, statTiles, usd } from '../core/format.js'
 import { MILESTONES, lifeOf } from '../core/milestones.js'
@@ -26,7 +26,7 @@ import { createAffection } from './affection.js'
 import { runCommand } from './commands.js'
 import { AGENT_FILTERS, BLOCKS, PERIODS, PAT_COMBO_MS, REACTION_LENGTH, SAD_AT, SCOPES, greetingAt, reactionLevel } from './constants.js'
 import { createMoments } from './moments.js'
-import { TIRED_AT, resetText, planWindows, resetsBetween, tiredOf } from './usage.js'
+import { TIRED_AT, keepWatched, resetText, planWindows, resetsBetween, tiredOf, trackResets } from './usage.js'
 
 export { AGENT_FILTERS, SCOPES, TIRED_AT }
 
@@ -61,7 +61,7 @@ export function createController(io, { host = 'claude', locale = 'en', greet = f
     dir: '', sid: '', cwd: '', pet: null, rec: null,
     others: new Map(), // file -> { key, rec }
     dirty: false, ui: { tab: 'stats', scope: 'session', agent: host, details: false }, react: 0, pats: [], reaction: 'petted', cues: [], cueAt: {}, toasts: [], milestoneAt: 0, petText: '', writes: Promise.resolve(),
-    health: { storage: 'ok', git: 'ok' }, lastRefresh: 0, usage: null, locale,
+    health: { storage: 'ok', git: 'ok' }, lastRefresh: 0, usage: null, locale, watch: {}, watchText: '{}',
     // The stretch of work the pet is watching for the break reminder: when it began and when it was last seen at it (a pause of ten minutes ends it).
     work: { since: 0, last: 0 },
     listeners: new Set(),
@@ -197,6 +197,8 @@ export function createController(io, { host = 'claude', locale = 'en', greet = f
       if (moments.welcome()) await writePet()
       await loadOwn()
       await refreshOthers()
+      // The limits that were waited on when the pet was last open (so a reset that came while it was closed is still announced).
+      try { s.watch = keepWatched(JSON.parse(await io.read(file('usage-watch.json'))), now()); s.watchText = JSON.stringify(s.watch) } catch { s.watch = {} }
       moments.checkMilestones(true)
       // A greeting that fits the time of day, when the host asks for one (the mod does; a test or the terminal app does not).
       if (greet) { s.react = now(); s.reaction = greetingAt(new Date(now()).getHours()) }
@@ -260,9 +262,13 @@ export function createController(io, { host = 'claude', locale = 'en', greet = f
     /** The plan's usage as the host reports it (`$.session.usage()`): the rate-limit windows. Read only; nothing is stored. */
     setUsage(usage) {
       const next = usage ? { at: now(), limits: Array.isArray(usage.rateLimits) ? usage.rateLimits : [], cost: usage.cost ?? null, context: Number.isFinite(usage.context?.percent) ? usage.context.percent : null } : null
-      // A window that reset since the last reading is a moment worth a sound (and a word).
+      // A window that reset since the last reading, or whose time has come, is a moment worth a sound (and a word).
       applyLanguage()
-      for (const moment of resetsBetween(s.usage, next, now())) { moments.cue(moment); s.toasts.push(resetText(moment)) }
+      const tracked = trackResets(s.watch, next, now())
+      for (const moment of new Set([...resetsBetween(s.usage, next, now()), ...tracked.due])) { moments.cue(moment); s.toasts.push(resetText(moment)) }
+      s.watch = tracked.watch
+      const watchText = JSON.stringify(s.watch)
+      if (s.dir && watchText !== s.watchText) { s.watchText = watchText; void Promise.resolve(io.write(file('usage-watch.json'), watchText)).catch(() => {}) }
       s.usage = next
       changed()
     },
@@ -358,9 +364,9 @@ export function createController(io, { host = 'claude', locale = 'en', greet = f
         language: getLanguage(),
         // What the pet can wear and what unlocks it, and every milestone with whether it has been reached.
         // Everything that can be earned (an accessory, a palette, a card frame) and whether it has been.
-        accessories: ACCESSORIES.map(item => ({ id: item.id, name: t('acc.' + item.id), unlocked: (pet.milestones ?? []).includes(item.unlock) })),
-        frames: FRAMES.map(item => ({ id: item.id, name: t('frame.' + item.id), unlocked: (pet.milestones ?? []).includes(item.unlock) })),
-        palettes: Object.fromEntries(PALETTE_REWARDS.map(item => [item.id, (pet.milestones ?? []).includes(item.unlock)])),
+        accessories: ACCESSORIES.map(item => ({ id: item.id, name: t('acc.' + item.id), unlocked: isOpen(item, pet.milestones) })),
+        frames: FRAMES.map(item => ({ id: item.id, name: t('frame.' + item.id), unlocked: isOpen(item, pet.milestones) })),
+        palettes: Object.fromEntries(PALETTE_REWARDS.map(item => [item.id, isOpen(item, pet.milestones)])),
         achievements: {
           done: MILESTONES.filter(m => (pet.milestones ?? []).includes(m.id)).length,
           total: MILESTONES.length,

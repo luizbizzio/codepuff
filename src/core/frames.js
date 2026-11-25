@@ -11,6 +11,7 @@ export const FRAME_STYLES = Object.freeze({
   ocean: { bg: ['#0b2a4a', '#06121f'], stroke: '#5ad1e6', width: 3 },
   sunset: { bg: ['#3b1030', '#1a0a1f'], stroke: '#ff9a6b', width: 3 },
   aurora: { bg: ['#0b1f2a', '#120b2a'], stroke: 'url(#aurora)', width: 4 },
+  crystal: { bg: ['#0e2230', '#07131c'], stroke: '#9ee7ff', width: 4, inner: '#3b6e86' },
 })
 export const STANDARD_FRAME = Object.freeze({ bg: ['#161b22', '#0d1117'], stroke: '#30363d', width: 2 })
 
@@ -24,6 +25,7 @@ const BAND = {
   ocean: ['#5ad1e6', '#0b2a4a', 'round'],
   sunset: ['#ff9a6b', '#3b1030', 'single'],
   aurora: ['#59e0c5', '#0b1f2a', 'round'],
+  crystal: ['#9ee7ff', '#0e2230', 'double'],
 }
 
 /** @returns {{ border: string, background: string, line: string } | null} */

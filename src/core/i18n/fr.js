@@ -376,6 +376,7 @@ export default {
   'frame.ocean': 'Océan',
   'frame.sunset': 'Coucher de soleil',
   'frame.aurora': 'Aurore',
+  'frame.crystal': 'Cristal',
   'ui.frame': 'Cadre du bandeau',
   'cmd.frame.set': 'Cadre du bandeau : {name}.',
   'cmd.frame.none': 'Pas de cadre sur le bandeau.',

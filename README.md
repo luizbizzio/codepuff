@@ -41,49 +41,100 @@ both agents.
 
 Pick the agent you use. Nothing to build, nothing to configure.
 
+| | Claude Code | Codex |
+| --- | --- | --- |
+| Needs Node.js | **No** | **Yes**, 20 or newer ([nodejs.org](https://nodejs.org)) |
+| Steps | 1 (install) | 3 (install, trust, watch) |
+| Where the pet shows | Above the prompt | In a terminal app next to Codex |
+
 ### Claude Code
 
-**No Node.js needed.** Send these two commands inside Claude Code **one at a time** (type each one, or paste a single line), then start a new session:
+Use **one** of the options. None of them needs Node.js.
+
+#### Option 1: type two commands (recommended)
+
+Inside Claude Code, send these **one at a time** (type each one and press Enter; pasting both lines at once can be sent as a normal message):
 
 ```text
 /plugin marketplace add luizbizzio/codepuff
+```
+
+```text
 /plugin install codepuff@codepuff
 ```
 
-Pasting both lines at once can be sent as an ordinary message instead of running. In a terminal pasting works: `claude plugin marketplace add luizbizzio/codepuff`, then `claude plugin install codepuff@codepuff`. In the desktop app: **+** next to the prompt, then **Plugins**, then **Add marketplace**. The pet appears above the prompt, and `/codepuff` opens its pane.
+Then **start a new session**. The pet appears above the prompt, and `/codepuff` opens its pane.
+
+#### Option 2: from a terminal
+
+Pasting works here. Run each line, then start a new Claude Code session:
+
+```text
+claude plugin marketplace add luizbizzio/codepuff
+```
+
+```text
+claude plugin install codepuff@codepuff
+```
+
+#### Option 3: with the buttons (desktop app)
+
+Click **+** next to the prompt, then **Plugins**, then **Add marketplace**, paste `luizbizzio/codepuff`, and add the `codepuff` plugin.
 
 ### Codex
 
-**Needs [Node.js](https://nodejs.org) 20 or newer** (CodePuff's hooks are small Node programs; Codex users usually have it already). In a terminal:
+Codex needs three steps. The first has two options.
+
+#### Step 1: install
+
+**Option 1: one command** (installs it for you):
+
+```text
+npx github:luizbizzio/codepuff setup --only codex
+```
+
+**Option 2: two commands** in a terminal:
 
 ```text
 codex plugin marketplace add luizbizzio/codepuff
+```
+
+```text
 codex plugin add codepuff@codepuff
 ```
 
-Then trust the hooks once, because Codex never runs new hooks without asking: type `/hooks` in the CLI, or use **Review hooks** in the desktop app.
+#### Step 2: trust the hooks (once)
 
-Codex has no plugin screen to draw on, so to watch the pet open the terminal app next to it (also needs Node.js 20+):
+Codex never runs new hooks without your OK, so it will not work until you do this:
+
+1. Open Codex and go to **Review hooks** (CLI: type `/hooks`).
+2. You will see **CodePuff** with 12 hooks that "need review". Click **Trust all**.
+
+#### Step 3: watch your pet
+
+Codex has no screen for plugins, so CodePuff has a small terminal app. Open a second terminal next to Codex and run:
 
 ```text
 npx github:luizbizzio/codepuff pet
 ```
 
-### Both at once (optional, needs Node.js 20+)
+Send a prompt to Codex and the pet reacts. If it says "waiting for an agent", you have not done step 2 yet.
 
-One command installs CodePuff in whichever of the two it finds, by running the commands above for you:
+### Claude Code and Codex together
+
+Do both sections above, or run one command that installs whichever it finds (it still needs the trust step for Codex):
 
 ```text
 npx github:luizbizzio/codepuff setup
 ```
 
-### Check it works (needs Node.js 20+)
+### Is it working?
 
 ```text
 npx github:luizbizzio/codepuff doctor
 ```
 
-It reports whether CodePuff is installed in Claude Code and in Codex, and what to do if it is not. Other routes (from a clone), updating, uninstalling and troubleshooting are in [docs/INSTALL.md](docs/INSTALL.md).
+It says whether CodePuff is installed in Claude Code and in Codex, and what to do if it is not. Updating, uninstalling, installing from a clone and troubleshooting are in [docs/INSTALL.md](docs/INSTALL.md).
 
 ## What you see
 

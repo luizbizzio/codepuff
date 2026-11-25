@@ -15,7 +15,7 @@ Installs CodePuff in Claude Code and in Codex, whichever it finds, by running th
 | | Claude Code | Codex |
 | --- | --- | --- |
 | Install | `/plugin marketplace add luizbizzio/codepuff` then `/plugin install codepuff@codepuff` | `codex plugin marketplace add luizbizzio/codepuff` then `codex plugin add codepuff@codepuff` |
-| Then | start a new session | trust the hooks: `/hooks` in the CLI, *Review hooks* in the desktop app |
+| Then | start a new session | trust the hooks: *Review hooks* in the desktop app (click **Trust all**) or `/hooks` in the CLI |
 | See the pet | above the prompt, and `/codepuff` | `npx github:luizbizzio/codepuff pet` in a split or a second tab (Node.js 20+) |
 | Update | `/plugin marketplace update codepuff`, then update the plugin | `codex plugin marketplace upgrade codepuff` |
 | Remove | `/plugin uninstall codepuff@codepuff` | `codex plugin remove codepuff` |

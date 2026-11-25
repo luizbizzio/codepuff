@@ -29,6 +29,26 @@ both agents.
 
 <p align="center"><sub>The compact band above the Claude Code prompt (large size, English).</sub></p>
 
+<table align="center">
+  <tr>
+    <td align="center"><img src="docs/images/demo-classic.svg" alt="classic" height="110"></td>
+    <td align="center"><img src="docs/images/demo-fox.svg" alt="fox" height="110"></td>
+    <td align="center"><img src="docs/images/demo-bot.svg" alt="bot" height="110"></td>
+    <td align="center"><img src="docs/images/demo-slime.svg" alt="slime" height="110"></td>
+    <td align="center"><img src="docs/images/demo-mage.svg" alt="mage" height="110"></td>
+    <td align="center"><img src="docs/images/demo-aquatic.svg" alt="aquatic" height="110"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Thinking</sub></td>
+    <td align="center"><sub>Coding</sub></td>
+    <td align="center"><sub>Reading</sub></td>
+    <td align="center"><sub>Testing</sub></td>
+    <td align="center"><sub>Success</sub></td>
+    <td align="center"><sub>Waiting for you</sub></td>
+  </tr>
+</table>
+
+
 ## Why CodePuff
 
 - **Honest.** Every animation comes from a real event. The success dance needs a test run that exited with code 0; the error face needs a tool that really failed. When CodePuff cannot know something, it says so instead of guessing.

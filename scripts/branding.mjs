@@ -46,3 +46,10 @@ const html = `<!doctype html>
 `
 writeFileSync(join(import.meta.dirname, '..', 'docs', 'images', 'banner.html'), html)
 console.log('docs/images/banner.html')
+
+// The animated pets of the README: one small SVG each (the same animated pictures the band draws), shown side by side.
+const DEMO = [['classic', 'thinking'], ['fox', 'coding'], ['bot', 'reading'], ['slime', 'testing'], ['mage', 'success'], ['aquatic', 'waiting']]
+for (const [character, state] of DEMO) {
+  writeFileSync(join(import.meta.dirname, '..', 'docs', 'images', 'demo-' + character + '.svg'), petSvg({ character, state, height: 160, crop: 'band' }))
+}
+console.log('docs/images/demo-*.svg')

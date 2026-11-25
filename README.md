@@ -175,7 +175,7 @@ with `/codepuff language`, or `codepuff set language`. Details in [docs/FEATURES
 ## The pets
 
 <p align="center">
-  <img src="docs/images/characters.png" alt="The eight characters in four moods: idle, coding, success and error." width="300">
+  <img src="docs/images/characters.png" alt="The eight characters in four moods: idle, coding, success and error." width="500">
 </p>
 
 | Character | Personality |

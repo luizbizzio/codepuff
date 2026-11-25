@@ -231,6 +231,9 @@ export function setupCommand(flags) {
       out('    /plugin install codepuff@codepuff')
     } else {
       // (A marketplace that is already added makes the first step complain; the install is still worth trying.)
+      // A marketplace called codepuff may already be there from somewhere else (a local folder tried earlier): it is removed first, so the
+      // one added next is always this repository's.
+      step('claude', ['plugin', 'marketplace', 'remove', 'codepuff'], { quiet: true })
       const added = step('claude', ['plugin', 'marketplace', 'add', REPOSITORY], { quiet: true })
       if (added.ok) out('  marketplace added')
       if (step('claude', ['plugin', 'install', 'codepuff@codepuff']).ok) out(dry ? '  (dry run: nothing was changed)' : '  installed: start a new Claude Code session, and the pet appears above the prompt')
@@ -250,6 +253,7 @@ export function setupCommand(flags) {
       out('    codex plugin marketplace add ' + REPOSITORY)
       out('    codex plugin add codepuff@codepuff')
     } else {
+      step('codex', ['plugin', 'marketplace', 'remove', 'codepuff'], { quiet: true })
       const added = step('codex', ['plugin', 'marketplace', 'add', REPOSITORY], { quiet: true })
       if (added.ok) out('  marketplace added')
       if (step('codex', ['plugin', 'add', 'codepuff@codepuff']).ok) {

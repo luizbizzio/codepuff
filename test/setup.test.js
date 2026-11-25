@@ -36,8 +36,10 @@ test('setup installs the plugin in Claude Code and in Codex through their own co
     const r = setup(dir, tools)
     assert.equal(r.status, 0, r.stdout + r.stderr)
     assert.deepEqual(tools.calls(), [
+      'claude plugin marketplace remove codepuff',
       'claude plugin marketplace add luizbizzio/codepuff',
       'claude plugin install codepuff@codepuff',
+      'codex plugin marketplace remove codepuff',
       'codex plugin marketplace add luizbizzio/codepuff',
       'codex plugin add codepuff@codepuff',
     ])
@@ -52,7 +54,7 @@ test('setup does only what is asked, changes nothing on a dry run, and leaves ho
   try {
     const tools = stubs(dir)
     assert.equal(setup(dir, tools, ['--only', 'codex']).status, 0)
-    assert.deepEqual(tools.calls(), ['codex plugin marketplace add luizbizzio/codepuff', 'codex plugin add codepuff@codepuff'])
+    assert.deepEqual(tools.calls(), ['codex plugin marketplace remove codepuff', 'codex plugin marketplace add luizbizzio/codepuff', 'codex plugin add codepuff@codepuff'])
     const dry = setup(dir, stubs(join(dir, 'dry')), ['--dry-run'])
     assert.match(dry.stdout, /\$ claude plugin install codepuff@codepuff/)
     assert.deepEqual(stubs(join(dir, 'dry')).calls(), [], 'a dry run runs nothing')

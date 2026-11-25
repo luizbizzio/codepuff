@@ -59,38 +59,28 @@ both agents.
 
 ## Install
 
-Pick your agent. Nothing to build, nothing to configure.
-
 > **Claude Code gives the fuller experience:** the pet lives right above the prompt, and success, failures, tests and commits are all counted. **Codex works too**, but its pet shows in a terminal next to it (Codex has no screen for plugins), and Codex does not report how a tool call ended. See [what each one shows](#claude-code-and-codex).
 
 ### Claude Code &nbsp;<sub>no Node.js needed</sub>
 
-**1.** Type this and press Enter. ⚠ Send the commands **one at a time**: pasting both together may be sent as a normal message and not run.
+Inside Claude Code, send these two commands **one at a time** (⚠ pasting both together may be sent as a normal message instead of running):
 
 ```text
 /plugin marketplace add luizbizzio/codepuff
-```
-
-**2.** Then type this and press Enter:
-
-```text
 /plugin install codepuff@codepuff
 ```
 
-**3.** Open a **new session**. The pet is above the prompt.
+Then open a **new session**. The pet is above the prompt, and `/codepuff` opens its pane.
 
 <details>
 <summary>Other ways: terminal, or buttons in the desktop app</summary>
 
 <br>
 
-**In a terminal** (pasting works here), run these two, then open a new Claude Code session:
+**In a terminal** (pasting works here), then open a new Claude Code session:
 
 ```text
 claude plugin marketplace add luizbizzio/codepuff
-```
-
-```text
 claude plugin install codepuff@codepuff
 ```
 
@@ -98,11 +88,9 @@ claude plugin install codepuff@codepuff
 
 </details>
 
-<br>
-
 ### Codex &nbsp;<sub>needs <a href="https://nodejs.org">Node.js</a> 20 or newer</sub>
 
-**1.** In a terminal, run:
+**1.** In a terminal:
 
 ```text
 npx github:luizbizzio/codepuff setup --only codex
@@ -123,19 +111,14 @@ npx github:luizbizzio/codepuff pet
 
 ```text
 codex plugin marketplace add luizbizzio/codepuff
-```
-
-```text
 codex plugin add codepuff@codepuff
 ```
 
 </details>
 
-<br>
-
 ### Both, and checking
 
-Install both by doing each section above, or run `npx github:luizbizzio/codepuff setup` (Codex still needs step 2). To check that it works ✔: `npx github:luizbizzio/codepuff doctor`. Updating, uninstalling, installing from a clone and troubleshooting: [docs/INSTALL.md](docs/INSTALL.md).
+Do each section above, or run `npx github:luizbizzio/codepuff setup` (Codex still needs step 2). To check that it works ✔: `npx github:luizbizzio/codepuff doctor`. Updating, uninstalling, installing from a clone and troubleshooting: [docs/INSTALL.md](docs/INSTALL.md).
 
 ## What you see
 

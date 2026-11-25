@@ -41,6 +41,8 @@ both agents.
 
 Pick your agent. Nothing to build, nothing to configure.
 
+> **Claude Code gives the fuller experience:** the pet lives right above the prompt, and success, failures, tests and commits are all counted. **Codex works too**, but its pet shows in a terminal next to it (Codex has no screen for plugins), and Codex does not report how a tool call ended. See [what each one shows](#claude-code-and-codex).
+
 ### Claude Code &nbsp;<sub>no Node.js needed</sub>
 
 **1.** Type this and press Enter. ⚠ Send the commands **one at a time**: pasting both together may be sent as a normal message and not run.
@@ -88,7 +90,7 @@ npx github:luizbizzio/codepuff setup --only codex
 
 **2.** Open Codex, go to **Review hooks** (CLI: `/hooks`) and click **Trust all**. ⚠ Codex does not run new hooks until you do this, so nothing works before it.
 
-**3.** To see the pet, run this in a second terminal next to Codex:
+**3.** To see the pet, run this in a second terminal next to Codex (the pet appears in that terminal, not inside the Codex app):
 
 ```text
 npx github:luizbizzio/codepuff pet

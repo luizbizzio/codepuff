@@ -20,6 +20,7 @@ The first stable version: everything from the 0.1.0 preview, plus the changes be
 - Penny's right eye lost its shine on her dark curls in the thinking face; focus eyes always keep one pixel of shine, and her gaze no longer turns onto the curls.
 - `codepuff stats | head` no longer crashes with EPIPE; the hook ignores a closed pipe; `stats` refuses an unknown scope or agent; `doctor` and `install claude` no longer trigger Node's shell deprecation warning on Windows.
 - A regular expression for `npx` flags that could backtrack exponentially (CodeQL js/redos).
+- In Claude Code, a tool call still running always showed the generic "running" pet: its `PreToolUse` event arrives as a tool-call envelope (`tool`, not `tool_name`), so the tool was read as unknown. Reading, searching, editing, testing, git, web, delegating, planning and MCP now show while the call is in flight, not only as the last action afterwards.
 
 ## [0.1.0] - preview, not released
 

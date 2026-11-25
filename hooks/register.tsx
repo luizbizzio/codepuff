@@ -20,6 +20,8 @@ import { createSoundQueue } from '../src/claude/soundqueue.js'
 // @ts-ignore
 import { detectLanguage, t } from '../src/core/i18n/index.js'
 // @ts-ignore
+import { toolPayload } from '../src/core/normalize.js'
+// @ts-ignore
 import { base64, petSvg, terminalFrame } from '../src/core/render/raster.js'
 import { renderBand, renderCustomize, renderHead, renderStats, renderTabs, sizeOf } from './views.js'
 
@@ -208,7 +210,10 @@ export const register: Register = on => {
     ctl?.observe('UserPromptSubmit', e)
     return next(e)
   })
-  on('classic.PreToolUse', ($, e, next) => { ctl?.observe('PreToolUse', e); return next(e) })
+  // `classic.PreToolUse` alone carries the tool-call envelope ({ tool, tool_use_id, ...the tool's arguments }), not the
+  // { tool_name, tool_input } payload of the other classic events. Without this translation every call in flight was read as
+  // an unknown tool, and the pet showed "running" for reads, searches, edits, tests and so on.
+  on('classic.PreToolUse', ($, e, next) => { ctl?.observe('PreToolUse', toolPayload(e)); return next(e) })
   on('classic.PostToolUse', ($, e, next) => { ctl?.observe('PostToolUse', e); return next(e) })
   on('classic.PostToolUseFailure', ($, e, next) => { ctl?.observe('PostToolUseFailure', e); return next(e) })
   on('classic.PermissionRequest', ($, e, next) => { ctl?.observe('PermissionRequest', e); return next(e) })

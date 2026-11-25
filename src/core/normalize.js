@@ -18,6 +18,20 @@ const baseName = path => String(path ?? '').replace(/[\\/]+$/, '').split(/[\\/]/
 const clip = (text, max) => String(text).replace(/[\u0000-\u001f\u007f<>]/g, '').slice(0, max)
 
 /**
+ * Claude Code's `classic.PreToolUse` alone delivers the tool-call envelope (`{ tool, tool_use_id, ...the tool's arguments }`)
+ * instead of the `{ tool_name, tool_input }` payload of its other hooks. This turns the envelope into that payload (a payload that
+ * already has the usual shape is returned as it is). Without it every call in flight is read as an unknown tool.
+ * @param {any} envelope
+ * @returns {Record<string, any>}
+ */
+export function toolPayload(envelope) {
+  if (!envelope || typeof envelope !== 'object') return {}
+  if (typeof envelope.tool_name === 'string') return envelope
+  const { tool, tool_use_id, consent, requestMeta, agentId, ...input } = envelope
+  return { tool_name: tool, tool_use_id, tool_input: input, ...(agentId ? { agent_id: agentId } : {}) }
+}
+
+/**
  * @param {'claude' | 'codex'} agent
  * @param {Record<string, any>} payload a host hook payload
  * @param {number} at the time it was observed (epoch ms)

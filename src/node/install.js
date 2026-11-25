@@ -248,7 +248,7 @@ export function setupCommand(flags) {
     } else {
       step('codex', ['plugin', 'marketplace', 'add', REPOSITORY])
       if (step('codex', ['plugin', 'add', 'codepuff@codepuff'])) {
-        out('  installed. One thing is left, and only you can do it: Codex does not run new hooks until you trust them')
+        out(dry ? '  (dry run: nothing was changed.) After installing, trust the hooks: Codex does not run new hooks until you do' : '  installed. One thing is left, and only you can do it: Codex does not run new hooks until you trust them')
         out('    Codex CLI: start Codex and type /hooks.   Codex desktop app: Review hooks.')
         out('  To watch the pet next to Codex: npx github:' + REPOSITORY + ' pet')
       } else { failed = true; out('  could not install it from here: type the two lines above in a terminal where Codex runs') }

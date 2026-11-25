@@ -43,14 +43,14 @@ Pick the agent you use. Nothing to build, nothing to configure.
 
 ### Claude Code
 
-**No Node.js needed.** Type these two lines inside Claude Code, then start a new session:
+**No Node.js needed.** Send these two commands inside Claude Code **one at a time** (type each one, or paste a single line), then start a new session:
 
 ```text
 /plugin marketplace add luizbizzio/codepuff
 /plugin install codepuff@codepuff
 ```
 
-In the desktop app: **+** next to the prompt, then **Plugins**, then **Add marketplace**. The pet appears above the prompt, and `/codepuff` opens its pane.
+Pasting both lines at once can be sent as an ordinary message instead of running. In a terminal pasting works: `claude plugin marketplace add luizbizzio/codepuff`, then `claude plugin install codepuff@codepuff`. In the desktop app: **+** next to the prompt, then **Plugins**, then **Add marketplace**. The pet appears above the prompt, and `/codepuff` opens its pane.
 
 ### Codex
 

@@ -28,7 +28,7 @@ character wears any palette. Foxy also floats a `404` over its head when somethi
 | Reading / Searching | A read, search or inspecting command (`cat`, `rg`, `git diff`, ...) is running: a book (the eyes sweep along the lines and a page turns), or a magnifier. |
 | Coding / Running | Editing files: a laptop with a glowing `</>` and code symbols floating up. Running a command: a shell prompt and a spinner. |
 | Git / Connected tool | A git command: a commit graph with a branch. A tool from an MCP server: a plug sliding into its socket, with a spark. |
-| Testing | A recognized test run is in flight: goggles and a bubbling flask. |
+| Testing | A recognized test run is in flight: a bubbling flask. |
 | Success | A test run **confirmed passed** (exit code 0, not hidden by a pipe), or a commit was made: sparkles. |
 | Error / Investigating | A tool (or a model request) really failed: a red `!` badge that stays put (it does not blink), and a `404` floating over Foxy's head (only Foxy's); then *Looking into the failure*. |
 | Permission | The agent is waiting for your approval or answer: a yellow `!` badge. It always wins. |

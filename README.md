@@ -96,7 +96,7 @@ Inside Claude Code, send these **one at a time**, then open a new session:
 | A book with its eyes sweeping the lines, or a magnifier | Reading files, searching the project |
 | A laptop with floating code, or a shell with a spinner | Editing code, running a command |
 | A commit graph, or a plug sliding into a socket | A git command, a tool from an MCP server |
-| Goggles and a bubbling flask | A test run is in flight |
+| A bubbling flask | A test run is in flight |
 | Sparkles | A test run was confirmed passed, or a commit was made |
 | A red badge (Foxy also floats a 404) | Something really failed |
 | A yellow badge, hands up | The agent needs you: an approval or a question |

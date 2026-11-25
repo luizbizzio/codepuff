@@ -54,7 +54,7 @@ function laptop(c, a, f, kind) {
   }
 }
 
-function flask(c, a, f, character) {
+function flask(c, a, f) {
   const x = Math.min(a.cx + 10, 32.5)
   const y = a.bottom
   stamp(c, [
@@ -64,16 +64,6 @@ function flask(c, a, f, character) {
   ])
   disc(c, P(x - 1.4), P(y - 4.2), K * 0.55, K * 0.4, R.WHITE)
   for (const [i, bx] of [[0, -1.6], [1, 0.9], [2, -0.2]]) { const rise = ((f + i * 2) % 6) / 6; disc(c, P(x + bx), P(y - 1.4 - rise * 6.4), K * 0.4, K * 0.4, R.GLASS) }
-  // Testing goggles on the pet (the fox already wears its own, the bot has a screen and the mage a hat).
-  if (!['fox', 'bot', 'mage'].includes(character)) {
-    const gy = a.faceY - 4.4
-    line(c, P(a.cx - 8.6), P(gy + 0.2), P(a.cx + 8.6), P(gy + 0.2), R.BROWN2, K * 0.9)
-    for (const side of [-1, 1]) {
-      disc(c, P(a.cx + side * 3.5), P(gy), K * 2.7, K * 2.4, R.NAVY2)
-      disc(c, P(a.cx + side * 3.5), P(gy), K * 2.1, K * 1.85, R.TEAL)
-      disc(c, P(a.cx + side * 3.5 - 0.7), P(gy - 0.7), K * 0.6, K * 0.45, R.WHITE)
-    }
-  }
 }
 
 function magnifier(c, a, f) {
@@ -202,7 +192,7 @@ export function drawHiProp(c, a, prop, character) {
     case 'book': return book(c, a, f)
     case 'laptop': return laptop(c, a, f, 'code')
     case 'shell': return laptop(c, a, f, 'shell')
-    case 'flask': return flask(c, a, f, character)
+    case 'flask': return flask(c, a, f)
     case 'magnifier': return magnifier(c, a, f)
     case 'branch': return branch(c, a, f)
     case 'plug': return plug(c, a, f)
